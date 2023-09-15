@@ -1,10 +1,9 @@
 import os
 import tqdm
 import polars as pl
-import pyarrow.parquet as pq
 import datetime
 import re
-from auxiliary.auxiliary import build_non_existing_dirs
+from auxiliary.auxiliary import save_pyarrow_data
 
 
 def read_gletsch_csv_data(hydro_mateo_path: str, years: list[str], ar_selection: bool, where: str = None):
@@ -36,14 +35,5 @@ def read_gletsch_csv_data(hydro_mateo_path: str, years: list[str], ar_selection:
     all_data = all_data.rename({"column_1": "date", "column_2": "time", "column_3": "X0.05", "column_4": "X0.5", "column_5": "X0.95", "column_6": "obs"}).with_columns(pl.concat_str(["date", "time"], separator=" ").alias("datetime").str.to_datetime("%Y-%m-%d %H:%M:%S")).select(
         pl.col(["prediction_date", "datetime", "X0.05", "X0.5", "X0.95", "obs"]))
     if where is not None:
-        save_gletsch_pyarrow_data(all_data, where)
+        save_pyarrow_data(all_data, where)
     return all_data
-
-
-def save_gletsch_pyarrow_data(data, where):
-    build_non_existing_dirs(os.path.dirname(where))
-    pq.write_table(data.to_arrow(), where, compression=None)
-
-
-def read_gletsch_pyarrow_data(where):
-    return pl.from_arrow(pq.read_table(where))
