@@ -1,14 +1,12 @@
 import itertools
 import pyomo.environ as pyo
 import logging
-import pandas as pd
 from pyomo.environ import PositiveReals, Binary, Any
-from schema.schema import Base, DesignScheme, DesignSchemeMapping, HydroPower, Pump, PiecewiseHydro, DischargeFlowNorm
+from schema.schema import Base, DesignScheme, DesignSchemeMapping, HydroPower, Pump, PiecewiseHydro, TimeIndex, DischargeFlowNorm, Photovoltaic, WindTurbine, IrradiationNorm, WindSpeedNorm
 from schema.schema import get_table
 from schema.constraints import check_constraint
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
 
 
 # Test
@@ -18,8 +16,11 @@ ds1 = DesignScheme(name="design1")
 ds2 = DesignScheme(name="design2")
 unit1 = HydroPower(name="ab098", exist=True, p_max=100, v_min=10, v_max=1000)
 unit2 = HydroPower(name="bz011", exist=True, p_max=120, v_min=20, v_max=100)
-unit4 = HydroPower(name="da222", exist=False, p_max=0, v_min=1, v_max=100)
 unit3 = Pump(name="p1", exist=True, p_max=100, q_max=10, hp_unit=[unit1], hp_up=[unit2])
+unit4 = HydroPower(name="da222", exist=False, p_max=0, v_min=1, v_max=100)
+unit5 = Photovoltaic(name="pv1", exist=True, area=1.7, eta_r=0.17)
+unit6 = WindTurbine(name="wt1", area=450)
+
 dsm1 = DesignSchemeMapping(design_scheme=ds1, resource=unit1)
 dsm2 = DesignSchemeMapping(design_scheme=ds1, resource=unit2)
 dsm3 = DesignSchemeMapping(design_scheme=ds2, resource=unit1)
@@ -40,9 +41,16 @@ dfn4 = DischargeFlowNorm(resource=unit2, week=1, time_step=2, horizon="DA", scen
 dfn5 = DischargeFlowNorm(resource=unit4, week=1, time_step=1, horizon="DA", scenario="1", q_min=0, q_max=1, q_dis=0.5)
 dfn6 = DischargeFlowNorm(resource=unit4, week=1, time_step=2, horizon="DA", scenario="1", q_min=0, q_max=2, q_dis=0.75)
 
+in1 = IrradiationNorm(resource=unit5,  week=1, time_step=1, horizon="DA", scenario="1", ghi=100)
+in2 = IrradiationNorm(resource=unit5,  week=1, time_step=2, horizon="DA", scenario="1", ghi=50)
+
+ws1 = WindSpeedNorm(resource=unit6, week=1, time_step=1, horizon="DA", scenario="1", value=10)
+ws2 = WindSpeedNorm(resource=unit6, week=1, time_step=2, horizon="DA", scenario="1", value=10)
+
+
 with Session(engine) as session:
-    session.add_all([ds1, ds2, unit1, unit2, unit3, unit4, dsm1, dsm2, dsm3, dsm4, dsm5, piece1, piece2, piece3, piece4, piece5, piece6])
-    session.add_all([dfn1, dfn2, dfn3, dfn4, dfn5, dfn6])
+    session.add_all([ds1, ds2, unit1, unit2, unit3, unit4, unit5, unit6, dsm1, dsm2, dsm3, dsm4, dsm5, piece1, piece2, piece3, piece4, piece5, piece6])
+    session.add_all([dfn1, dfn2, dfn3, dfn4, dfn5, dfn6, in1, in2, ws1, ws2])
     session.commit()
     check_constraint(session)
 
@@ -52,14 +60,20 @@ with Session(engine) as session:
 dsm_table = get_table(sess=session, class_object=DesignScheme, uuid_columns="uuid")
 hps_table = get_table(sess=session, class_object=HydroPower, uuid_columns=["resource_fk","pump_fk", "pump_dn_fk"])
 pms_table = get_table(sess=session, class_object=Pump, uuid_columns="resource_fk")
+pvs_table = get_table(sess=session, class_object=Photovoltaic, uuid_columns="resource_fk")
+wts_table = get_table(sess=session, class_object=WindTurbine, uuid_columns="resource_fk")
 pcw_table = get_table(sess=session, class_object=PiecewiseHydro, uuid_columns="resource_fk")
 dfn_table = get_table(sess=session, class_object=DischargeFlowNorm, uuid_columns="resource_fk")
-time_index_table = pd.DataFrame(session.execute(text('SELECT week, time_step, horizon, scenario, delta_t FROM TimeIndex ORDER BY time_step')).all()).drop_duplicates()
+in_table = get_table(sess=session, class_object=IrradiationNorm, uuid_columns="resource_fk")
+wsn_table = get_table(sess=session, class_object=WindSpeedNorm, uuid_columns="resource_fk")
+time_index_table = get_table(sess=session, class_object=TimeIndex, uuid_columns="uuid")[["week", "time_step", "horizon", "scenario", "delta_t"]].drop_duplicates()
 
 
 # get inputs
 set_r_hp = hps_table.resource_fk.to_list()
 set_r_pm = pms_table.resource_fk.to_list()
+set_r_pv = pvs_table.resource_fk.to_list()
+set_r_wt = wts_table.resource_fk.to_list()
 set_w = list(set(time_index_table["week"].to_list()))
 set_t = list(set(time_index_table["time_step"].to_list()))
 set_z = list(set(time_index_table["horizon"].to_list()))
@@ -85,6 +99,18 @@ pump_dn_hp = hps_table[["resource_fk", "pump_dn_fk"]].set_index("resource_fk")["
 p_max_pm = pms_table[["resource_fk", "p_max"]].set_index("resource_fk")["p_max"].to_dict()
 q_max_pm = pms_table[["resource_fk", "q_max"]].set_index("resource_fk")["q_max"].to_dict()
 
+area_pv = pvs_table[["resource_fk", "area"]].set_index("resource_fk")["area"].to_dict()
+eta_r_pv = pvs_table[["resource_fk", "eta_r"]].set_index("resource_fk")["eta_r"].to_dict()
+f_snow_pv = pvs_table[["resource_fk", "f_snow"]].set_index("resource_fk")["f_snow"].to_dict()
+irr_pv = in_table[["resource_fk", "week", "time_step", "horizon", "scenario", "ghi"]].set_index(["resource_fk", "week", "time_step", "horizon", "scenario"]).groupby(["resource_fk", "week", "time_step", "horizon", "scenario"], group_keys=True).mean()["ghi"].to_dict()
+
+area_wt = wts_table[["resource_fk", "area"]].set_index("resource_fk")["area"].to_dict()
+cpr_wt = wts_table[["resource_fk", "cpr"]].set_index("resource_fk")["cpr"].to_dict()
+eta_wt = wts_table[["resource_fk", "eta"]].set_index("resource_fk")["eta"].to_dict()
+cut_in_wt = wts_table[["resource_fk", "cut_in_speed"]].set_index("resource_fk")["cut_in_speed"].to_dict()
+cut_off_wt = wts_table[["resource_fk", "cut_off_speed"]].set_index("resource_fk")["cut_off_speed"].to_dict()
+ws_wt = wsn_table[["resource_fk", "week", "time_step", "horizon", "scenario", "value"]].set_index(["resource_fk", "week", "time_step", "horizon", "scenario"]).groupby(["resource_fk", "week", "time_step", "horizon", "scenario"], group_keys=True).mean()["value"].to_dict()
+
 
 # initial points that must be integrated in database
 v0 = 0
@@ -108,14 +134,26 @@ if set(p_max_pm.keys()) != set(set_r_pm):
     log.error("The sets p_max_pm and set_r_pm are not consistent.")
 if set(q_max_pm.keys()) != set(set_r_pm):
     log.error("The sets q_max_pm and set_r_pm are not consistent.")
+if set(area_pv.keys()) != set(set_r_pv):
+    log.error("The sets area_pv and set_r_pv are not consistent.")
+if set(eta_r_pv.keys()) != set(set_r_pv):
+    log.error("The sets eta_r_pv and set_r_pv are not consistent.")
+if set(f_snow_pv.keys()) != set(set_r_pv):
+    log.error("The sets f_snow_pv and set_r_pv are not consistent.")
+if set(area_wt.keys()) != set(set_r_wt):
+    log.error("The sets area_wt and set_r_wt are not consistent.")
+if set(cpr_wt.keys()) != set(set_r_wt):
+    log.error("The sets cpr_wt and set_r_wt are not consistent.")
+if set(eta_wt.keys()) != set(set_r_wt):
+    log.error("The sets eta_wt and set_r_wt are not consistent.")
 
 # Setting of optimization problem
 
 # Constants
 rho_hp = 998
+rho_air = 1.225
 
 # Define sets in pyomo
-model.R_HP = pyo.Set(initialize=set_r_hp)
 model.Time = pyo.Set(initialize=set_t)
 model.Week = pyo.Set(initialize=set_w)
 model.Horizon = pyo.Set(initialize=set_z)
@@ -123,12 +161,20 @@ model.Scenario = pyo.Set(initialize=set_s)
 model.Designs = pyo.Set(initialize=set_l)
 model.Index = pyo.Set(initialize=(itertools.product(*[set_w, set_t, set_z, set_s, set_l])), dimen=5)
 model.IndexWithoutL = pyo.Set(initialize=(itertools.product(*[set_w, set_t, set_z, set_s])), dimen=4)
+
+model.R_HP = pyo.Set(initialize=set_r_hp)
 model.K_HP = pyo.Set(initialize=set(itertools.chain(*[list(itertools.product(*[[set_r_hp[r]], set_k[r_val]])) for r, r_val in enumerate(set_r_hp)])), dimen=2)
 model.J_HP = pyo.Set(initialize=set(itertools.chain(*[list(itertools.product(*[[set_r_hp[r]], set_k[r_val], set_j[r_val]])) for r, r_val in enumerate(set_r_hp)])), dimen=3)
 
 model.R_PM = pyo.Set(initialize=set_r_pm)
+model.R_PV = pyo.Set(initialize=set_r_pv)
+model.R_WT = pyo.Set(initialize=set_r_wt)
+
 
 # Define parameters in pyomo
+model.RHO_HP = pyo.Param(initialize=rho_hp)
+model.RHO_Air = pyo.Param(initialize=rho_air)
+
 model.H_HP = pyo.Param(model.J_HP, initialize=h_hat_hp)
 model.BETA_HP = pyo.Param(model.J_HP, initialize=beta_hp)
 model.P_HP_MAX = pyo.Param(model.R_HP, initialize=p_max_hp)
@@ -149,6 +195,18 @@ model.Pump_DN_HP = pyo.Param(model.R_HP, initialize=pump_dn_hp, within=Any)
 model.P_PM_MAX = pyo.Param(model.R_PM, initialize=p_max_pm)
 model.Q_PM_MAX = pyo.Param(model.R_PM, initialize=q_max_pm)
 
+model.Area_PV = pyo.Param(model.R_PV, initialize=area_pv)
+model.Eta_PV = pyo.Param(model.R_PV, initialize=eta_r_pv)
+model.F_Snow_PV = pyo.Param(model.R_PV, initialize=f_snow_pv)
+model.Irradiation_PV = pyo.Param(model.R_PV, model.IndexWithoutL, initialize=irr_pv)
+
+model.Area_WT = pyo.Param(model.R_WT, initialize=area_wt)
+model.Eta_WT = pyo.Param(model.R_WT, initialize=eta_wt)
+model.CPR_WT = pyo.Param(model.R_WT, initialize=cpr_wt)
+model.Cut_In_WT = pyo.Param(model.R_WT, initialize=cut_in_wt)
+model.Cut_Off_WT = pyo.Param(model.R_WT, initialize=cut_off_wt)
+model.WS_WT = pyo.Param(model.R_WT, model.IndexWithoutL, initialize=ws_wt)
+
 # Define variables in pyomo
 model.p_hp = pyo.Var(model.R_HP, model.Index, domain=PositiveReals)
 model.p_hat_hp = pyo.Var(model.K_HP, model.Index, domain=PositiveReals)
@@ -157,19 +215,25 @@ model.v_hp = pyo.Var(model.R_HP, model.Index, domain=PositiveReals)
 model.zeta_hp = pyo.Var(model.K_HP, model.Index, domain=Binary)
 model.delta_q_pos = pyo.Var(model.R_HP, model.Week, model.Horizon, model.Scenario, model.Designs, domain=PositiveReals)
 model.delta_q_neg = pyo.Var(model.R_HP, model.Week, model.Horizon, model.Scenario, model.Designs, domain=PositiveReals)
+model.q_hp_in = pyo.Var(model.R_HP, model.Index, domain=PositiveReals)
 
 model.p_pm = pyo.Var(model.R_PM, model.Index, domain=PositiveReals)
 model.q_pm = pyo.Var(model.R_PM, model.Index, domain=PositiveReals)
 model.phi_pm = pyo.Var(model.R_PM, model.Index, domain=PositiveReals)
 
-model.q_hp_in = pyo.Var(model.R_HP, model.Index, domain=PositiveReals)
+model.p_pv = pyo.Var(model.R_PV, model.Index, domain=PositiveReals)
+model.p_max_pv = pyo.Var(model.R_PV, model.IndexWithoutL, domain=PositiveReals)
+
+model.p_wt = pyo.Var(model.R_WT, model.Index, domain=PositiveReals)
+model.p_max_wt = pyo.Var(model.R_WT, model.IndexWithoutL, domain=PositiveReals)
+
 
 def define_constraint_hp_flow(model):
     # constraint 47
     model.hp_linear1 = pyo.Constraint(model.R_HP, model.Index, rule=lambda m, r, w, t, z, s, l: m.p_hp[r, w, t, z, s, l] == sum([m.p_hat_hp[r, k[1], w, t, z, s, l] for k in m.K_HP if k[0] == r]))
 
     # constraint 49
-    model.hp_linear2 = pyo.Constraint(model.J_HP, model.Index, rule=lambda m, r, k, j, w, t, z, s, l: m.p_hat_hp[r, k, w, t, z, s, l] <= rho_hp * (model.H_HP[r, k, j] * model.q_hp[r, w, t, z, s, l] + model.BETA_HP[r, k, j]))
+    model.hp_linear2 = pyo.Constraint(model.J_HP, model.Index, rule=lambda m, r, k, j, w, t, z, s, l: m.p_hat_hp[r, k, w, t, z, s, l] <= m.RHO_HP * (model.H_HP[r, k, j] * model.q_hp[r, w, t, z, s, l] + model.BETA_HP[r, k, j]))
     model.hp_linear3 = pyo.Constraint(model.K_HP, model.Index, rule=lambda m, r, k, w, t, z, s, l: m.p_hat_hp[r, k, w, t, z, s, l] >= 0)
 
     # constraint 50
@@ -215,7 +279,19 @@ def define_constraint_pm(model):
     model.pm_flow4 = pyo.Constraint(model.R_PM, model.Index, rule=lambda m, r, w, t, z, s, l: m.phi_pm[r, w, t, z, s, l] <= m.Delta_T[w, t, z, s])
     return model
 
+def define_constraint_pv(model):
+    model.pv_power1 = pyo.Constraint(model.R_PV, model.Index, rule=lambda m, r, w, t, z, s, l: m.p_pv[r, w, t, z, s, l] <= m.p_max_pv[r, w, t, z, s])
+    model.pv_power2 = pyo.Constraint(model.R_PV, model.IndexWithoutL, rule=lambda m, r, w, t, z, s: m.p_max_pv[r, w, t, z, s] == m.Irradiation_PV[r, w, t, z, s] * m.Area_PV[r] * m.Eta_PV[r] * m.F_Snow_PV[r])
+    return model
+
+def define_constraint_wt(model):
+    model.wt_power1 = pyo.Constraint(model.R_WT, model.Index, rule=lambda m, r, w, t, z, s, l: m.p_wt[r, w, t, z, s, l] <= m.p_max_wt[r, w, t, z, s])
+    model.wt_power2 = pyo.Constraint(model.R_WT, model.IndexWithoutL, rule=lambda m, r, w, t, z, s: m.p_max_wt[r, w, t, z, s] == 0.5 * m.RHO_Air * m.Area_WT[r] * m.CPR_WT[r] * m.Eta_WT[r] * (m.WS_WT[r, w, t, z, s] ** 3) if (m.WS_WT[r, w, t, z, s] <= m.Cut_Off_WT[r]) & (m.WS_WT[r, w, t, z, s] >= m.Cut_In_WT[r]) else 0)
+    return model
+
 model = define_constraint_hp_flow(model)
 model = define_constraint_hp_volume(model)
 model = define_constraint_hp_balance(model)
 model = define_constraint_pm(model)
+model = define_constraint_pv(model)
+model = define_constraint_wt(model)

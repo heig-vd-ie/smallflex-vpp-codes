@@ -15,13 +15,20 @@ class Base(DeclarativeBase):
 
 
 class ResourceType(enum.Enum):
-    """Used to specify the concrete type of the specialized class linked to the different asset tables"""
     Resource = 0
     HydroPower = 1
     Photovoltaic = 2
     WindTurbine = 3
     EnergyStorage = 4
     Pump = 5
+
+
+class TimeIndexType(enum.Enum):
+    TimeIndex = 0
+    DischargeFlowNorm = 1
+    IrradiationNorm = 2
+    WindSpeedNorm = 3
+
 
 
 class HasUuid(object):
@@ -71,6 +78,7 @@ class HydroPower(Resource):
     v_max = Column(Float, nullable=False)
     discharge_flow_norm = relationship('DischargeFlowNorm', back_populates='resource')
     piecewise_table = relationship('PiecewiseHydro', back_populates='resource')
+
     pump_fk = Column(UUIDType, nullable=True)
     pump = relationship("Pump", backref="hp_unit", primaryjoin="HydroPower.pump_fk == Pump.resource_fk", foreign_keys=pump_fk,)
 
@@ -100,7 +108,11 @@ class PiecewiseHydro(Base, HasUuid):
 class Photovoltaic(Resource):
     __tablename__ = "Photovoltaic"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
-    irradiation_data = relationship('Irradiation', back_populates='pv')
+    area = Column(Float, nullable=False)
+    eta_r = Column(Float, default=0.17)
+    f_snow = Column(Float, default=1)
+    irradiation_data = relationship('Irradiation', back_populates='resource')
+    irradiation_norm = relationship('IrradiationNorm', back_populates='resource')
 
     def __repr__(self) -> str:
         return f"Photovoltaic(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
@@ -112,7 +124,13 @@ class Photovoltaic(Resource):
 class WindTurbine(Resource):
     __tablename__ = "WindTurbine"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
-    wind_data = relationship('WindSpeed', back_populates='wt')
+    wind_data = relationship('WindSpeed', back_populates='resource')
+    wind_speed_norm = relationship('WindSpeedNorm', back_populates='resource')
+    area = Column(Float, nullable=False)
+    cpr = Column(Float, nullable=False, default=0.5)
+    cut_in_speed = Column(Float, nullable=False, default=2)
+    cut_off_speed = Column(Float, nullable=False, default=34)
+    eta = Column(Float, nullable=False, default=0.8)
 
     def __repr__(self) -> str:
         return f"WindTurbine(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
@@ -145,23 +163,52 @@ class Pump(Resource):
     }
 
 
-@declarative_mixin
-class TimeIndex(HasUuid):
+class TimeIndex(Base, HasUuid):
     __tablename__ = "TimeIndex"
+    concrete_type = Column(Enum(TimeIndexType))
     week: Mapped[int] = Column(Integer, nullable=False)
     time_step: Mapped[int] = Column(Integer, nullable=False)
     horizon: Mapped[str] = Column(String(30), nullable=False)
     scenario: Mapped[str] = Column(String(30), nullable=False)
     delta_t: Mapped[float] = Column(Float, default=1, nullable=False)  # in hour
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.TimeIndex,
+        'polymorphic_on': concrete_type
+    }
 
 
-class DischargeFlowNorm(Base, TimeIndex):
+class DischargeFlowNorm(TimeIndex):
+    __tablename__ = "DischargeFlowNorm"
+    time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
     resource = relationship("HydroPower", back_populates="discharge_flow_norm")
     resource_fk = Column(UUIDType, ForeignKey("HydroPower.resource_fk"), nullable=False)
     q_min = Column(Float, nullable=False)
     q_max = Column(Float, nullable=False)
     q_dis = Column(Float, nullable=False)
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.DischargeFlowNorm,
+    }
 
+class IrradiationNorm(TimeIndex):
+    __tablename__ = "IrradiationNorm"
+    time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
+    resource = relationship("Photovoltaic", back_populates="irradiation_norm")
+    resource_fk = Column(UUIDType, ForeignKey("Photovoltaic.resource_fk"), nullable=False)
+    ghi = Column(Float, nullable=False)
+    temperature = Column(Float, nullable=True)
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.IrradiationNorm,
+    }
+
+class WindSpeedNorm(TimeIndex):
+    __tablename__ = "WindSpeedNorm"
+    time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
+    resource = relationship("WindTurbine", back_populates="wind_speed_norm")
+    resource_fk = Column(UUIDType, ForeignKey("WindTurbine.resource_fk"), nullable=False)
+    value = Column(Float, nullable=False)
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.WindSpeedNorm,
+    }
 
 @declarative_mixin
 class Record(HasUuid):
@@ -171,23 +218,23 @@ class Record(HasUuid):
 
 class Irradiation(Base, Record):
     __tablename__ = "Irradiation"
-    pv = relationship(Photovoltaic, back_populates="irradiation_data")
-    pv_fk = Column(UUIDType, ForeignKey("Photovoltaic.resource_fk"), nullable=False)
+    resource = relationship(Photovoltaic, back_populates="irradiation_data")
+    resource_fk = Column(UUIDType, ForeignKey("Photovoltaic.resource_fk"), nullable=False)
     ghi = Column(Float, nullable=True)
     temperature = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
-        return f"Irradiation(pv_fk={self.pv_fk!r}, timestamp={self.timestamp!r}, ghi={self.ghi!r}, temperature={self.temperature!r})"
+        return f"Irradiation(pv_fk={self.resource_fk!r}, timestamp={self.timestamp!r}, ghi={self.ghi!r}, temperature={self.temperature!r})"
 
 
 class WindSpeed(Base, Record):
     __tablename__ = "WindSpeed"
-    wt = relationship(WindTurbine, back_populates="wind_data")
-    wt_fk = Column(UUIDType, ForeignKey("WindTurbine.resource_fk"), nullable=False)
+    resource = relationship(WindTurbine, back_populates="wind_data")
+    resource_fk = Column(UUIDType, ForeignKey("WindTurbine.resource_fk"), nullable=False)
     value = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
-        return f"WindSpeed(wt_fk={self.wt_fk!r}, timestamp={self.timestamp!r}, value={self.value!r})"
+        return f"WindSpeed(wt_fk={self.resource_fk!r}, timestamp={self.timestamp!r}, value={self.value!r})"
 
 
 def get_table(sess, class_object, uuid_columns):
