@@ -111,7 +111,6 @@ class Photovoltaic(Resource):
     area = Column(Float, nullable=False)
     eta_r = Column(Float, default=0.17)
     f_snow = Column(Float, default=1)
-    irradiation_data = relationship('Irradiation', back_populates='resource')
     irradiation_norm = relationship('IrradiationNorm', back_populates='resource')
 
     def __repr__(self) -> str:
@@ -124,7 +123,6 @@ class Photovoltaic(Resource):
 class WindTurbine(Resource):
     __tablename__ = "WindTurbine"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
-    wind_data = relationship('WindSpeed', back_populates='resource')
     wind_speed_norm = relationship('WindSpeedNorm', back_populates='resource')
     area = Column(Float, nullable=False)
     cpr = Column(Float, nullable=False, default=0.5)
@@ -214,27 +212,29 @@ class WindSpeedNorm(TimeIndex):
 class Record(HasUuid):
     __tablename__ = "Record"
     timestamp: Mapped[datetime.datetime] = Column(DateTime, nullable=False)
-
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
 
 class Irradiation(Base, Record):
     __tablename__ = "Irradiation"
-    resource = relationship(Photovoltaic, back_populates="irradiation_data")
-    resource_fk = Column(UUIDType, ForeignKey("Photovoltaic.resource_fk"), nullable=False)
-    ghi = Column(Float, nullable=True)
-    temperature = Column(Float, nullable=True)
+    value = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
-        return f"Irradiation(pv_fk={self.resource_fk!r}, timestamp={self.timestamp!r}, ghi={self.ghi!r}, temperature={self.temperature!r})"
+        return f"Irradiation(altitude={self.alt!r}, timestamp={self.timestamp!r}, ghi={self.value!r})"
+
+class Temperature(Base, Record):
+    __tablename__ = "Temperature"
+    value = Column(Float, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"Temperature(altitude={self.alt!r}, timestamp={self.timestamp!r}, temperature={self.value!r})"
 
 
 class WindSpeed(Base, Record):
     __tablename__ = "WindSpeed"
-    resource = relationship(WindTurbine, back_populates="wind_data")
-    resource_fk = Column(UUIDType, ForeignKey("WindTurbine.resource_fk"), nullable=False)
     value = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
-        return f"WindSpeed(wt_fk={self.resource_fk!r}, timestamp={self.timestamp!r}, value={self.value!r})"
+        return f"WindSpeed(altitude={self.alt!r}, timestamp={self.timestamp!r}, wind_speed={self.value!r})"
 
 
 def get_table(sess, class_object, uuid_columns):
