@@ -35,7 +35,7 @@ def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cac
 
 
 
-def generate_random_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsch_ar.parquet", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db'):
+def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsch_ar.parquet", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db'):
     rivers  = {"Gletsch": 25, "Altstafel": 28, "Merzenbach": 0.5, "Blinne": 0.55}
     norm_gletsch = rivers["Gletsch"]  # mean discharge in m3/s
     dt = datetime.fromisoformat
@@ -61,4 +61,4 @@ def generate_random_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsc
 
 if __name__ == "__main__":
     generate_sql_tables_gries(restart_interim_data=False)
-    generate_random_discharge_sql(restart_interim_data=False)
+    generate_baseline_discharge_sql(restart_interim_data=False)
