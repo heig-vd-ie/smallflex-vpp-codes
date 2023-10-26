@@ -3,7 +3,6 @@ import owncloud
 import dotenv
 import tqdm
 from auxiliary.auxiliary import build_non_existing_dirs
-from zipfile import ZipFile
 
 
 def download_from_switch(switch_path: str, local_file_path: str, download_anyway: bool = False, env_file=".env"):
@@ -11,6 +10,7 @@ def download_from_switch(switch_path: str, local_file_path: str, download_anyway
     :param switch_path: switch path that needed to be downloaded
     :param local_file_path: local path of the needed file
     :param download_anyway: a boolean to say download it anyway
+    :param env_file: The path of .env file
     :return True
     """
     local_file_path = os.path.normpath(local_file_path)

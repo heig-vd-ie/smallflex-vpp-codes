@@ -23,11 +23,11 @@ def read_gletsch_csv_data(hydro_mateo_path: str, years: list[str], ar_selection:
         for file_name in tqdm.tqdm(file_names, desc="Read files of the year " + year):
             file_path = os.path.join(folder, file_name)
             prediction_date = datetime.datetime.strptime(re.search('_\d+', file_name).group().split("_")[-1], "%Y%m%d%H")
-            if pl.scan_csv(file_path, separator=" ", has_header=False, null_values=["NA"]).fetch(1).rows()[0][0] == "Index":
+            if pl.scan_csv(file_path, separator=" ", has_header=False, null_values=["NA"], truncate_ragged_lines=True).fetch(1).rows()[0][0] == "Index":
                 skip_rows = 1
             else:
                 skip_rows = 0
-            if pl.scan_csv(file_path, separator=" ", has_header=False, null_values=["NA"]).fetch(1).rows()[0] != ("Index", "sim", "obs"):
+            if pl.scan_csv(file_path, separator=" ", has_header=False, null_values=["NA"], truncate_ragged_lines=True).fetch(1).rows()[0] != ("Index", "sim", "obs"):
                 df_temp = pl.read_csv(file_path, separator=" ", has_header=False, null_values=["NA"], skip_rows=skip_rows)
                 df_temp = df_temp.with_columns(pl.lit(None).alias(c).cast(pl.Float64) for c in set(['column_' + str(i) for i in range(1, 7)]).difference(df_temp.columns))
                 df_temp = df_temp.with_columns(pl.lit(prediction_date).alias("prediction_date"))

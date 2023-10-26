@@ -212,7 +212,8 @@ class WindSpeedNorm(TimeIndex):
 class Record(HasUuid):
     __tablename__ = "Record"
     timestamp: Mapped[datetime.datetime] = Column(DateTime, nullable=False)
-    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
+    alt: Mapped[Float] = Column(Float, nullable=True)
+    river: Mapped[String] = Column(String, nullable=True)
 
 class Irradiation(Base, Record):
     __tablename__ = "Irradiation"
@@ -227,6 +228,13 @@ class Temperature(Base, Record):
 
     def __repr__(self) -> str:
         return f"Temperature(altitude={self.alt!r}, timestamp={self.timestamp!r}, temperature={self.value!r})"
+
+class DischargeFlow(Base, Record):
+    __tablename__ = "DischargeFlow"
+    value = Column(Float, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"DischargeFlow(river={self.river!r}, timestamp={self.timestamp!r}, discharge={self.value!r})"
 
 
 class WindSpeed(Base, Record):
