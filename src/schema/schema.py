@@ -216,7 +216,7 @@ class Record(HasUuid):
 class Irradiation(Base, Record):
     __tablename__ = "Irradiation"
     value = Column(Float, nullable=True)
-    alt: Mapped[Float] = Column(Float, nullable=True)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
 
     def __repr__(self) -> str:
         return f"Irradiation(altitude={self.alt!r}, timestamp={self.timestamp!r}, ghi={self.value!r})"
@@ -224,15 +224,15 @@ class Irradiation(Base, Record):
 class Temperature(Base, Record):
     __tablename__ = "Temperature"
     value = Column(Float, nullable=True)
-    alt: Mapped[Float] = Column(Float, nullable=True)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
 
     def __repr__(self) -> str:
         return f"Temperature(altitude={self.alt!r}, timestamp={self.timestamp!r}, temperature={self.value!r})"
 
 class DischargeFlow(Base, Record):
     __tablename__ = "DischargeFlow"
-    value = Column(Float, nullable=True)
-    river: Mapped[String] = Column(String, nullable=True)
+    value = Column(Float, nullable=True, default="Rhone")
+    river: Mapped[String] = Column(String, nullable=False)
 
     def __repr__(self) -> str:
         return f"DischargeFlow(river={self.river!r}, timestamp={self.timestamp!r}, discharge={self.value!r})"
@@ -241,10 +241,19 @@ class DischargeFlow(Base, Record):
 class WindSpeed(Base, Record):
     __tablename__ = "WindSpeed"
     value = Column(Float, nullable=True)
-    alt: Mapped[Float] = Column(Float, nullable=True)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
 
     def __repr__(self) -> str:
         return f"WindSpeed(altitude={self.alt!r}, timestamp={self.timestamp!r}, wind_speed={self.value!r})"
+
+
+class MarketPrice(Base, Record):
+    __tablename__ = "MarketPrice"
+    value = Column(Float, nullable=True)
+    market: Mapped[String] = Column(String, nullable=False, default="spot")
+
+    def __repr__(self) -> str:
+        return f"MarketPrice(altitude={self.market!r}, timestamp={self.timestamp!r}, price={self.value!r})"
 
 
 def get_table(sess, class_object, uuid_columns):
