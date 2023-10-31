@@ -53,9 +53,10 @@ def fill_null_remove_outliers(data, d_time, z_score):
 
 def generate_scenarios(data):
     # in total
-    # data_year_median0 = data.group_by("week", "time_step").mean().select(["timestamp", "week", "time_step", "value", "delta_t"]).with_columns(pl.lit("median").alias("scenario"))
-    # data_year_max0 = data.group_by("week", "time_step").max().select(["timestamp", "week", "time_step", "value", "delta_t"]).with_columns(pl.lit("max").alias("scenario"))
-    # data_year_min0 = data.group_by("week", "time_step").min().select(["timestamp", "week", "time_step", "value", "delta_t"]).with_columns(pl.lit("min").alias("scenario"))
+    arbitrary_year = pl.col("timestamp").dt.strftime("2030-%m-%d %H:%M:%S").str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S", strict=False)
+    data_year_median0 = data.with_columns(arbitrary_year.alias("arbitrary_year")).group_by("arbitrary_year").mean().select(["arbitrary_year", "week", "time_step", "value", "delta_t"]).with_columns([pl.col("week").cast(pl.UInt32), pl.col("time_step").cast(pl.Int64), pl.lit("median").alias("scenario")]).rename({"arbitrary_year": "timestamp"})
+    data_year_max0 = data.group_by("week", "time_step").max().select(["timestamp", "week", "time_step", "value", "delta_t"]).with_columns(pl.lit("max").alias("scenario"))
+    data_year_min0 = data.group_by("week", "time_step").min().select(["timestamp", "week", "time_step", "value", "delta_t"]).with_columns(pl.lit("min").alias("scenario"))
     # yearly
     year_median = data.group_by("year").mean().with_columns(((pl.col("value")-pl.mean("value"))**2).alias("diff")).filter(pl.col("diff")==pl.min("diff")).get_column("year")[0]
     year_max = data.group_by("year").mean().filter(pl.col("value")==pl.max("value")).get_column("year")[0]
@@ -64,8 +65,8 @@ def generate_scenarios(data):
     data_year_max1 = data.filter(pl.col("year").is_in([year_max])).with_columns(pl.lit("max").alias("scenario"))
     data_year_min1 = data.filter(pl.col("year").is_in([year_min])).with_columns(pl.lit("min").alias("scenario"))
     # join
-    # data_year_median = data_year_median1.join(data_year_median0, on=["week", "time_step", "delta_t"], how="outer").with_columns([pl.col("value").fill_null(pl.col("value_right")), pl.col("timestamp").fill_null(pl.col("timestamp_right")), pl.col("year").fill_null(pl.col("year_right")), pl.col("scenario").fill_null(pl.col("scenario_right"))]).drop(["value_right", "scenario_right"])
-    # data_year_max = data_year_max1.join(data_year_max0, on=["week", "time_step", "delta_t"], how="outer").drop(["value_right", "scenario_right"])
-    # data_year_min = data_year_min1.join(data_year_min0, on=["week", "time_step", "delta_t"], how="outer").drop(["value_right", "scenario_right"])
-    data_scenarios = pl.concat([data_year_median1, data_year_max1, data_year_min1])
+    data_year_median = data_year_median1.join(data_year_median0, on=["week", "time_step", "delta_t"], how="outer").with_columns([pl.col(i).fill_null(pl.col(i+"_right")) for i in ["timestamp", "value", "scenario"]]).drop(["timestamp_right", "value_right", "scenario_right"])
+    data_year_max = data_year_max1.join(data_year_max0, on=["week", "time_step", "delta_t"], how="outer").with_columns([pl.col(i).fill_null(pl.col(i+"_right")) for i in ["timestamp", "value", "scenario"]]).drop(["timestamp_right", "value_right", "scenario_right"])
+    data_year_min = data_year_min1.join(data_year_min0, on=["week", "time_step", "delta_t"], how="outer").with_columns([pl.col(i).fill_null(pl.col(i+"_right")) for i in ["timestamp", "value", "scenario"]]).drop(["timestamp_right", "value_right", "scenario_right"])
+    data_scenarios = pl.concat([data_year_median, data_year_max, data_year_min])
     return data_scenarios

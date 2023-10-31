@@ -1,6 +1,6 @@
 from federation.integrate_time_series import generate_sql_tables_gries, generate_baseline_discharge_sql, generate_baseline_price_sql
 from federation.generate_scenarios import query_time_series_data, fill_null_remove_outliers, generate_scenarios
-from federation.plot_time_series import plot_time_series
+from federation.plot_time_series import plot_time_series, plot_scenarios
 from schema.schema import DischargeFlow, Irradiation, WindSpeed, Temperature, MarketPrice
 import os
 
@@ -34,4 +34,4 @@ if __name__ == "__main__":
         data_scenarios[d] = generate_scenarios(data[d])
 
     plot_time_series(data=data, fig_path=r".cache/figs/time_series_raw.html")
-    plot_time_series(data=data_scenarios, fig_path=r".cache/figs/time_series_scenarios.html")
+    plot_scenarios(data=data_scenarios, fig_path=r".cache/figs/time_series_scenarios.html")
