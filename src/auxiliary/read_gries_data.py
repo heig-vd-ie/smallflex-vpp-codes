@@ -1,8 +1,11 @@
+"""
+Read Gries data
+"""
 import os
-import tqdm
 import polars as pl
 import pandas as pd
 import pyarrow.parquet as pq
+import tqdm
 from auxiliary.auxiliary import build_non_existing_dirs
 
 

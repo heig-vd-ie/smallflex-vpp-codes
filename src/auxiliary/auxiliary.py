@@ -1,7 +1,10 @@
-import dotenv
-import logging
-import coloredlogs
+"""
+Auxiliary functions
+"""
 import os
+import logging
+import dotenv
+import coloredlogs
 import pyarrow.parquet as pq
 import polars as pl
 
@@ -36,9 +39,15 @@ def build_non_existing_dirs(file_path: str):
 
 
 def save_pyarrow_data(data, where):
+    """
+    save pyarrow data
+    """
     build_non_existing_dirs(os.path.dirname(where))
     pq.write_table(data.to_arrow(), where, compression=None)
 
 
 def read_pyarrow_data(where):
+    """
+    read pyarrow data
+    """
     return pl.from_arrow(pq.read_table(where))
