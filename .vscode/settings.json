@@ -18,4 +18,6 @@
       "src/"
   ],
   "python.analysis.autoImportCompletions": true,
+  "jupyter.notebookFileRoot": "${workspaceFolder}/src",
+
 }
