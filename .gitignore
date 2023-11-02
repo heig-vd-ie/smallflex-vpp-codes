@@ -4,3 +4,4 @@
 .cache
 scripts/.cache/
 __pycache__/
+logs.log

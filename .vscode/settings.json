@@ -19,5 +19,7 @@
   ],
   "python.analysis.autoImportCompletions": true,
   "jupyter.notebookFileRoot": "${workspaceFolder}/src",
-
+  "pylint.args": [
+    "--max-line-length=200",
+  ],
 }
