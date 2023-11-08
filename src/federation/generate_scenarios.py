@@ -1,16 +1,18 @@
-from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.sql import text
-from sqlalchemy.orm import Session
-from schema.schema import Irradiation, WindSpeed, Temperature, DischargeFlow, MarketPrice
-import os
+"""
+Generate scnearios
+"""
 import polars as pl
+from sqlalchemy import create_engine
+from schema.schema import Irradiation, WindSpeed, Temperature, DischargeFlow, MarketPrice
 
 
 def query_time_series_data(db_cache_file, alt=None, river=None, market=None, tables=None):
+    """
+    Query time series
+    """
     if tables is None:
         tables = [Irradiation, WindSpeed, Temperature, DischargeFlow, MarketPrice]
-    engine = create_engine(f"sqlite+pysqlite:///" + db_cache_file, echo=False)
+    engine = create_engine(f"sqlite+pysqlite:///{db_cache_file}", echo=False)
     con = engine.connect()
     data = {}
     for table_schema in tables:
@@ -30,6 +32,9 @@ def query_time_series_data(db_cache_file, alt=None, river=None, market=None, tab
 
 
 def fill_null_remove_outliers(data, d_time, z_score):
+    """
+    Fill null remove outliers
+    """
     data = data.select(["timestamp", "value"])
     avg = data.mean().get_column("value")[0]
     std = data.std().get_column("value")[0]
@@ -52,6 +57,9 @@ def fill_null_remove_outliers(data, d_time, z_score):
 
 
 def generate_scenarios(data):
+    """
+    Generate scenarios
+    """
     # in total
     arbitrary_year = pl.col("timestamp").dt.strftime("2030-%m-%d %H:%M:%S").str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S", strict=False)
     data_year_median0 = data.with_columns(arbitrary_year.alias("arbitrary_year")).group_by("arbitrary_year").mean().select(["arbitrary_year", "week", "time_step", "value", "delta_t"]).with_columns([pl.col("week").cast(pl.UInt32), pl.col("time_step").cast(pl.Int64), pl.lit("median").alias("scenario")]).rename({"arbitrary_year": "timestamp"})
