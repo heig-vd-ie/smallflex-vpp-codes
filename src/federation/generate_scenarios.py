@@ -2,8 +2,10 @@
 Generate scnearios
 """
 import polars as pl
+import tqdm
 from sqlalchemy import create_engine
 from schema.schema import Irradiation, WindSpeed, Temperature, DischargeFlow, MarketPrice
+from federation.generate_forecast import generate_dataframe_forecast
 
 
 def query_time_series_data(db_cache_file, alt=None, river=None, market=None, tables=None):
@@ -78,3 +80,38 @@ def generate_scenarios(data):
     data_year_min = data_year_min1.join(data_year_min0, on=["week", "time_step", "delta_t"], how="outer").with_columns([pl.col(i).fill_null(pl.col(i+"_right")) for i in ["timestamp", "value", "scenario"]]).drop(["timestamp_right", "value_right", "scenario_right"])
     data_scenarios = pl.concat([data_year_median, data_year_max, data_year_min])
     return data_scenarios
+
+
+def initialize_time_series(db_cache_file, table_schema):
+    """
+    Initialize price signals
+    """
+    engine = create_engine(f"sqlite+pysqlite:///{db_cache_file}", echo=False)
+    con = engine.connect()
+    table_schema_name = table_schema.__tablename__
+    if table_schema_name == "MarketPrice":
+        additional_column = "market"
+        markets = pl.read_database(query="""SELECT DISTINCT {f1}.market FROM {f1}""".format(f1="MarketPrice"), connection=con)["market"].to_list()
+        data = {m: query_time_series_data(db_cache_file, market=m, tables=[MarketPrice])["MarketPrice"] for m in markets}
+    elif table_schema_name == "DischargeFlow":
+        additional_column = "river"
+        rivers = pl.read_database(query="""SELECT DISTINCT {f1}.river FROM {f1}""".format(f1="DischargeFlow"), connection=con)["river"].to_list()
+        data = {r: query_time_series_data(db_cache_file, river=r, tables=[DischargeFlow])["DischargeFlow"] for r in rivers}
+    else:
+        additional_column = "alt"
+        alts = pl.read_database(query="""SELECT DISTINCT {f1}.alt FROM {f1}""".format(f1=table_schema.__tablename__), connection=con)["alt"].to_list()
+        data = {alt: query_time_series_data(db_cache_file, alt=alt, tables=[table_schema])[table_schema_name] for alt in alts}
+    data_scenarios = {}
+    data_forecast = {}
+    result_data = pl.DataFrame(schema={"week": pl.UInt32, "time_step": pl.Int64, "scenario": pl.Utf8, "delta_t": pl.Float64, "value": pl.Float64, additional_column: pl.Utf8 if additional_column != "alt" else pl.Float64, "horizon": pl.Utf8})
+    for d in tqdm.tqdm(data, desc="Load and generate scenarios of " + table_schema_name):
+        z_score = 4 if d in ["Irradiation", "Temperature"] else 10
+        data[d] = fill_null_remove_outliers(data[d], d_time="1h", z_score=z_score)
+        data_scenarios[d] = generate_scenarios(data[d])
+        data_forecast[d] = generate_dataframe_forecast(data_scenarios[d], d_time="1h")
+        data_scenarios[d] = data_scenarios[d].select(["week", "time_step", "scenario", "delta_t", "value"]).with_columns([pl.lit(d).alias(additional_column), pl.lit("RT").alias("horizon")])
+        data_forecast[d] = data_forecast[d].select(["week", "time_step", "scenario", "delta_t", "value"]).with_columns([pl.lit(d).alias(additional_column), pl.lit("DA").alias("horizon")])
+        result_data = pl.concat([result_data, data_scenarios[d], data_forecast[d]])
+    result_data.write_database(table_name=table_schema_name + "Norm", connection=f"sqlite+pysqlite:///{db_cache_file}", if_exists="replace", engine="sqlalchemy")
+    return result_data
+        

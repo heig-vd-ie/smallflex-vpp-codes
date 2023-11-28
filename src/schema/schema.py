@@ -28,6 +28,8 @@ class TimeIndexType(enum.Enum):
     DischargeFlowNorm = 1
     IrradiationNorm = 2
     WindSpeedNorm = 3
+    MarketPriceNorm = 4
+    TemperatureNorm = 5
 
 
 
@@ -177,35 +179,59 @@ class TimeIndex(Base, HasUuid):
 
 class DischargeFlowNorm(TimeIndex):
     __tablename__ = "DischargeFlowNorm"
+    
     time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
-    resource = relationship("HydroPower", back_populates="discharge_flow_norm")
-    resource_fk = Column(UUIDType, ForeignKey("HydroPower.resource_fk"), nullable=False)
-    q_min = Column(Float, nullable=False)
-    q_max = Column(Float, nullable=False)
-    q_dis = Column(Float, nullable=False)
+    river: Mapped[String] = Column(String, nullable=False)
+    value = Column(Float, nullable=False)
+
     __mapper_args__ = {
         'polymorphic_identity': TimeIndexType.DischargeFlowNorm,
     }
 
+class TemperatureNorm(TimeIndex):
+    __tablename__ = "TemperatureNorm"
+
+    time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
+    value = Column(Float, nullable=False)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
+
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.TemperatureNorm,
+    }
+
 class IrradiationNorm(TimeIndex):
     __tablename__ = "IrradiationNorm"
+
     time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
-    resource = relationship("Photovoltaic", back_populates="irradiation_norm")
-    resource_fk = Column(UUIDType, ForeignKey("Photovoltaic.resource_fk"), nullable=False)
-    ghi = Column(Float, nullable=False)
-    temperature = Column(Float, nullable=True)
+    value = Column(Float, nullable=False)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
+
     __mapper_args__ = {
         'polymorphic_identity': TimeIndexType.IrradiationNorm,
     }
 
 class WindSpeedNorm(TimeIndex):
     __tablename__ = "WindSpeedNorm"
+
     time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
-    resource = relationship("WindTurbine", back_populates="wind_speed_norm")
-    resource_fk = Column(UUIDType, ForeignKey("WindTurbine.resource_fk"), nullable=False)
     value = Column(Float, nullable=False)
+    alt: Mapped[Float] = Column(Float, nullable=False, default=0)
+
     __mapper_args__ = {
         'polymorphic_identity': TimeIndexType.WindSpeedNorm,
+    }
+
+class MarketPriceNorm(TimeIndex):
+    __tablename__ = "MarketPriceNorm"
+
+    time_index_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("TimeIndex.uuid"), primary_key=True)
+    value = Column(Float, nullable=True)
+    market: Mapped[String] = Column(String, nullable=False, default="spot")
+
+    def __repr__(self) -> str:
+        return f"MarketPriceNorm(market={self.market!r}, price={self.value!r})"
+    __mapper_args__ = {
+        'polymorphic_identity': TimeIndexType.MarketPriceNorm,
     }
 
 @declarative_mixin
@@ -268,18 +294,16 @@ def get_table(sess, class_object, uuid_columns):
 
 
 if __name__ == "__main__":
-    engine = create_engine(f"sqlite://", echo=True)
+    engine = create_engine(f"sqlite://", echo=False)
 
     Base.metadata.create_all(engine)
     dt = datetime.datetime.fromisoformat
 
     with Session(engine) as session:
-        unit1 = HydroPower(name="KWA", exist=True)
-        unit2 = Photovoltaic(name="PV1")
-        unit3 = Pump(name="pm1")
-        unit4 = WindTurbine()
+        unit1 = HydroPower(name="KWA", exist=True, p_max=10, v_min=1, v_max=100)
+        unit2 = Photovoltaic(name="PV1", area=10)
+        unit3 = Pump(name="pm1", p_max=10, q_max=1)
+        unit4 = WindTurbine(area=10)
         unit5 = EnergyStorage()
         session.add_all([unit1, unit2, unit3, unit4, unit5])
-        measurement0 = Irradiation(timestamp=dt('2019-04-26'), pv=unit2, ghi=0)
-        session.add_all([measurement0])
         session.commit()

@@ -21,5 +21,8 @@
   "jupyter.notebookFileRoot": "${workspaceFolder}/src",
   "pylint.args": [
     "--max-line-length=450",
+    "--disable=C",
+    "--disable=W",
+    "--disable=R",
   ],
 }
