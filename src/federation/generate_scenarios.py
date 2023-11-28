@@ -19,17 +19,17 @@ def query_time_series_data(db_cache_file, alt=None, river=None, market=None, tab
     data = {}
     for table_schema in tables:
         table_schema_name = table_schema.__tablename__
-        if table_schema_name in ["DischargeFlow"]:
+        if table_schema_name in ["DischargeFlow", "DischargeFlowNorm"]:
             if river is not None:
-                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.timestamp, {f1}.value FROM {f1} where {f1}.river = \"{f2}\"""".format(f1=table_schema.__tablename__, f2=river), connection=con)
-        elif table_schema_name in ["MarketPrice"]:
+                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.* FROM {f1} where {f1}.river = \"{f2}\"""".format(f1=table_schema.__tablename__, f2=river), connection=con)
+        elif table_schema_name in ["MarketPrice", "MarketPriceNorm"]:
             if market is not None:
-                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.timestamp, {f1}.value FROM {f1} where {f1}.market = \"{f2}\"""".format(f1=table_schema.__tablename__, f2=market), connection=con)
+                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.* FROM {f1} where {f1}.market = \"{f2}\"""".format(f1=table_schema.__tablename__, f2=market), connection=con)
         else:
             if alt is not None:
                 alts = pl.read_database(query="""SELECT DISTINCT {f1}.alt FROM {f1}""".format(f1=table_schema.__tablename__), connection=con)
                 target_alt = min(alts["alt"].to_list(), key=lambda x: abs(alt - x))
-                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.timestamp, {f1}.value FROM {f1} where {f1}.alt = {f2}""".format(f1=table_schema.__tablename__, f2=target_alt), connection=con)
+                data[table_schema_name] = pl.read_database(query="""SELECT {f1}.* FROM {f1} where {f1}.alt = {f2}""".format(f1=table_schema.__tablename__, f2=target_alt), connection=con)
     return data
 
 
@@ -93,22 +93,25 @@ def initialize_time_series(db_cache_file, table_schema):
         additional_column = "market"
         markets = pl.read_database(query="""SELECT DISTINCT {f1}.market FROM {f1}""".format(f1="MarketPrice"), connection=con)["market"].to_list()
         data = {m: query_time_series_data(db_cache_file, market=m, tables=[MarketPrice])["MarketPrice"] for m in markets}
+        non_negative = False
     elif table_schema_name == "DischargeFlow":
         additional_column = "river"
         rivers = pl.read_database(query="""SELECT DISTINCT {f1}.river FROM {f1}""".format(f1="DischargeFlow"), connection=con)["river"].to_list()
         data = {r: query_time_series_data(db_cache_file, river=r, tables=[DischargeFlow])["DischargeFlow"] for r in rivers}
+        non_negative = True
     else:
         additional_column = "alt"
         alts = pl.read_database(query="""SELECT DISTINCT {f1}.alt FROM {f1}""".format(f1=table_schema.__tablename__), connection=con)["alt"].to_list()
         data = {alt: query_time_series_data(db_cache_file, alt=alt, tables=[table_schema])[table_schema_name] for alt in alts}
+        non_negative = True if table_schema_name in ["Irradiation", "WindSpeed"] else False
     data_scenarios = {}
     data_forecast = {}
-    result_data = pl.DataFrame(schema={"week": pl.UInt32, "time_step": pl.Int64, "scenario": pl.Utf8, "delta_t": pl.Float64, "value": pl.Float64, additional_column: pl.Utf8 if additional_column != "alt" else pl.Float64, "horizon": pl.Utf8})
+    result_data = pl.DataFrame(schema=  {"week": pl.UInt32, "time_step": pl.Int64, "scenario": pl.Utf8, "delta_t": pl.Float64, "value": pl.Float64, additional_column: pl.Utf8 if additional_column != "alt" else pl.Float64, "horizon": pl.Utf8})
     for d in tqdm.tqdm(data, desc="Load and generate scenarios of " + table_schema_name):
         z_score = 4 if d in ["Irradiation", "Temperature"] else 10
         data[d] = fill_null_remove_outliers(data[d], d_time="1h", z_score=z_score)
         data_scenarios[d] = generate_scenarios(data[d])
-        data_forecast[d] = generate_dataframe_forecast(data_scenarios[d], d_time="1h")
+        data_forecast[d] = generate_dataframe_forecast(data_scenarios[d], d_time="1h", non_negative=non_negative)
         data_scenarios[d] = data_scenarios[d].select(["week", "time_step", "scenario", "delta_t", "value"]).with_columns([pl.lit(d).alias(additional_column), pl.lit("RT").alias("horizon")])
         data_forecast[d] = data_forecast[d].select(["week", "time_step", "scenario", "delta_t", "value"]).with_columns([pl.lit(d).alias(additional_column), pl.lit("DA").alias("horizon")])
         result_data = pl.concat([result_data, data_scenarios[d], data_forecast[d]])

@@ -7,7 +7,7 @@ import polars as pl
 from pmdarima.pipeline import Pipeline
 
 
-def day_ahead_forecast_arima_with_lag(data_df, lag=4, non_negative=True):
+def day_ahead_forecast_arima_with_lag(data_df, lag=4, non_negative=False):
     """
     Forecast day-ahead with lag
     """
@@ -24,7 +24,7 @@ def day_ahead_forecast_arima_with_lag(data_df, lag=4, non_negative=True):
     return predict_in_sample[-23:] + predict_in_sample[:-23]
 
 
-def generate_dataframe_forecast(data_df, d_time):
+def generate_dataframe_forecast(data_df, d_time, non_negative=False):
     """
     Generate dataframe of forecasted data
     """
@@ -34,14 +34,13 @@ def generate_dataframe_forecast(data_df, d_time):
     for scen in data_df["scenario"].unique().to_list():
         df_temp = data_df.filter(pl.col("scenario")==scen).with_columns(arbitrary_year).sort("timestamp").select(["timestamp", "value"]).to_pandas().set_index("timestamp", drop=True)
         df_temp = df_temp[~df_temp.index.duplicated()].asfreq('1H', method = 'ffill')
-        result_temp = day_ahead_forecast_arima_with_lag(df_temp)
+        result_temp = day_ahead_forecast_arima_with_lag(df_temp, non_negative=non_negative)
         data_forecast_temp = pl.from_dict({"timestamp": df_temp.index, "value": result_temp}).with_columns(pl.lit(scen).alias("scenario"))
         result_df = pl.concat([result_df, data_forecast_temp])
-
     result_df = result_df.with_columns([arbitrary_year.dt.week().alias("week"), pl.col("timestamp").dt.year().alias("year")])
     # define time step
-    result_df = result_df.group_by(["week", "year"], maintain_order=True).agg([pl.col("timestamp"), pl.col("value"), pl.col("scenario")]).with_columns(pl.col("value").map_elements(lambda x: range(len(x))).alias("time_step"))
-    result_df = result_df.explode(["timestamp", "time_step", "value", "scenario"]).select(["timestamp", "year", "week", "time_step", "value", "scenario"])
+    result_df = result_df.group_by(["week", "year", "scenario"], maintain_order=True).agg([pl.col("timestamp"), pl.col("value")]).with_columns(pl.col("value").map_elements(lambda x: range(len(x))).alias("time_step"))
+    result_df = result_df.explode(["timestamp", "time_step", "value"]).select(["timestamp", "year", "week", "time_step", "value", "scenario"])
     # remove first and end weeks to have consistent years
     result_df = result_df.filter((pl.col("week") < 53) & (pl.col("time_step") < int(168 / d_time_int))).with_columns(pl.lit(d_time_int).alias("delta_t").cast(pl.Float64))
     return result_df

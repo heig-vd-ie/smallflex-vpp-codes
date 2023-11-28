@@ -171,6 +171,8 @@ class TimeIndex(Base, HasUuid):
     horizon: Mapped[str] = Column(String(30), nullable=False)
     scenario: Mapped[str] = Column(String(30), nullable=False)
     delta_t: Mapped[float] = Column(Float, default=1, nullable=False)  # in hour
+    timestamp: Mapped[datetime.datetime] = Column(DateTime, nullable=False)
+    
     __mapper_args__ = {
         'polymorphic_identity': TimeIndexType.TimeIndex,
         'polymorphic_on': concrete_type
