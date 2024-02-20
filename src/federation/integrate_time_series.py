@@ -2,6 +2,7 @@ from auxiliary.download_data import download_from_switch
 from auxiliary.read_gries_data import read_gries_txt_data
 from auxiliary.read_gletsch_data import read_gletsch_csv_data
 from auxiliary.read_swissgrid_data import read_spot_price_swissgrid, read_balancing_price_swissgrid, read_fcr_price_swissgrid, read_frr_price_swissgrid
+from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida
 from auxiliary.auxiliary import read_pyarrow_data
 from sqlalchemy import create_engine
 from schema.schema import Base
@@ -55,7 +56,7 @@ def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/glet
     return df
 
 
-def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db'):
+def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
     market_categories  = ["spot", "balancing", "frr", "fcr"]
     all_data = {}
     df = pl.DataFrame()
@@ -75,7 +76,32 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
             df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], market, t[1])).rename(rename_columns)
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
-    df.write_database(table_name="MarketPrice", connection=write_sql, if_exists="replace", engine="sqlalchemy")
+    df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
+    return df
+
+
+def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
+    market_categories  = {"apg_capacity": "apg/capacity", "apg_energy": "apg/energy", "da": "da-ida", "ida": "da-ida"}
+    all_data = {}
+    df = pl.DataFrame()
+    for market_category, market_folder in market_categories.items():
+        download_from_switch(switch_path=os.path.join(r"alpiq/", market_folder), local_file_path=os.path.join(r".cache/data/alpiq", market_folder), env_file=".env")
+        if (not os.path.exists(os.path.join(read_parquet, market_category) + ".parquet")) | restart_interim_data:
+            read_func = globals()["read_" + market_category]
+            all_data[market_category] = read_func(local_file_path=os.path.join(r".cache/data/alpiq", market_folder), where=os.path.join(read_parquet, market_category) + ".parquet")
+        else :
+            all_data[market_category] = read_pyarrow_data(where=os.path.join(read_parquet, market_category) + ".parquet")
+        rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "value"}
+        engine = create_engine(write_sql, echo=False)
+        Base.metadata.create_all(engine)
+        columns = list(set(all_data[market_category].columns).difference(["datetime", "market"]))
+        for c in columns:
+            unit = c.split("[")[1].split("]")[0]
+            factor = {"EUR/MWh": 1, "ct/kWh": 10, "EURO/MWh": 1, "EUR/MW": 1}
+            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"),  market_category + "_" + pl.col("market"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], t[1], t[2])).rename(rename_columns)
+            df = pl.concat([df, df_temp])
+    df = df.drop_nulls(subset=["value"])
+    df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
     return df
 
 
@@ -83,3 +109,4 @@ if __name__ == "__main__":
     generate_sql_tables_gries(restart_interim_data=False)
     generate_baseline_discharge_sql(restart_interim_data=False)
     generate_baseline_price_sql(restart_interim_data=False)
+    generate_baseline_alpiq_price_sql(restart_interim_data=False, if_exists="append")

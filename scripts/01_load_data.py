@@ -6,6 +6,7 @@ from federation.integrate_time_series import (
     generate_sql_tables_gries,
     generate_baseline_discharge_sql,
     generate_baseline_price_sql,
+    generate_baseline_alpiq_price_sql
 )
 
 
@@ -15,3 +16,4 @@ if __name__ == "__main__":
     generate_sql_tables_gries(restart_interim_data=True, write_sql=db_cache_file_sql)
     generate_baseline_discharge_sql(restart_interim_data=True, write_sql=db_cache_file_sql)
     generate_baseline_price_sql(restart_interim_data=True, write_sql=db_cache_file_sql)
+    generate_baseline_alpiq_price_sql(restart_interim_data=False, if_exists="append")

@@ -31,5 +31,5 @@ if __name__ == "__main__":
     tabs = st.tabs(scenario_data.keys())
     for i, fig in enumerate(figs):
         with tabs[i]:
-            st.plotly_chart(fig, theme="streamlit")
+            st.plotly_chart(fig, theme="streamlit", use_container_width=True)
     
