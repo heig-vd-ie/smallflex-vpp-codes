@@ -279,9 +279,12 @@ class MarketPrice(Base, Record):
     __tablename__ = "MarketPrice"
     value = Column(Float, nullable=True)
     market: Mapped[String] = Column(String, nullable=False, default="spot")
+    country: Mapped[String] = Column(String, nullable=False, default="CH")
+    source: Mapped[String] = Column(String, nullable=False, default="swissgrid")
+    direction: Mapped[String] = Column(String, nullable=False, default="pos")
 
     def __repr__(self) -> str:
-        return f"MarketPrice(altitude={self.market!r}, timestamp={self.timestamp!r}, price={self.value!r})"
+        return f"MarketPrice(market={self.market!r}, country={self.country!r}, source={self.source!r}, direction={self.direction!r}, timestamp={self.timestamp!r}, price={self.value!r})"
 
 
 def get_table(sess, class_object, uuid_columns):

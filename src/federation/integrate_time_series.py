@@ -56,8 +56,19 @@ def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/glet
     return df
 
 
-def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
+def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace",
+                                country="CH", source="swissgrid-open"):
     market_categories  = ["spot", "balancing", "frr", "fcr"]
+    market_dict = {
+        "DA price": {"market": "DA", "direction": "sym"},
+        "Short price": {"market": "BAL", "direction": "short"},
+        "Long price": {"market": "BAL", "direction": "long"},
+        "RR-neg": {"market": "RR-cap", "direction": "neg"},
+        "FRR-pos": {"market": "FRR-cap", "direction": "pos"},
+        "FRR-neg": {"market": "FRR-cap", "direction": "neg"},
+        "RR-pos": {"market": "RR-cap", "direction": "pos"},
+        "FCR": {"market": "FCR-cap", "direction": "sym"}
+    }
     all_data = {}
     df = pl.DataFrame()
     for market_category in market_categories:
@@ -65,15 +76,17 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
         read_func = globals()["read_" + market_category + "_price_swissgrid"]
         all_data[market_category] = read_func(local_file_path=os.path.join(r".cache/data/swissgrid", market_category), where=os.path.join(read_parquet, market_category) + "_price.parquet") if (not os.path.exists(os.path.join(read_parquet, market_category) + "_price.parquet")) | restart_interim_data \
             else read_pyarrow_data(where=os.path.join(read_parquet, market_category) + "_price.parquet")
-        rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "value"}
+        rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "direction",  "column_4": "country",  "column_5": "source", "column_6": "value"}
         engine = create_engine(write_sql, echo=False)
         Base.metadata.create_all(engine)
         columns = list(set(all_data[market_category].columns).difference(["datetime"]))
         for c in columns:
-            market = c.split(" [")[0]
+            c_name = c.split(" [")[0]
+            market = market_dict[c_name]["market"]
+            direction = market_dict[c_name]["direction"]
             unit = c.split(" [")[1].split("]")[0]
             factor = {"EUR/MWh": 1, "ct/kWh": 10, "EURO/MWh": 1, "EUR/MW": 1}
-            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], market, t[1])).rename(rename_columns)
+            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], market, direction, country, source, t[1])).rename(rename_columns)
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
     df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
@@ -82,6 +95,37 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
 
 def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
     market_categories  = {"apg_capacity": "apg/capacity", "apg_energy": "apg/energy", "da": "da-ida", "ida": "da-ida"}
+    market_dict = {
+        "apg_capacity_SRR_NEG": {"market": "FRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_PRR_POSNEG": {"market": "FCR-cap", "direction": "sym", "country": "AT", "source": "apg"},
+        "apg_capacity_SRR_POS": {"market": "FRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_POS": {"market": "RR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_NEG": {"market": "RR-cap", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_POS": {"market": "FRR-act", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_NEG": {"market": "RR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_TRR_POS": {"market": "RR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_TRR_NEG": {"market": "RR-act", "direction": "neg", "country": "AT", "source": "apg"},
+        "da_CH": {"market": "DA", "direction": "sym", "country": "CH", "source": "alpiq"},
+        "da_DE": {"market": "DA", "direction": "sym", "country": "DE", "source": "alpiq"},
+        "da_AT": {"market": "DA", "direction": "sym", "country": "AT", "source": "alpiq"},
+        "da_FR": {"market": "DA", "direction": "sym", "country": "FR", "source": "alpiq"},
+        "da_IT-NORD": {"market": "DA", "direction": "sym", "country": "IT-NORD", "source": "alpiq"},
+        "ida_DE": {"market": "IDA", "direction": "sym", "country": "DE", "source": "alpiq"},
+        "ida_FR": {"market": "IDA", "direction": "sym", "country": "FR", "source": "alpiq"},
+        "ida_AT": {"market": "IDA", "direction": "sym", "country": "AT", "source": "alpiq"},
+        "ida_CH-IDA1": {"market": "IDA", "direction": "sym", "country": "CH-IDA1", "source": "alpiq"},
+        "ida_CH-IDA2": {"market": "IDA", "direction": "sym", "country": "CH-IDA2", "source": "alpiq"},
+        "ida_IT-NORD-MI-A1": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI-A1", "source": "alpiq"},
+        "ida_IT-NORD-MI-A2": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI-A2", "source": "alpiq"},
+        "ida_IT-NORD-MI-A3": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI-A3", "source": "alpiq"},
+        "ida_IT-NORD-MI1": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI1", "source": "alpiq"},
+        "ida_IT-NORD-MI2": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI2", "source": "alpiq"},
+        "ida_IT-NORD-MI3": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI3", "source": "alpiq"},
+        "ida_IT-NORD-MI4": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI4", "source": "alpiq"},
+        "ida_IT-NORD-MI5": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI5", "source": "alpiq"},
+        "ida_IT-NORD-MI6": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI6", "source": "alpiq"},
+        "ida_IT-NORD-MI7": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI7", "source": "alpiq"},
+    }
     all_data = {}
     df = pl.DataFrame()
     for market_category, market_folder in market_categories.items():
@@ -91,14 +135,15 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
             all_data[market_category] = read_func(local_file_path=os.path.join(r".cache/data/alpiq", market_folder), where=os.path.join(read_parquet, market_category) + ".parquet")
         else :
             all_data[market_category] = read_pyarrow_data(where=os.path.join(read_parquet, market_category) + ".parquet")
-        rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "value"}
+        rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "direction",  "column_4": "country",  "column_5": "source", "column_6": "value"}
         engine = create_engine(write_sql, echo=False)
         Base.metadata.create_all(engine)
         columns = list(set(all_data[market_category].columns).difference(["datetime", "market"]))
         for c in columns:
             unit = c.split("[")[1].split("]")[0]
             factor = {"EUR/MWh": 1, "ct/kWh": 10, "EURO/MWh": 1, "EUR/MW": 1}
-            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"),  market_category + "_" + pl.col("market"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], t[1], t[2])).rename(rename_columns)
+            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), market_category + "_" + pl.col("market"), pl.col("value") * factor[unit]]).map_rows(
+                lambda t: (uuid4().bytes, t[0], market_dict[t[1]]["market"], market_dict[t[1]]["direction"], market_dict[t[1]]["country"], market_dict[t[1]]["source"], t[2])).rename(rename_columns)
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
     df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
