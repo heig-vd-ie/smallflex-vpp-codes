@@ -2,7 +2,7 @@ from auxiliary.download_data import download_from_switch
 from auxiliary.read_gries_data import read_gries_txt_data
 from auxiliary.read_gletsch_data import read_gletsch_csv_data
 from auxiliary.read_swissgrid_data import read_spot_price_swissgrid, read_balancing_price_swissgrid, read_fcr_price_swissgrid, read_frr_price_swissgrid
-from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida
+from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida, read_reg_afrr_cap, read_reg_afrr_ene, read_reg_mfrr_cap, read_reg_mfrr_ene
 from auxiliary.auxiliary import read_pyarrow_data
 from sqlalchemy import create_engine
 from schema.schema import Base
@@ -63,10 +63,10 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
         "DA price": {"market": "DA", "direction": "sym"},
         "Short price": {"market": "BAL", "direction": "short"},
         "Long price": {"market": "BAL", "direction": "long"},
-        "RR-neg": {"market": "RR-cap", "direction": "neg"},
-        "FRR-pos": {"market": "FRR-cap", "direction": "pos"},
-        "FRR-neg": {"market": "FRR-cap", "direction": "neg"},
-        "RR-pos": {"market": "RR-cap", "direction": "pos"},
+        "RR-neg": {"market": "RR-act", "direction": "neg"},
+        "FRR-pos": {"market": "aFRR-cap", "direction": "pos"},
+        "FRR-neg": {"market": "aFRR-cap", "direction": "neg"},
+        "RR-pos": {"market": "RR-act", "direction": "pos"},
         "FCR": {"market": "FCR-cap", "direction": "sym"}
     }
     all_data = {}
@@ -94,17 +94,29 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
 
 
 def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
-    market_categories  = {"apg_capacity": "apg/capacity", "apg_energy": "apg/energy", "da": "da-ida", "ida": "da-ida"}
+    market_categories  = {
+        "apg_capacity": "apg/capacity", 
+        "apg_energy": "apg/energy", 
+        "da": "da-ida", 
+        "ida": "da-ida",
+        "reg_afrr_cap": "regelleistung/aFRR-capacity",
+        "reg_afrr_ene": "regelleistung/aFRR-energy",
+        "reg_mfrr_cap": "regelleistung/mFRR-capacity",
+        "reg_mfrr_ene": "regelleistung/mFRR-energy",
+        "reg_fcr": "regelleistung/FCR-capacity",
+        "rte_cap": "rte/capacity",
+        "rte_ene": "rte/energy"
+        }
     market_dict = {
-        "apg_capacity_SRR_NEG": {"market": "FRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_SRR_NEG": {"market": "aFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_SRR_POS": {"market": "aFRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
         "apg_capacity_PRR_POSNEG": {"market": "FCR-cap", "direction": "sym", "country": "AT", "source": "apg"},
-        "apg_capacity_SRR_POS": {"market": "FRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
-        "apg_capacity_TRR_POS": {"market": "RR-cap", "direction": "neg", "country": "AT", "source": "apg"},
-        "apg_capacity_TRR_NEG": {"market": "RR-cap", "direction": "pos", "country": "AT", "source": "apg"},
-        "apg_energy_SRR_POS": {"market": "FRR-act", "direction": "neg", "country": "AT", "source": "apg"},
-        "apg_energy_SRR_NEG": {"market": "RR-act", "direction": "pos", "country": "AT", "source": "apg"},
-        "apg_energy_TRR_POS": {"market": "RR-act", "direction": "pos", "country": "AT", "source": "apg"},
-        "apg_energy_TRR_NEG": {"market": "RR-act", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_POS": {"market": "mFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_NEG": {"market": "mFRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_POS": {"market": "aFRR-act", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_NEG": {"market": "aFRR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_TRR_POS": {"market": "mFRR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_TRR_NEG": {"market": "mFRR-act", "direction": "neg", "country": "AT", "source": "apg"},
         "da_CH": {"market": "DA", "direction": "sym", "country": "CH", "source": "alpiq"},
         "da_DE": {"market": "DA", "direction": "sym", "country": "DE", "source": "alpiq"},
         "da_AT": {"market": "DA", "direction": "sym", "country": "AT", "source": "alpiq"},
@@ -125,6 +137,32 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "ida_IT-NORD-MI5": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI5", "source": "alpiq"},
         "ida_IT-NORD-MI6": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI6", "source": "alpiq"},
         "ida_IT-NORD-MI7": {"market": "IDA", "direction": "sym", "country": "IT-NORD-MI7", "source": "alpiq"},
+        "reg_afrr_cap_pos": {"market": "aFRR-cap", "direction": "pos", "country": "DE", "source": "regelleistung"},
+        "reg_afrr_cap_neg": {"market": "aFRR-cap", "direction": "neg", "country": "DE", "source": "regelleistung"},
+        "reg_afrr_ene_pos": {"market": "aFRR-act", "direction": "pos", "country": "DE", "source": "regelleistung"},
+        "reg_afrr_ene_neg": {"market": "aFRR-act", "direction": "neg", "country": "DE", "source": "regelleistung"},
+        "reg_mfrr_cap_pos": {"market": "mFRR-cap", "direction": "pos", "country": "DE", "source": "regelleistung"},
+        "reg_mfrr_cap_neg": {"market": "mFRR-cap", "direction": "neg", "country": "DE", "source": "regelleistung"},
+        "reg_mfrr_ene_pos": {"market": "mFRR-act", "direction": "pos", "country": "DE", "source": "regelleistung"},
+        "reg_mfrr_ene_neg": {"market": "mFRR-act", "direction": "neg", "country": "DE", "source": "regelleistung"},
+        "reg_fcr_AT": {"market": "FCR-cap", "direction": "sym", "country": "AT", "source": "regelleistung"},
+        "reg_fcr_CH": {"market": "FCR-cap", "direction": "sym", "country": "CH", "source": "regelleistung"},
+        "reg_fcr_BE": {"market": "FCR-cap", "direction": "sym", "country": "BE", "source": "regelleistung"},
+        "reg_fcr_NL": {"market": "FCR-cap", "direction": "sym", "country": "NL", "source": "regelleistung"},
+        "reg_fcr_DE": {"market": "FCR-cap", "direction": "sym", "country": "DE", "source": "regelleistung"},
+        "reg_fcr_FR": {"market": "FCR-cap", "direction": "sym", "country": "FR", "source": "regelleistung"},
+        "reg_fcr_DK": {"market": "FCR-cap", "direction": "sym", "country": "DK", "source": "regelleistung"},
+        "reg_fcr_SL": {"market": "FCR-cap", "direction": "sym", "country": "SL", "source": "regelleistung"},
+        "rte_cap_aFRR_sym": {"market": "aFRR-cap", "direction": "sym", "country": "FR", "source": "rte"},
+        "rte_cap_FCR_sym": {"market": "FCR-cap", "direction": "sym", "country": "FR", "source": "rte"},
+        "rte_cap_mFRR_pos": {"market": "mFRR-cap", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_cap_RR_pos": {"market": "RR-pos", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_cap_aFRR_neg": {"market": "aFRR-cap", "direction": "neg", "country": "FR", "source": "rte"},
+        "rte_cap_aFRR_pos": {"market": "aFRR-cap", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_ene_mFRR-pos": {"market": "mFRR-act", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_ene_RR-pos": {"market": "RR-act", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_ene_RR-neg": {"market": "RR-act", "direction": "neg", "country": "FR", "source": "rte"},
+        "rte_ene_mFRR-neg": {"market": "mFRR-act", "direction": "neg", "country": "FR", "source": "rte"},
     }
     all_data = {}
     df = pl.DataFrame()
