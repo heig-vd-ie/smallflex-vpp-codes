@@ -60,7 +60,7 @@ def read_da_ida(local_file_path, where=None):
             pl.col("datetime").str.to_datetime("%Y-%m-%d %H:%M:%S")
             ).with_columns([
                 pl.col(c).cast(pl.Float64) for c in columns
-                ]).melt(id_vars="datetime").rename({"variable": "market", "value": "[EUR/MWh]"}).sort("datetime")
+                ]).melt(id_vars="datetime").rename({"variable": "market", "value": "[EUR/MWh]"}).drop_nulls(subset=["[EUR/MWh]"]).sort("datetime")
     if where is not None:
         save_pyarrow_data(all_data, where)
     return all_data
@@ -194,7 +194,7 @@ def read_rte_cap(local_file_path, where=None):
             pl.col("[EUR/MW]").str.replace(",", ".").cast(pl.Float64)
         ])
         all_data = pl.concat([all_data, df_temp], how="diagonal")
-    all_data = all_data.unique().sort("datetime")
+    all_data = all_data.unique().drop_nulls(subset=["[EUR/MW]"]).sort("datetime")
     if where is not None:
         save_pyarrow_data(all_data, where)
     return all_data

@@ -2,7 +2,7 @@ from auxiliary.download_data import download_from_switch
 from auxiliary.read_gries_data import read_gries_txt_data
 from auxiliary.read_gletsch_data import read_gletsch_csv_data
 from auxiliary.read_swissgrid_data import read_spot_price_swissgrid, read_balancing_price_swissgrid, read_fcr_price_swissgrid, read_frr_price_swissgrid
-from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida, read_reg_afrr_cap, read_reg_afrr_ene, read_reg_mfrr_cap, read_reg_mfrr_ene
+from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida, read_reg_afrr_cap, read_reg_afrr_ene, read_reg_mfrr_cap, read_reg_mfrr_ene, read_reg_fcr, read_rte_cap, read_rte_ene
 from auxiliary.auxiliary import read_pyarrow_data
 from sqlalchemy import create_engine
 from schema.schema import Base
@@ -189,7 +189,7 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
 
 
 if __name__ == "__main__":
-    generate_sql_tables_gries(restart_interim_data=False)
-    generate_baseline_discharge_sql(restart_interim_data=False)
-    generate_baseline_price_sql(restart_interim_data=False)
+    # generate_sql_tables_gries(restart_interim_data=False)
+    # generate_baseline_discharge_sql(restart_interim_data=False)
+    # generate_baseline_price_sql(restart_interim_data=False)
     generate_baseline_alpiq_price_sql(restart_interim_data=False, if_exists="append")
