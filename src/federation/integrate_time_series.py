@@ -64,8 +64,8 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
         "Short price": {"market": "BAL", "direction": "short"},
         "Long price": {"market": "BAL", "direction": "long"},
         "RR-neg": {"market": "RR-act", "direction": "neg"},
-        "FRR-pos": {"market": "aFRR-cap", "direction": "pos"},
-        "FRR-neg": {"market": "aFRR-cap", "direction": "neg"},
+        "FRR-pos": {"market": "mFRR-cap", "direction": "pos"},
+        "FRR-neg": {"market": "mFRR-cap", "direction": "neg"},
         "RR-pos": {"market": "RR-act", "direction": "pos"},
         "FCR": {"market": "FCR-cap", "direction": "sym"}
     }
@@ -105,7 +105,9 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "reg_mfrr_ene": "regelleistung/mFRR-energy",
         "reg_fcr": "regelleistung/FCR-capacity",
         "rte_cap": "rte/capacity",
-        "rte_ene": "rte/energy"
+        "rte_ene": "rte/energy",
+        "swissgrid_cap": "swissgrid/capacity",
+        "swissgrid_ene": "swissgrid/energy",
         }
     market_dict = {
         "apg_capacity_SRR_NEG": {"market": "aFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
@@ -156,13 +158,20 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "rte_cap_aFRR_sym": {"market": "aFRR-cap", "direction": "sym", "country": "FR", "source": "rte"},
         "rte_cap_FCR_sym": {"market": "FCR-cap", "direction": "sym", "country": "FR", "source": "rte"},
         "rte_cap_mFRR_pos": {"market": "mFRR-cap", "direction": "pos", "country": "FR", "source": "rte"},
-        "rte_cap_RR_pos": {"market": "RR-pos", "direction": "pos", "country": "FR", "source": "rte"},
+        "rte_cap_RR_pos": {"market": "RR-cap", "direction": "pos", "country": "FR", "source": "rte"},
         "rte_cap_aFRR_neg": {"market": "aFRR-cap", "direction": "neg", "country": "FR", "source": "rte"},
         "rte_cap_aFRR_pos": {"market": "aFRR-cap", "direction": "pos", "country": "FR", "source": "rte"},
         "rte_ene_mFRR-pos": {"market": "mFRR-act", "direction": "pos", "country": "FR", "source": "rte"},
         "rte_ene_RR-pos": {"market": "RR-act", "direction": "pos", "country": "FR", "source": "rte"},
         "rte_ene_RR-neg": {"market": "RR-act", "direction": "neg", "country": "FR", "source": "rte"},
         "rte_ene_mFRR-neg": {"market": "mFRR-act", "direction": "neg", "country": "FR", "source": "rte"},
+        "swissgrid_cap_mFRR-pos": {"market": "mFRR-cap", "direction": "pos", "country": "CH", "source": "swissgrid"},
+        "swissgrid_cap_mFRR-neg": {"market": "mFRR-cap", "direction": "neg", "country": "CH", "source": "swissgrid"},
+        "swissgrid_cap_aFRR": {"market": "aFRR-cap", "direction": "sym", "country": "CH", "source": "swissgrid"},
+        "swissgrid_cap_FCR": {"market": "FCR-cap", "direction": "sym", "country": "CH", "source": "swissgrid"},        
+        "swissgrid_ene_mFRR-pos": {"market": "mFRR-act", "direction": "pos", "country": "CH", "source": "swissgrid"},        
+        "swissgrid_ene_mFRR-neg": {"market": "mFRR-act", "direction": "neg", "country": "CH", "source": "swissgrid"},        
+        "swissgrid_ene_RR": {"market": "RR-act", "direction": "sym", "country": "CH", "source": "swissgrid"},        
     }
     all_data = {}
     df = pl.DataFrame()
@@ -189,7 +198,7 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
 
 
 if __name__ == "__main__":
-    # generate_sql_tables_gries(restart_interim_data=False)
-    # generate_baseline_discharge_sql(restart_interim_data=False)
-    # generate_baseline_price_sql(restart_interim_data=False)
+    generate_sql_tables_gries(restart_interim_data=False)
+    generate_baseline_discharge_sql(restart_interim_data=False)
+    generate_baseline_price_sql(restart_interim_data=False)
     generate_baseline_alpiq_price_sql(restart_interim_data=False, if_exists="append")

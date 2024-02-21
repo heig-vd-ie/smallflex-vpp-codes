@@ -218,3 +218,82 @@ def read_rte_ene(local_file_path, where=None):
     if where is not None:
         save_pyarrow_data(all_data, where)
     return all_data
+
+
+def read_swissgrid_cap(local_file_path, where=None):
+    market_dict = {
+        "SRL": "aFRR",
+        "TRL+": "mFRR-pos",
+        "TRL-": "mFRR-neg",
+        "PRL": "FCR"
+    }
+    all_data = pl.DataFrame()
+    file_names = os.listdir(local_file_path)
+    for file_name in tqdm.tqdm(file_names, desc="Read files of swissgrid price"):
+        file_path = os.path.join(local_file_path, file_name)
+        df_temp = pl.read_csv(file_path, truncate_ragged_lines=True, encoding='iso-8859-1', has_header=True, separator=";", null_values=["*", "N/A"])
+        df_temp = df_temp.select(["Ausschreibung", "Beschreibung", "Preis"]).rename({"Ausschreibung": "Date", "Beschreibung": "desc", "Preis": "price"})
+        
+
+        df_temp1 = df_temp.filter(~ pl.col("Date").str.contains("KW"))
+        df_temp2 = df_temp.filter(pl.col("Date").str.contains("KW"))
+
+        df_temp1 = df_temp1.with_columns(pl.col("desc").str.split_exact(" bis ", 1).struct.rename_fields(["first_part", "second_part"])).unnest("desc")
+        df_temp1 = df_temp1.select([
+            pl.col("Date").str.split_exact("_", 4).struct.rename_fields(["market", "y", "m", "d"]),
+            pl.col("first_part").str.split(" ").map_elements(lambda x: x[-1]).alias("time"),
+            pl.col("price")
+            ]).unnest("Date").select([
+                (pl.col("y") + "-" + pl.col("m") + "-" + pl.col("d") + " " + pl.col("time")).alias("datetime").str.to_datetime("%y-%m-%d %H:%M", strict=False),
+                pl.col("market").map_dict(market_dict),
+                pl.col("price").alias("[EUR/MW]")
+            ])
+        
+        df_temp2 = df_temp2.with_columns([pl.col("Date").str.split("_").map_elements(lambda x: x[0]).alias("market"),
+                        pl.col("Date").str.split("_").map_elements(lambda x: x[1]).alias("y").cast(pl.Int64),
+                        pl.col("Date").str.split("KW").map_elements(lambda x: x[-1]).alias("week").str.split("_")
+                        .map_elements(lambda x: x[0]).cast(pl.Int64)]).with_columns(
+                            ((pl.col("week") - 1)*7*24*60*60*1e6).cast(pl.Duration(time_unit="us")),
+                                (pl.col("y") + 2000).cast(pl.Utf8).str.strptime(pl.Datetime, "%Y")
+                            ).select(
+                                (pl.col("y") + pl.col("week")).alias("datetime"),
+                                    pl.col("market").map_dict(market_dict),
+                                    pl.col("price").alias("[EUR/MW]")
+                            )
+        all_data = pl.concat([all_data, df_temp1, df_temp2], how="diagonal")
+    all_data = all_data.unique().drop_nulls(subset=["[EUR/MW]", "datetime"]).sort("datetime")
+    if where is not None:
+        save_pyarrow_data(all_data, where)
+    return all_data
+
+
+def read_swissgrid_ene(local_file_path, where=None):
+    columns_names = {
+        'mFRR_sa+': "mFRR-pos",
+        'RR_mFRR_sa+': "mFRR-pos",
+        'mFRR_da+': "mFRR-pos",
+        'mFRR_da-': "mFRR-neg",
+        'mFRR_sa-': "mFRR-neg",
+        'RR_mFRR_sa-': "mFRR-neg",
+        'RR_Energie-_l': "RR"
+    }
+    all_data = pl.DataFrame()
+    file_names = os.listdir(local_file_path)
+    for file_name in tqdm.tqdm(file_names, desc="Read files of swissgrid price"):
+        file_path = os.path.join(local_file_path, file_name)
+        df_temp = pl.read_csv(file_path, truncate_ragged_lines=True, encoding='iso-8859-1', has_header=True, separator=";", null_values=["*", "N/A"])
+        df_temp = df_temp.select([
+            pl.col("Ausschreibung").str.replace("TRE_", "").alias("date"),
+            pl.col("Von").alias("time"),
+            pl.col("Produkt").str.replace("TR", "").str.replace("E_", "").alias("market"),
+            pl.col("Preis").alias("price")
+            ]).filter(pl.col("market").is_in(list(columns_names.keys()))).select([
+                (pl.col("date") + " " + pl.col("time")).alias("datetime").str.to_datetime("%y_%m_%d %H:%M"),
+                pl.col("market").map_dict(columns_names),
+                pl.col("price").alias("[EUR/MWh]")
+                ])
+        all_data = pl.concat([all_data, df_temp], how="diagonal")
+    all_data = all_data.unique().drop_nulls(subset=["[EUR/MWh]", "datetime"]).sort("datetime")
+    if where is not None:
+        save_pyarrow_data(all_data, where)
+    return all_data
