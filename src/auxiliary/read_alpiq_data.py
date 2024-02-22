@@ -232,8 +232,8 @@ def read_swissgrid_cap(local_file_path, where=None):
     for file_name in tqdm.tqdm(file_names, desc="Read files of swissgrid price"):
         file_path = os.path.join(local_file_path, file_name)
         df_temp = pl.read_csv(file_path, truncate_ragged_lines=True, encoding='iso-8859-1', has_header=True, separator=";", null_values=["*", "N/A"])
-        df_temp = df_temp.select(["Ausschreibung", "Beschreibung", "Preis"]).rename({"Ausschreibung": "Date", "Beschreibung": "desc", "Preis": "price"})
-        
+        df_temp = df_temp.select(["Ausschreibung", "Beschreibung", "Zugesprochenes Volumen", "Preis"]).rename(
+            {"Ausschreibung": "Date", "Beschreibung": "desc", "Preis": "price", "Zugesprochenes Volumen": "pur MW"}).filter(pl.col("pur MW") > 0)
 
         df_temp1 = df_temp.filter(~ pl.col("Date").str.contains("KW"))
         df_temp2 = df_temp.filter(pl.col("Date").str.contains("KW"))
@@ -242,11 +242,17 @@ def read_swissgrid_cap(local_file_path, where=None):
         df_temp1 = df_temp1.select([
             pl.col("Date").str.split_exact("_", 4).struct.rename_fields(["market", "y", "m", "d"]),
             pl.col("first_part").str.split(" ").map_elements(lambda x: x[-1]).alias("time"),
+            pl.col("pur MW"),
             pl.col("price")
             ]).unnest("Date").select([
                 (pl.col("y") + "-" + pl.col("m") + "-" + pl.col("d") + " " + pl.col("time")).alias("datetime").str.to_datetime("%y-%m-%d %H:%M", strict=False),
                 pl.col("market").map_dict(market_dict),
-                pl.col("price").alias("[EUR/MW]")
+                pl.col("pur MW"),
+                (pl.col("price") * pl.col("pur MW")).alias("EUR"),
+            ]).group_by(["datetime", "market"]).sum().select([
+                pl.col("datetime"),
+                pl.col("market"),
+                (pl.col("EUR") / pl.col("pur MW")).alias("[EUR/MW]")
             ])
         
         df_temp2 = df_temp2.with_columns([pl.col("Date").str.split("_").map_elements(lambda x: x[0]).alias("market"),
@@ -258,8 +264,13 @@ def read_swissgrid_cap(local_file_path, where=None):
                             ).select(
                                 (pl.col("y") + pl.col("week")).alias("datetime"),
                                     pl.col("market").map_dict(market_dict),
-                                    pl.col("price").alias("[EUR/MW]")
-                            )
+                                    pl.col("pur MW"),
+                                    (pl.col("price") * pl.col("pur MW")).alias("EUR"),
+                                    ).group_by(["datetime", "market"]).sum().select([
+                                pl.col("datetime"),
+                                pl.col("market"),
+                                (pl.col("EUR") / pl.col("pur MW")).alias("[EUR/MW]")
+                                ])
         all_data = pl.concat([all_data, df_temp1, df_temp2], how="diagonal")
     all_data = all_data.unique().drop_nulls(subset=["[EUR/MW]", "datetime"]).sort("datetime")
     if where is not None:
@@ -269,13 +280,16 @@ def read_swissgrid_cap(local_file_path, where=None):
 
 def read_swissgrid_ene(local_file_path, where=None):
     columns_names = {
-        'mFRR_sa+': "mFRR-pos",
-        'RR_mFRR_sa+': "mFRR-pos",
-        'mFRR_da+': "mFRR-pos",
-        'mFRR_da-': "mFRR-neg",
         'mFRR_sa-': "mFRR-neg",
-        'RR_mFRR_sa-': "mFRR-neg",
-        'RR_Energie-_l': "RR"
+        'mFRR_sa+': "mFRR-pos",
+        'RR_mFRR_sa+': "RR-pos",
+        "RR_mFRR_sa-": "RR-neg",
+        # 'mFRR_da+': "mFRR-da-pos",
+        # 'mFRR_da-': "mFRR-da-neg",
+        # 'RR_Energie-_l': "RR-Ene-neg",
+        # "Energie-_s": "Ene-s-neg",
+        # "Energie+_s": "",
+        # "Energie-_l": ""
     }
     all_data = pl.DataFrame()
     file_names = os.listdir(local_file_path)
@@ -285,12 +299,21 @@ def read_swissgrid_ene(local_file_path, where=None):
         df_temp = df_temp.select([
             pl.col("Ausschreibung").str.replace("TRE_", "").alias("date"),
             pl.col("Von").alias("time"),
+            pl.col("Angebotene Menge").alias("ava MW"),
+            pl.col("Abgerufene Menge").alias("pur MW"),
             pl.col("Produkt").str.replace("TR", "").str.replace("E_", "").alias("market"),
             pl.col("Preis").alias("price")
-            ]).filter(pl.col("market").is_in(list(columns_names.keys()))).select([
+            ])
+        df_temp = df_temp.filter(pl.col("pur MW") > 0).filter(pl.col("market").is_in(list(columns_names.keys()))).with_columns([
                 (pl.col("date") + " " + pl.col("time")).alias("datetime").str.to_datetime("%y_%m_%d %H:%M"),
                 pl.col("market").map_dict(columns_names),
-                pl.col("price").alias("[EUR/MWh]")
+                pl.col("pur MW"),
+                pl.col("price"),
+                (pl.col("pur MW") * pl.col("price")).alias("pur Eur")
+                ]).group_by(["datetime", "market"]).sum().select([
+                    pl.col("datetime"),
+                    pl.col("market"),
+                    (pl.col("pur Eur") / pl.col("pur MW")).alias("[EUR/MWh]")
                 ])
         all_data = pl.concat([all_data, df_temp], how="diagonal")
     all_data = all_data.unique().drop_nulls(subset=["[EUR/MWh]", "datetime"]).sort("datetime")

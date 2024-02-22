@@ -171,7 +171,8 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "swissgrid_cap_FCR": {"market": "FCR-cap", "direction": "sym", "country": "CH", "source": "swissgrid"},        
         "swissgrid_ene_mFRR-pos": {"market": "mFRR-act", "direction": "pos", "country": "CH", "source": "swissgrid"},        
         "swissgrid_ene_mFRR-neg": {"market": "mFRR-act", "direction": "neg", "country": "CH", "source": "swissgrid"},        
-        "swissgrid_ene_RR": {"market": "RR-act", "direction": "sym", "country": "CH", "source": "swissgrid"},        
+        "swissgrid_ene_RR-pos": {"market": "RR-act", "direction": "pos", "country": "CH", "source": "swissgrid"},        
+        "swissgrid_ene_RR-neg": {"market": "RR-act", "direction": "neg", "country": "CH", "source": "swissgrid"},        
     }
     all_data = {}
     df = pl.DataFrame()
