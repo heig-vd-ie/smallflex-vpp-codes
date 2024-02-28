@@ -1,0 +1,164 @@
+{
+    "Altstafel": {
+        "geo": [46.470064921863404, 8.368679486729981], 
+        "type": "hydro",
+        "p_max": 9.2,
+        "v_min": 1441251,
+        "v_max": 18e6,
+        "h_n": 417,
+        "q_n": 2.8,
+        "production_annual": 18,
+        "turbine_type": "1xFrancis",
+        "piecewise_table": {
+            "0":{"vmin_piece":1441251.0, "head":0.003546400451302509, "vmax_piece":2681645.375, "beta":0},
+            "1":{"vmin_piece":2681645.375, "head":0.0035954337013025094, "vmax_piece":4306794.5, "beta":0},
+            "2":{"vmin_piece":4306794.5, "head":0.0036444669513025093, "vmax_piece":6266599.5, "beta":0},
+            "3":{"vmin_piece":6266599.5, "head":0.0036935002013025096, "vmax_piece":8457472.625, "beta":0},
+            "4":{"vmin_piece":8457472.625, "head":0.00374253345130251, "vmax_piece":10819868.25, "beta":0},
+            "5":{"vmin_piece":10819868.25, "head":0.0037915667013025092, "vmax_piece":13323963.75, "beta":0},
+            "6":{"vmin_piece":13323963.75, "head":0.003840599951302509, "vmax_piece":18000000.0, "beta":0}
+        },
+        "penstock": {"phi": 700, "L": 800, "slope": 51},
+        "river": "Griessee",
+        "design_scheme": ["g1", "g2", "g3"]
+        },
+    "Gletshc-Oberwald": {
+        "geo": [46.54135182498441, 8.360475445219203], 
+        "type": "hydro",
+        "p_max": 14,
+        "v_min": 0,
+        "v_max": 8900,
+        "h_n": 287,
+        "q_n": 5.7,
+        "production_annual": 41,
+        "turbine_type": "2xPelton",
+        "piecewise_table": {
+            "0":{"vmin_piece":0.0,"head":0.00018909775032092762,"vmax_piece":1666.6666666666667,"beta":0},
+            "1":{"vmin_piece":1666.6666666666667,"head":0.0006794302503209277,"vmax_piece":3333.3333333333335,"beta":0},
+            "2":{"vmin_piece":3333.3333333333335,"head":0.0011697627503209275,"vmax_piece":5000.0,"beta":0},
+            "3":{"vmin_piece":5000.0,"head":0.0016600952503209273,"vmax_piece":6666.666666666667,"beta":0},
+            "4":{"vmin_piece":6666.666666666667,"head":0.0021504277503209277,"vmax_piece":8333.333333333334,"beta":0},
+            "5":{"vmin_piece":8333.333333333334,"head":0.0026407602503209274,"vmax_piece":8900.0,"beta":0}
+        },
+        "penstock": {"phi": 2800, "L": 2117, "slope": 13},
+        "river": "Rhone",
+        "design_scheme": ["g1", "g2", "g3"]
+        },
+    "Merezenbach": {
+        "geo": [46.48596112405811, 8.278081478783195], 
+        "type": "hydro", 
+        "p_max": 1.9,
+        "v_min": 0,
+        "v_max": 1195,
+        "h_n": 504,
+        "q_n": 0.5,
+        "production_annual": 9.3, 
+        "turbine_type": "1xPelton",
+        "piecewise_table": {
+            "0":{"vmin_piece":0.0,"head":1.996972954820025e-05,"vmax_piece":123.4504132231405,"beta":0},
+            "1":{"vmin_piece":123.4504132231405,"head":0.0005103022295482001,"vmax_piece":246.900826446281,"beta":0},
+            "2":{"vmin_piece":246.900826446281,"head":0.0010006347295482,"vmax_piece":370.3512396694215,"beta":0},
+            "3":{"vmin_piece":370.3512396694215,"head":0.0014909672295481996,"vmax_piece":493.801652892562,"beta":0},
+            "4":{"vmin_piece":493.801652892562,"head":0.0019812997295482,"vmax_piece":617.2520661157025,"beta":0},
+            "5":{"vmin_piece":617.2520661157025,"head":0.0024716322295481995,"vmax_piece":740.702479338843,"beta":0},
+            "6":{"vmin_piece":740.702479338843,"head":0.0029619647295481993,"vmax_piece":864.1528925619834,"beta":0},
+            "7":{"vmin_piece":864.1528925619834,"head":0.003452297229548199,"vmax_piece":987.603305785124,"beta":0},
+            "8":{"vmin_piece":987.603305785124,"head":0.003942629729548199,"vmax_piece":1111.0537190082646,"beta":0},
+            "9":{"vmin_piece":1111.0537190082646,"head":0.004432962229548199,"vmax_piece":1195.0,"beta":0}
+        },
+        "penstock": {"phi": 450, "L": 1114, "slope": 45},
+        "river": "Merezenbach",
+        "design_scheme": ["g1", "g3"]
+        },
+    "Wannebode": {
+        "geo": [46.46581993510928, 8.255823712382632], 
+        "type": "hydro", 
+        "p_max": 2.1,
+        "v_min": 380,
+        "v_max": 1938,
+        "h_n": 171,
+        "q_n": 1.625,
+        "production_annual": 8, 
+        "turbine_type": "1xPelton",
+        "piecewise_table": {
+            "0":{"vmin_piece":385.0331125827814,"head":0.00036827672545932,"vmax_piece":1026.7549668874171,"beta":0},
+            "1":{"vmin_piece":1026.7549668874171,"head":0.0008586092254593199,"vmax_piece":1668.476821192053,"beta":0},
+            "2":{"vmin_piece":1668.476821192053,"head":0.0013489417254593196,"vmax_piece":1938.0,"beta":0}
+        },
+        "penstock": {"phi": 711, "L": 475, "slope": 39.2},
+        "river": "Blinne",
+        "design_scheme": ["g2", "g3"]
+        },
+    "Walibach": {
+        "geo": [46.45220085135985, 8.215687004579996], 
+        "type": "hydro", 
+        "p_max": 3.4,
+        "v_min": 26,
+        "v_max": 248,
+        "h_n": 772,
+        "q_n": 0.53,
+        "production_annual": 12, 
+        "turbine_type": "2xPelton",
+        "piecewise_table": {
+            "0":{"vmin_piece":26.382978723404253,"head":0.0006410506584535405,"vmax_piece":59.36170212765957,"beta":0},
+            "1":{"vmin_piece":59.36170212765957,"head":0.0016217156584535403,"vmax_piece":92.34042553191489,"beta":0},
+            "2":{"vmin_piece":92.34042553191489,"head":0.00260238065845354,"vmax_piece":125.31914893617021,"beta":0},
+            "3":{"vmin_piece":125.31914893617021,"head":0.0035830456584535395,"vmax_piece":158.29787234042553,"beta":0},
+            "4":{"vmin_piece":158.29787234042553,"head":0.00456371065845354,"vmax_piece":191.27659574468083,"beta":0},
+            "5":{"vmin_piece":191.27659574468083,"head":0.005544375658453538,"vmax_piece":224.25531914893617,"beta":0},
+            "6":{"vmin_piece":224.25531914893617,"head":0.0065250406584535375,"vmax_piece":248.0,"beta":0}
+        },
+        "penstock": {"phi": 500, "L": 3637, "slope": 22},
+        "river": "Walibach",
+        "design_scheme": ["g3"]
+        },
+    "Agene": {
+        "geo": [46.48111032368838, 8.364752326728945], 
+        "type": "pump", 
+        "p_max": 10,
+        "q_max": 1,
+        "hp_up": "Altstafel",
+        "v_max": 4.1e6,
+        "river": "Agene",
+        "design_scheme": ["g2", "g3"]
+        },
+    "Griessee": {
+        "geo": [46.462996731010186, 8.375872895896924], 
+        "type": "wind", 
+        "p_max": 9.35,
+        "area": 242187,
+        "cpr": 0.5,
+        "cut_in_speed": 2,
+        "cut_off_speed": 20,
+        "eta": 0.25,
+        "design_scheme": ["g2", "g3"]
+        },
+    "Bellwald": {
+        "geo": [46.42818712638461, 8.15867489645423], 
+        "type": "pv", 
+        "area": 5882,
+        "p_max": 1.0,
+        "design_scheme": ["g3"]
+        },
+    "Ernen PV": {
+        "geo": [46.39828013342087, 8.144745060776533], 
+        "type": "pv", 
+        "area": 5882,
+        "p_max": 1.0,
+        "design_scheme": ["g3"]
+        },
+    "Munster": {
+        "geo": [46.48685262268847, 8.263764585423637], 
+        "type": "pv", 
+        "area": 5882,
+        "p_max": 1.0,
+        "design_scheme": ["g3"]
+        },
+    "Griessee Krone": {
+        "geo": [46.461305396511214, 8.370732888000758], 
+        "type": "pv", 
+        "area": 5882,
+        "p_max": 1.0,
+        "design_scheme": ["g2", "g3"]
+        }
+}

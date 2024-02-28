@@ -1,6 +1,6 @@
 import enum
 import pandas as pd
-from sqlalchemy import ForeignKey, create_engine, Column
+from sqlalchemy import ForeignKey, create_engine, Column, null
 from sqlalchemy.sql.sqltypes import String, Float, Boolean, DateTime, Integer, Enum
 from sqlalchemy.orm import DeclarativeBase, mapped_column
 from sqlalchemy.orm import Mapped, declarative_mixin, relationship
@@ -58,6 +58,7 @@ class DesignScheme(Base, HasUuid):
 class Resource(Base, HasUuid):
     __tablename__ = "Resource"
     name: Mapped[str] = Column(String(30), nullable=True)
+    # geo = Column(list[Float], nullable=True)
     concrete_type = Column(Enum(ResourceType))
     exist: Mapped[Boolean] = Column(Boolean, nullable=False, default=True)
     design_schemes: Mapped[list["DesignScheme"]] = relationship(secondary="DesignSchemeMapping", back_populates="resources", viewonly=True)
@@ -75,9 +76,14 @@ class Resource(Base, HasUuid):
 class HydroPower(Resource):
     __tablename__ = "HydroPower"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
-    p_max = Column(Float, nullable=False)
-    v_min = Column(Float, nullable=False)
-    v_max = Column(Float, nullable=False)
+    p_max = Column(Float, nullable=False)  # MW
+    v_min = Column(Float, nullable=False)  # m3
+    v_max = Column(Float, nullable=False)  # m3
+    h_n = Column(Float, nullable=True)  # m
+    q_n = Column(Float, nullable=True)  # m3/s
+    river =  Column(String(30), nullable=True)
+    production_annual = Column(Float, nullable=True) # GWh
+    turbine_type = Column(String(30), nullable=True)
     discharge_flow_norm = relationship('DischargeFlowNorm', back_populates='resource')
     piecewise_table = relationship('PiecewiseHydro', back_populates='resource')
 
@@ -101,8 +107,8 @@ class PiecewiseHydro(Base, HasUuid):
     resource_fk = Column(UUIDType, ForeignKey("HydroPower.resource_fk"), nullable=False)
     head_index = Column(Integer, nullable=False)
     beta_index = Column(Integer, nullable=False)
-    v_min_piece = Column(Float, nullable=False)
-    v_max_piece = Column(Float, nullable=False)
+    vmin_piece = Column(Float, nullable=False)
+    vmax_piece = Column(Float, nullable=False)
     head = Column(Float, nullable=False)
     beta = Column(Float, nullable=False)
 
@@ -111,6 +117,7 @@ class Photovoltaic(Resource):
     __tablename__ = "Photovoltaic"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
     area = Column(Float, nullable=False)
+    p_max = Column(Float, nullable=False)
     eta_r = Column(Float, default=0.17)
     f_snow = Column(Float, default=1)
     irradiation_norm = relationship('IrradiationNorm', back_populates='resource')
@@ -126,6 +133,7 @@ class WindTurbine(Resource):
     __tablename__ = "WindTurbine"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
     wind_speed_norm = relationship('WindSpeedNorm', back_populates='resource')
+    p_max = Column(Float, nullable=False)
     area = Column(Float, nullable=False)
     cpr = Column(Float, nullable=False, default=0.5)
     cut_in_speed = Column(Float, nullable=False, default=2)
@@ -155,7 +163,9 @@ class Pump(Resource):
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
     p_max = Column(Float, nullable=False)
     q_max = Column(Float, nullable=False)
-
+    hp_up = Column(Float, nullable=True)
+    river =  Column(String(30), nullable=True)
+    v_max = Column(Float, nullable=True)
     def __repr__(self) -> str:
         return f"Pump(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
     __mapper_args__ = {

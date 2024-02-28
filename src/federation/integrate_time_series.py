@@ -13,7 +13,7 @@ from datetime import datetime
 import tqdm
 
 
-def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cache/interim/Gries/gries.parquet", write_sql = f'sqlite:///.cache/interim/time_series_schema.db'):
+def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cache/interim/Gries/gries.parquet", write_sql = f'sqlite:///.cache/interim/case.db'):
     download_from_switch(switch_path="/Gries", local_file_path=".cache/data/Gries")
     all_data = read_gries_txt_data(gries_path=".cache/data/Gries", where=read_parquet) if restart_interim_data else read_pyarrow_data(where=read_parquet)
     rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "alt", "column_3": "value"}
@@ -33,7 +33,7 @@ def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cac
     return df
 
 
-def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsch_ar.parquet", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db'):
+def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsch_ar.parquet", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/case.db'):
     rivers  = {"Gletsch": 25, "Altstafel": 28, "Merzenbach": 0.5, "Blinne": 0.55}
     norm_gletsch = rivers["Gletsch"]  # mean discharge in m3/s
     dt = datetime.fromisoformat
@@ -56,7 +56,7 @@ def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/glet
     return df
 
 
-def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace",
+def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/case.db', if_exists="replace",
                                 country="CH", source="swissgrid-open"):
     market_categories  = ["spot", "balancing", "frr", "fcr"]
     market_dict = {
@@ -70,6 +70,8 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
         "FCR": {"market": "FCR-cap", "direction": "sym"}
     }
     all_data = {}
+    engine = create_engine(write_sql, echo=False)
+    Base.metadata.create_all(engine)
     df = pl.DataFrame()
     for market_category in market_categories:
         download_from_switch(switch_path=os.path.join(r"swissgrid/", market_category), local_file_path=os.path.join(r".cache/data/swissgrid", market_category), env_file=".env")
@@ -77,8 +79,6 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
         all_data[market_category] = read_func(local_file_path=os.path.join(r".cache/data/swissgrid", market_category), where=os.path.join(read_parquet, market_category) + "_price.parquet") if (not os.path.exists(os.path.join(read_parquet, market_category) + "_price.parquet")) | restart_interim_data \
             else read_pyarrow_data(where=os.path.join(read_parquet, market_category) + "_price.parquet")
         rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "direction",  "column_4": "country",  "column_5": "source", "column_6": "value"}
-        engine = create_engine(write_sql, echo=False)
-        Base.metadata.create_all(engine)
         columns = list(set(all_data[market_category].columns).difference(["datetime"]))
         for c in columns:
             c_name = c.split(" [")[0]
@@ -93,7 +93,7 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
     return df
 
 
-def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/time_series_schema.db', if_exists="replace"):
+def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/case.db', if_exists="replace"):
     market_categories  = {
         "apg_capacity": "apg/capacity", 
         "apg_energy": "apg/energy", 
@@ -175,6 +175,8 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "swissgrid_ene_RR-neg": {"market": "RR-act", "direction": "neg", "country": "CH", "source": "swissgrid"},        
     }
     all_data = {}
+    engine = create_engine(write_sql, echo=False)
+    Base.metadata.create_all(engine)
     df = pl.DataFrame()
     for market_category, market_folder in market_categories.items():
         download_from_switch(switch_path=os.path.join(r"alpiq/", market_folder), local_file_path=os.path.join(r".cache/data/alpiq", market_folder), env_file=".env")
@@ -184,8 +186,7 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         else :
             all_data[market_category] = read_pyarrow_data(where=os.path.join(read_parquet, market_category) + ".parquet")
         rename_columns = {"column_0": "uuid", "column_1": "timestamp", "column_2": "market", "column_3": "direction",  "column_4": "country",  "column_5": "source", "column_6": "value"}
-        engine = create_engine(write_sql, echo=False)
-        Base.metadata.create_all(engine)
+
         columns = list(set(all_data[market_category].columns).difference(["datetime", "market"]))
         for c in columns:
             unit = c.split("[")[1].split("]")[0]

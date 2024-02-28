@@ -9,7 +9,7 @@ import streamlit as st
 
 
 if __name__ == "__main__":
-    DB_CACHE_FILE = r".cache/interim/time_series_schema.db"
+    DB_CACHE_FILE = r".cache/interim/case.db"
 
     engine = create_engine(f"sqlite+pysqlite:///{DB_CACHE_FILE}", echo=False)
     con = engine.connect()

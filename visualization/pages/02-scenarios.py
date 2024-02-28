@@ -10,7 +10,7 @@ from schema.schema import (
 import streamlit as st
 
 if __name__ == "__main__":
-    DB_CACHE_FILE = r".cache/interim/time_series_schema.db"
+    DB_CACHE_FILE = r".cache/interim/case.db"
     
     scenario_data = {
         "Irradiation": query_time_series_data(db_cache_file=DB_CACHE_FILE, alt=2000, tables=[IrradiationNorm])["IrradiationNorm"],

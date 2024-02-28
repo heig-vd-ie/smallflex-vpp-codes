@@ -11,7 +11,7 @@ from federation.integrate_time_series import (
 
 
 if __name__ == "__main__":
-    DB_CACHE_FILE = r".cache/interim/time_series_schema.db"
+    DB_CACHE_FILE = r".cache/interim/case.db"
     db_cache_file_sql = os.path.join(f"sqlite:///{DB_CACHE_FILE}")
     generate_sql_tables_gries(restart_interim_data=True, write_sql=db_cache_file_sql)
     generate_baseline_discharge_sql(restart_interim_data=True, write_sql=db_cache_file_sql)
