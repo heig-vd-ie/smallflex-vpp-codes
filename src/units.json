@@ -20,7 +20,7 @@
         },
         "penstock": {"phi": 700, "L": 800, "slope": 51},
         "river": "Altstafel",
-        "design_scheme": ["g1", "g2", "g3"]
+        "design_scheme": ["ds1", "ds2", "ds3"]
         },
     "Gletshc-Oberwald": {
         "geo": [46.54135182498441, 8.360475445219203], 
@@ -42,7 +42,7 @@
         },
         "penstock": {"phi": 2800, "L": 2117, "slope": 13},
         "river": "Gletsch",
-        "design_scheme": ["g1", "g2", "g3"]
+        "design_scheme": ["ds1", "ds2", "ds3"]
         },
     "Merezenbach": {
         "geo": [46.48596112405811, 8.278081478783195], 
@@ -68,7 +68,7 @@
         },
         "penstock": {"phi": 450, "L": 1114, "slope": 45},
         "river": "Merezenbach",
-        "design_scheme": ["g1", "g3"]
+        "design_scheme": ["ds1", "ds3"]
         },
     "Wannebode": {
         "geo": [46.46581993510928, 8.255823712382632], 
@@ -87,7 +87,7 @@
         },
         "penstock": {"phi": 711, "L": 475, "slope": 39.2},
         "river": "Blinne",
-        "design_scheme": ["g2", "g3"]
+        "design_scheme": ["ds2", "ds3"]
         },
     "Walibach": {
         "geo": [46.45220085135985, 8.215687004579996], 
@@ -110,7 +110,7 @@
         },
         "penstock": {"phi": 500, "L": 3637, "slope": 22},
         "river": "Walibach",
-        "design_scheme": ["g3"]
+        "design_scheme": ["ds3"]
         },
     "Agene": {
         "geo": [46.48111032368838, 8.364752326728945], 
@@ -120,7 +120,7 @@
         "hp_up": "Altstafel",
         "v_max": 4.1e6,
         "river": "Agene",
-        "design_scheme": ["g2", "g3"]
+        "design_scheme": ["ds2", "ds3"]
         },
     "Griessee": {
         "geo": [46.462996731010186, 8.375872895896924], 
@@ -132,7 +132,7 @@
         "cut_off_speed": 20,
         "eta": 0.25,
         "alt": 2450,
-        "design_scheme": ["g2", "g3"]
+        "design_scheme": ["ds2", "ds3"]
         },
     "Bellwald": {
         "geo": [46.42818712638461, 8.15867489645423], 
@@ -140,7 +140,7 @@
         "area": 5882,
         "p_max": 1.0,
         "alt": 1560,
-        "design_scheme": ["g3"]
+        "design_scheme": ["ds3"]
         },
     "Ernen PV": {
         "geo": [46.39828013342087, 8.144745060776533], 
@@ -148,7 +148,7 @@
         "area": 5882,
         "p_max": 1.0,
         "alt": 1250,
-        "design_scheme": ["g3"]
+        "design_scheme": ["ds3"]
         },
     "Munster": {
         "geo": [46.48685262268847, 8.263764585423637], 
@@ -156,7 +156,7 @@
         "area": 5882,
         "p_max": 1.0,
         "alt": 1360,
-        "design_scheme": ["g3"]
+        "design_scheme": ["ds3"]
         },
     "Griessee Krone": {
         "geo": [46.461305396511214, 8.370732888000758], 
@@ -164,6 +164,6 @@
         "area": 5882,
         "p_max": 1.0,
         "alt": 2355,
-        "design_scheme": ["g2", "g3"]
+        "design_scheme": ["ds2", "ds3"]
         }
 }

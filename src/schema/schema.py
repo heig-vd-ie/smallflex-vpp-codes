@@ -84,14 +84,7 @@ class HydroPower(Resource):
     river =  Column(String(30), nullable=True)
     production_annual = Column(Float, nullable=True) # GWh
     turbine_type = Column(String(30), nullable=True)
-    discharge_flow_norm = relationship('DischargeFlowNorm', back_populates='resource')
     piecewise_table = relationship('PiecewiseHydro', back_populates='resource')
-
-    pump_fk = Column(UUIDType, nullable=True)
-    pump = relationship("Pump", backref="hp_unit", primaryjoin="HydroPower.pump_fk == Pump.resource_fk", foreign_keys=pump_fk,)
-
-    pump_dn_fk = Column(UUIDType, nullable=True)
-    pump_dn = relationship("Pump", backref="hp_up", primaryjoin="HydroPower.pump_dn_fk == Pump.resource_fk", foreign_keys=pump_dn_fk, )
 
     def __repr__(self) -> str:
         return f"HydroPower(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
@@ -105,8 +98,7 @@ class PiecewiseHydro(Base, HasUuid):
     __tablename__ = "PiecewiseHydro"
     resource = relationship(HydroPower, back_populates="piecewise_table")
     resource_fk = Column(UUIDType, ForeignKey("HydroPower.resource_fk"), nullable=False)
-    head_index = Column(Integer, nullable=False)
-    beta_index = Column(Integer, nullable=False)
+    index = Column(String(30), nullable=False)
     vmin_piece = Column(Float, nullable=False)
     vmax_piece = Column(Float, nullable=False)
     head = Column(Float, nullable=False)
@@ -120,7 +112,7 @@ class Photovoltaic(Resource):
     p_max = Column(Float, nullable=False)
     eta_r = Column(Float, default=0.17)
     f_snow = Column(Float, default=1)
-    irradiation_norm = relationship('IrradiationNorm', back_populates='resource')
+    alt = Column(Float, nullable=False, default=2000)
 
     def __repr__(self) -> str:
         return f"Photovoltaic(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
@@ -132,14 +124,13 @@ class Photovoltaic(Resource):
 class WindTurbine(Resource):
     __tablename__ = "WindTurbine"
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
-    wind_speed_norm = relationship('WindSpeedNorm', back_populates='resource')
     p_max = Column(Float, nullable=False)
     area = Column(Float, nullable=False)
     cpr = Column(Float, nullable=False, default=0.5)
     cut_in_speed = Column(Float, nullable=False, default=2)
     cut_off_speed = Column(Float, nullable=False, default=34)
     eta = Column(Float, nullable=False, default=0.8)
-
+    alt = Column(Float, nullable=False, default=2000)
     def __repr__(self) -> str:
         return f"WindTurbine(uuid={self.resource_fk!r}, name={self.name!r}, exist={self.exist!r})"
     __mapper_args__ = {
@@ -163,7 +154,7 @@ class Pump(Resource):
     resource_fk: Mapped[uuid.UUID] = Column(UUIDType, ForeignKey("Resource.uuid"), primary_key=True)
     p_max = Column(Float, nullable=False)
     q_max = Column(Float, nullable=False)
-    hp_up = Column(Float, nullable=True)
+    hp_up = Column(String(30), nullable=True)
     river =  Column(String(30), nullable=True)
     v_max = Column(Float, nullable=True)
     def __repr__(self) -> str:
