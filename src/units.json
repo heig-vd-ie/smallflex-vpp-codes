@@ -19,7 +19,7 @@
             "6":{"vmin_piece":13323963.75, "head":0.003840599951302509, "vmax_piece":18000000.0, "beta":0}
         },
         "penstock": {"phi": 700, "L": 800, "slope": 51},
-        "river": "Griessee",
+        "river": "Altstafel",
         "design_scheme": ["g1", "g2", "g3"]
         },
     "Gletshc-Oberwald": {
@@ -41,7 +41,7 @@
             "5":{"vmin_piece":8333.333333333334,"head":0.0026407602503209274,"vmax_piece":8900.0,"beta":0}
         },
         "penstock": {"phi": 2800, "L": 2117, "slope": 13},
-        "river": "Rhone",
+        "river": "Gletsch",
         "design_scheme": ["g1", "g2", "g3"]
         },
     "Merezenbach": {
@@ -131,6 +131,7 @@
         "cut_in_speed": 2,
         "cut_off_speed": 20,
         "eta": 0.25,
+        "alt": 2450,
         "design_scheme": ["g2", "g3"]
         },
     "Bellwald": {
@@ -138,6 +139,7 @@
         "type": "pv", 
         "area": 5882,
         "p_max": 1.0,
+        "alt": 1560,
         "design_scheme": ["g3"]
         },
     "Ernen PV": {
@@ -145,6 +147,7 @@
         "type": "pv", 
         "area": 5882,
         "p_max": 1.0,
+        "alt": 1250,
         "design_scheme": ["g3"]
         },
     "Munster": {
@@ -152,6 +155,7 @@
         "type": "pv", 
         "area": 5882,
         "p_max": 1.0,
+        "alt": 1360,
         "design_scheme": ["g3"]
         },
     "Griessee Krone": {
@@ -159,6 +163,7 @@
         "type": "pv", 
         "area": 5882,
         "p_max": 1.0,
+        "alt": 2355,
         "design_scheme": ["g2", "g3"]
         }
 }

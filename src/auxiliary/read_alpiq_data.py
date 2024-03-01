@@ -45,7 +45,12 @@ def read_apg(local_file_path, where=None, energy=False):
                 ).select(["datetime", "market", final_col]).with_columns(
                     pl.col("datetime").str.to_datetime("%Y-%m-%d %H:%M:%S")
                     )
-        all_data = pl.concat([all_data, df_temp], how="diagonal")
+        df_temp0 = df_temp.filter(~pl.col("market").is_in(["SRR_NEG", "TRR_NEG"]))
+        if energy:
+            df_temp1 = df_temp.filter(pl.col("market").is_in(["SRR_NEG", "TRR_NEG"])).with_columns(- pl.col(final_col))  # pylint: disable= invalid-unary-operand-type
+        else:
+            df_temp1 = df_temp.filter(pl.col("market").is_in(["SRR_NEG", "TRR_NEG"]))
+        all_data = pl.concat([all_data, df_temp0, df_temp1], how="diagonal")
     all_data = all_data.unique().sort("datetime")
     if where is not None:
         save_pyarrow_data(all_data, where)
@@ -212,7 +217,7 @@ def read_rte_ene(local_file_path, where=None):
             pl.col("Prix Moyen Pondéré des Offres d'Ajustement Activées à la Baisse, pour cause P=C, à partir d'offres dont le DMO est inférieur ou égal à 13 minutes (en euros/MWh)").alias("mFRR-neg"),
             pl.col("Prix Moyen Pondéré, des Offres d'Ajustement Activées à la hausse, pour cause P=C, à partir d'offres dont le DMO est strictement supérieur à 13 minutes (en euros/MWh)").alias("RR-pos"),
             pl.col("Prix Moyen Pondéré des Offres d'Ajustement Activées à la Baisse, pour cause P=C, à partir d'offres dont le DMO est strictement supérieur à 13 minutes (en euros/MWh)").alias("RR-neg"),
-        ]).slice(0,-1).with_columns(pl.col("datetime").str.to_datetime("%d/%m/%Y %H:%M")).melt(id_vars="datetime").rename({"variable": "market", "value": "[EUR/MWh]"}).drop_nulls(subset=["[EUR/MWh]"]).sort("datetime")
+        ]).slice(0,-1).with_columns(pl.col("datetime").str.to_datetime("%d/%m/%Y %H:%M", strict=False)).melt(id_vars="datetime").rename({"variable": "market", "value": "[EUR/MWh]"}).drop_nulls(subset=["[EUR/MWh]", "datetime"]).sort("datetime")
         all_data = pl.concat([all_data, df_temp], how="diagonal")
     all_data = all_data.unique().sort("datetime")
     if where is not None:

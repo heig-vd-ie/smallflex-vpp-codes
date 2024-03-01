@@ -29,13 +29,14 @@ def generate_dataframe_forecast(data_df, d_time, non_negative=False):
     Generate dataframe of forecasted data
     """
     d_time_int = int(d_time.split("h")[0]) if "h" in d_time else int(d_time.split("m")[0]) / 60 if "m" in d_time else RuntimeError
-    arbitrary_year = pl.col("timestamp").dt.strftime("2030-%m-%d %H:%M:%S").str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S", strict=False)
+    arbitrary_year = pl.col("timestamp").dt.strftime("2035-%m-%d %H:%M:%S").str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S", strict=False)
     result_df = pl.DataFrame(schema={"timestamp": pl.Datetime(time_unit="ns"), "value": pl.Float64, "scenario": pl.Utf8})
     for scen in data_df["scenario"].unique().to_list():
         df_temp = data_df.filter(pl.col("scenario")==scen).with_columns(arbitrary_year).sort("timestamp").select(["timestamp", "value"]).to_pandas().set_index("timestamp", drop=True)
-        df_temp = df_temp[~df_temp.index.duplicated()].asfreq('1H', method = 'ffill')
+        df_temp.loc["2035-12-30 23:50:00", "value"] = 0
+        df_temp = df_temp.groupby("timestamp").mean().asfreq('1h', method = 'ffill')
         result_temp = day_ahead_forecast_arima_with_lag(df_temp, non_negative=non_negative)
-        data_forecast_temp = pl.from_dict({"timestamp": df_temp.index, "value": result_temp}).with_columns(pl.lit(scen).alias("scenario"))
+        data_forecast_temp = pl.from_dict({"timestamp": df_temp.index, "value": result_temp}).with_columns([pl.lit(scen).alias("scenario"), pl.col("timestamp").cast(pl.Datetime(time_unit="ns"))])
         result_df = pl.concat([result_df, data_forecast_temp])
     result_df = result_df.with_columns([arbitrary_year.dt.week().alias("week"), pl.col("timestamp").dt.year().alias("year")])
     # define time step

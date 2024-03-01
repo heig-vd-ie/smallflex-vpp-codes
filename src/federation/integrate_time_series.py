@@ -2,7 +2,7 @@ from auxiliary.download_data import download_from_switch
 from auxiliary.read_gries_data import read_gries_txt_data
 from auxiliary.read_gletsch_data import read_gletsch_csv_data
 from auxiliary.read_swissgrid_data import read_spot_price_swissgrid, read_balancing_price_swissgrid, read_fcr_price_swissgrid, read_frr_price_swissgrid
-from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida, read_reg_afrr_cap, read_reg_afrr_ene, read_reg_mfrr_cap, read_reg_mfrr_ene, read_reg_fcr, read_rte_cap, read_rte_ene
+from auxiliary.read_alpiq_data import read_apg_capacity, read_apg_energy, read_da, read_ida, read_reg_afrr_cap, read_reg_afrr_ene, read_reg_mfrr_cap, read_reg_mfrr_ene, read_reg_fcr, read_rte_cap, read_rte_ene, read_swissgrid_cap, read_swissgrid_ene
 from auxiliary.auxiliary import read_pyarrow_data
 from sqlalchemy import create_engine
 from schema.schema import Base
@@ -29,12 +29,12 @@ def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cac
             col = desired_columns[index]
             df_temp = (all_data.select([pl.col("datetime"), pl.col(col)]).map_rows(lambda t: (uuid4().bytes, t[0], altitudes[index], t[1])).rename(rename_columns))
             df[g_ind] = pl.concat([df[g_ind], df_temp])
-        df[g_ind].write_database(table_name=table_names[g], connection=write_sql, if_exists="replace", engine="sqlalchemy")
+        df[g_ind].write_database(table_name=table_names[g], connection=write_sql, if_table_exists="replace", engine="sqlalchemy")
     return df
 
 
 def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/gletsch_ar.parquet", restart_interim_data = False, write_sql = f'sqlite:///.cache/interim/case.db'):
-    rivers  = {"Gletsch": 25, "Altstafel": 28, "Merzenbach": 0.5, "Blinne": 0.55}
+    rivers  = {"Gletsch": 25, "Altstafel": 28, "Merezenbach": 0.5, "Blinne": 0.55, "Walibach": 0.55, "Agene": 1}
     norm_gletsch = rivers["Gletsch"]  # mean discharge in m3/s
     dt = datetime.fromisoformat
     download_from_switch(switch_path="hydrometeo/Gletsch2020", local_file_path=".cache/data/hydrometeo/Gletsch2020", env_file=".env")
@@ -52,7 +52,7 @@ def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/glet
         norm = rivers[river]
         df_temp = data.with_columns((pl.col("percentage") * norm).alias("value")).select([pl.col("datetime"), pl.col("value")]).map_rows(lambda t: (uuid4().bytes, t[0], river, t[1])).rename(rename_columns)
         df = pl.concat([df, df_temp])
-    df.write_database(table_name="DischargeFlow", connection=write_sql, if_exists="replace", engine="sqlalchemy")
+    df.write_database(table_name="DischargeFlow", connection=write_sql, if_table_exists="replace", engine="sqlalchemy")
     return df
 
 
@@ -89,7 +89,7 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
             df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], market, direction, country, source, t[1])).rename(rename_columns)
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
-    df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
+    df.write_database(table_name="MarketPrice", connection=write_sql, if_table_exists=if_exists, engine="sqlalchemy")
     return df
 
 
@@ -113,10 +113,10 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
         "apg_capacity_SRR_NEG": {"market": "aFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
         "apg_capacity_SRR_POS": {"market": "aFRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
         "apg_capacity_PRR_POSNEG": {"market": "FCR-cap", "direction": "sym", "country": "AT", "source": "apg"},
-        "apg_capacity_TRR_POS": {"market": "mFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
-        "apg_capacity_TRR_NEG": {"market": "mFRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
-        "apg_energy_SRR_POS": {"market": "aFRR-act", "direction": "neg", "country": "AT", "source": "apg"},
-        "apg_energy_SRR_NEG": {"market": "aFRR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_POS": {"market": "mFRR-cap", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_capacity_TRR_NEG": {"market": "mFRR-cap", "direction": "neg", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_POS": {"market": "aFRR-act", "direction": "pos", "country": "AT", "source": "apg"},
+        "apg_energy_SRR_NEG": {"market": "aFRR-act", "direction": "neg", "country": "AT", "source": "apg"},
         "apg_energy_TRR_POS": {"market": "mFRR-act", "direction": "pos", "country": "AT", "source": "apg"},
         "apg_energy_TRR_NEG": {"market": "mFRR-act", "direction": "neg", "country": "AT", "source": "apg"},
         "da_CH": {"market": "DA", "direction": "sym", "country": "CH", "source": "alpiq"},
@@ -195,7 +195,7 @@ def generate_baseline_alpiq_price_sql(read_parquet=".cache/interim/alpiq", resta
                 lambda t: (uuid4().bytes, t[0], market_dict[t[1]]["market"], market_dict[t[1]]["direction"], market_dict[t[1]]["country"], market_dict[t[1]]["source"], t[2])).rename(rename_columns)
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
-    df.write_database(table_name="MarketPrice", connection=write_sql, if_exists=if_exists, engine="sqlalchemy")
+    df.write_database(table_name="MarketPrice", connection=write_sql, if_table_exists=if_exists, engine="sqlalchemy")
     return df
 
 
