@@ -65,6 +65,8 @@ The problem has been formulate within ``docs/SmallFlex-WP7-VPP-design.pdf``.
 
 ## IV. Commands
 
+- Install requirements with either ``pip install -r requirements.txt`` or using poetry (``poetry install``) or conda (``conda env create -f environment.yml``).
+
 - Build database and fill it with available timeseries data:
 
 ```shell
