@@ -26,7 +26,12 @@ def generate_sql_tables_gries(restart_interim_data = False, read_parquet = ".cac
         altitudes = [(int(j[-2]) + int(j[-1])) / 2 for j in [i.split("_") for i in desired_columns]]
         for index in tqdm.tqdm(range(len(desired_columns)), ncols=100, desc="Load data of " + g.split("_")[0]):
             col = desired_columns[index]
-            df_temp = (all_data.select([pl.col("datetime"), pl.col(col)]).map_rows(lambda t: (uuid4().bytes, t[0], altitudes[index], t[1])).rename(rename_columns))
+            df_temp = all_data.select(
+                    pl.col("datetime").map_elements(lambda x: uuid4().bytes).alias("uuid"),
+                    pl.col("datetime").alias("datetime"),
+                    pl.lit(altitudes[index]).alias("alt"), 
+                    pl.col(col).alias("value")
+                )
             df[g_ind] = pl.concat([df[g_ind], df_temp])
         df[g_ind].write_database(table_name=table_names[g], connection=write_sql, if_exists="replace", engine="sqlalchemy")
     return df
@@ -49,7 +54,13 @@ def generate_baseline_discharge_sql(read_parquet=".cache/interim/hydrometeo/glet
     Base.metadata.create_all(engine)
     for river in rivers.keys():
         norm = rivers[river]
-        df_temp = data.with_columns((pl.col("percentage") * norm).alias("value")).select([pl.col("datetime"), pl.col("value")]).map_rows(lambda t: (uuid4().bytes, t[0], river, t[1])).rename(rename_columns)
+        df_temp = data.with_columns((pl.col("percentage") * norm).alias("value"))\
+            .select(
+                pl.col("datetime").map_elements(lambda x: uuid4().bytes).alias("uuid"),
+                pl.col("datetime").alias("datetime"),
+                pl.lit(river).alias("river"), 
+                pl.col("value").alias("value")
+            )
         df = pl.concat([df, df_temp])
     df.write_database(table_name="DischargeFlow", connection=write_sql, if_exists="replace", engine="sqlalchemy")
     return df
@@ -72,7 +83,14 @@ def generate_baseline_price_sql(read_parquet=".cache/interim/swissgrid", restart
             market = c.split(" [")[0]
             unit = c.split(" [")[1].split("]")[0]
             factor = {"EUR/MWh": 1, "ct/kWh": 10, "EURO/MWh": 1, "EUR/MW": 1}
-            df_temp = all_data[market_category].with_columns(pl.col(c).alias("value")).select([pl.col("datetime"), pl.col("value") * factor[unit]]).map_rows(lambda t: (uuid4().bytes, t[0], market, t[1])).rename(rename_columns)
+            df_temp = all_data[market_category]\
+                .select(
+                    pl.col("datetime").map_elements(lambda x: uuid4().bytes).alias("uuid"),
+                    pl.col("datetime").alias("datetime"),
+                    pl.lit(market).alias("market"), 
+                    (pl.col(c)* factor[unit]).alias("value")
+                )
+           
             df = pl.concat([df, df_temp])
     df = df.drop_nulls(subset=["value"])
     df.write_database(table_name="MarketPrice", connection=write_sql, if_exists="replace", engine="sqlalchemy")
