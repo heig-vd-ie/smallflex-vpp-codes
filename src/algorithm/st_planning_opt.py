@@ -2,7 +2,8 @@ import itertools
 import pyomo.environ as pyo
 import logging
 from pyomo.environ import PositiveReals, Binary, Any
-from schema.schema import Base, DesignScheme, DesignSchemeMapping, HydroPower, Pump, PiecewiseHydro, TimeIndex, DischargeFlowNorm, Photovoltaic, WindTurbine, IrradiationNorm, WindSpeedNorm
+from schema.schema import (Base, DesignScheme, DesignSchemeMapping, HydroPower, Pump, 
+PiecewiseHydro, TimeIndex, DischargeFlowNorm, Photovoltaic, WindTurbine, IrradiationNorm, WindSpeedNorm)
 from schema.schema import get_table
 from schema.constraints import check_constraint
 from sqlalchemy import create_engine

@@ -27,7 +27,7 @@ def read_gries_txt_data(gries_path: str, where: str = None):
             fil_col[str(i)] = translate_tables[l] + "_" + str((i - 300) * 100 - 50) + "_" + str((i - 300) * 100 + 50)
         for file_name in tqdm.tqdm(file_names, desc="Read file"):
             file_path = os.path.join(folder, file_name)
-            df_temp = pl.from_pandas(pd.read_csv(file_path, delim_whitespace=True, skiprows=1)).slice(1).with_columns(pl.concat_str(["YYYY", "MM", "DD", "HH", pl.lit("0")], separator=" ").alias("datetime").str.to_datetime("%Y %m %d %H %M")).select(fil_col.keys()).rename(fil_col)
+            df_temp = pl.from_pandas(pd.read_csv(file_path, sep=r'\s+', skiprows=1)).slice(1).with_columns(pl.concat_str(["YYYY", "MM", "DD", "HH", pl.lit("0")], separator=" ").alias("datetime").str.to_datetime("%Y %m %d %H %M")).select(fil_col.keys()).rename(fil_col)
             all_data[l_index] = pl.concat([all_data[l_index], df_temp], how="diagonal")
     all_data1 = all_data[0].join(all_data[1], on="datetime")
     all_data2 = all_data1.join(all_data[2], on="datetime")

@@ -15,8 +15,9 @@ def load_configs():
     :return: log for logging, config is list of all env vars
     """
     config = dotenv.dotenv_values("../.env")
+
     log = logging.getLogger(__name__)
-    coloredlogs.install(level=config["LOGLEVEL"])
+    coloredlogs.install(level="info")
     return log, config
 
 
