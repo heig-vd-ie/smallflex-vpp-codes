@@ -10,14 +10,14 @@ from datetime import timedelta
 
 
 def predict_days(pipeline: Pipeline, day: int, step_per_day: int, lag: int) -> list:
-    result: np.array = pipeline.predict_in_sample(
+    result = pipeline.predict_in_sample(
         start=step_per_day*(day+1)-lag-1, end=step_per_day*(day+2)-1, dynamic=True
     )
     return list(result[lag:-1])
 
 def predict_years(
-    input_values: pl.series, step_per_day: int, days_to_predict: int, non_negative:bool, lag: int
-) -> pl.series :
+    input_values: pl.Series, step_per_day: int, days_to_predict: int, non_negative:bool, lag: int
+) -> pl.Series :
     # Create ARIMA pipeline
     pipeline: Pipeline = Pipeline([(
         'arima', 

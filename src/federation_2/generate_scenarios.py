@@ -16,7 +16,7 @@ from auxiliary.plot_results import plot_forecast_results
 
 log, config = load_configs()
 
-def fill_null_remove_outliers(raw_data_df: pl.dataframe, d_time: timedelta, z_score: int) -> pl.DataFrame: 
+def fill_null_remove_outliers(raw_data_df: pl.DataFrame, d_time: timedelta, z_score: int) -> pl.DataFrame: 
     # Remove outlier using z_score test
     time_step_per_day: int = int(timedelta(days=1)/d_time)
     cleaned_data_df = raw_data_df.select([
@@ -178,7 +178,7 @@ def initialize_time_series(
 
     total_data_forecast_df.write_database(
         table_name=table_name + "Norm", connection=f"sqlite+pysqlite:///{db_cache_file}", 
-        if_exists="replace", engine="sqlalchemy"
+        if_table_exists="replace", engine="sqlalchemy"
     )
     if missing_data:
         log.warning(", ".join(missing_data) + " data are not complete from table " + table_name)
