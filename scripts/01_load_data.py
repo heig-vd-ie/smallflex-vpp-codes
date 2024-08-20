@@ -2,7 +2,7 @@
 Load data script
 """
 import os
-from federation.integrate_time_series_2 import (
+from federation_2.integrate_time_series import (
     generate_sql_tables_gries,
     generate_baseline_discharge_sql,
     generate_baseline_price_sql,
