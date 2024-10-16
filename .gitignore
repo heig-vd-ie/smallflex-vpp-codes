@@ -5,3 +5,6 @@
 scripts/.cache/
 __pycache__/
 logs.log
+
+# Ignore dynaconf secret files
+.secrets.*

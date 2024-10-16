@@ -4,12 +4,11 @@ version = "0.1.0"
 description = ""
 authors = ["luca.tomasini <luca.tomasini@heig-vd.ch>"]
 readme = "README.md"
-packages = [{include = "smallflex_vpp_codes"}]
+
 
 [tool.poetry.dependencies]
 python = "^3.12"
 pmdarima = "^2.0.4"
-sqlalchemy = "^2.0.32"
 polars = "^1.5.0"
 plotly = "^5.23.0"
 python-dotenv = "^1.0.1"
@@ -17,8 +16,15 @@ pyocclient = "^0.6"
 tqdm = "^4.66.5"
 pyarrow = "^17.0.0"
 coloredlogs = "^15.0.1"
-sqlalchemy-utils = "^0.41.2"
+dynaconf = "^3.2.6"
+duckdb = "^1.1.2"
+patito = "^0.7.0"
+jinja2 = "^3.1.4"
+fastexcel = "^0.12.0"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]

@@ -16,9 +16,9 @@
   "terminal.integrated.env.windows": {
     "PYTHONPATH": "${workspaceFolder}/src",
   },
-  "python.terminal.launchArgs": [
-    "-i"
-  ],
+  // "python.terminal.launchArgs": [
+  //   "-i"
+  // ],
   "terminal.integrated.fontSize": 12,
 
   "workbench.action.terminal.setDimension": 1000,
@@ -29,7 +29,7 @@
     "src/"
   ],
   "python.analysis.autoImportCompletions": true,
-  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "jupyter.notebookFileRoot": "${workspaceFolder}/src",
   "pylint.args": [
     "--max-line-length=450",
     "--max-module-lines=10000",
