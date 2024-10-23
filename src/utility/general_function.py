@@ -20,7 +20,7 @@ def scan_switch_directory(oc: owncloud.Client, local_folder_path: str, switch_fo
     build_non_existing_dirs(os.path.join(local_folder_path, switch_folder_path))
     for file_data in oc.list(switch_folder_path): # type: ignore
         file_path: str = file_data.path
-        if os.path.basename(file_path) != "trash":
+        if "_trash" not in file_path :
             if file_data.file_type == "dir":
                 file_list.extend(scan_switch_directory(
                     oc=oc, local_folder_path=local_folder_path, switch_folder_path=file_path[1:], download_anyway=download_anyway))

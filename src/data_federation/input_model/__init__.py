@@ -11,14 +11,57 @@ import polars as pl
 import patito as pt
 
 from data_federation import input_model
+from data_federation.input_model.humidity import Humidity
+from data_federation.input_model.basin_height import BasinHeight
+from data_federation.input_model.hydro_power_plant import HydroPowerPlant
+from data_federation.input_model.ssd import Ssd
+from data_federation.input_model.precipitation import Precipitation
 from data_federation.input_model.market_price import MarketPrice
+from data_federation.input_model.power_plant_state import PowerPlantState
+from data_federation.input_model.basin_height_volume_table import BasinHeightVolumeTable
+from data_federation.input_model.water_basin import WaterBasin
+from data_federation.input_model.irradiation import Irradiation
+from data_federation.input_model.hydro_power_performance_table import HydroPowerPerformanceTable
+from data_federation.input_model.resource import Resource
+from data_federation.input_model.temperature import Temperature
+from data_federation.input_model.wind import Wind
+from data_federation.input_model.discharge_flow import DischargeFlow
+
 from utility.general_function import snake_to_camel
 
 class SmallFlexPolarsModel(TypedDict, total=False):
+    humidity: pl.DataFrame
+    basin_height: pl.DataFrame
+    hydro_power_plant: pl.DataFrame
+    ssd: pl.DataFrame
+    precipitation: pl.DataFrame
     market_price: pl.DataFrame
+    power_plant_state: pl.DataFrame
+    basin_height_volume_table: pl.DataFrame
+    water_basin: pl.DataFrame
+    irradiation: pl.DataFrame
+    hydro_power_performance_table: pl.DataFrame
+    resource: pl.DataFrame
+    temperature: pl.DataFrame
+    wind: pl.DataFrame
+    discharge_flow: pl.DataFrame
 
 class SmallFlexInputModel(TypedDict, total=False):
+    humidity: pt.DataFrame[Humidity]
+    basin_height: pt.DataFrame[BasinHeight]
+    hydro_power_plant: pt.DataFrame[HydroPowerPlant]
+    ssd: pt.DataFrame[Ssd]
+    precipitation: pt.DataFrame[Precipitation]
     market_price: pt.DataFrame[MarketPrice]
+    power_plant_state: pt.DataFrame[PowerPlantState]
+    basin_height_volume_table: pt.DataFrame[BasinHeightVolumeTable]
+    water_basin: pt.DataFrame[WaterBasin]
+    irradiation: pt.DataFrame[Irradiation]
+    hydro_power_performance_table: pt.DataFrame[HydroPowerPerformanceTable]
+    resource: pt.DataFrame[Resource]
+    temperature: pt.DataFrame[Temperature]
+    wind: pt.DataFrame[Wind]
+    discharge_flow: pt.DataFrame[DischargeFlow]
 
 def validate(**kwargs: Unpack[SmallFlexInputModel]) -> None:
     for df in kwargs.values():
@@ -26,7 +69,21 @@ def validate(**kwargs: Unpack[SmallFlexInputModel]) -> None:
 
 @dataclass(frozen=True)
 class SmallflexInputSchema:
+    humidity: pt.DataFrame[Humidity] = field(default_factory=lambda: Humidity.DataFrame(schema=Humidity.columns).cast())
+    basin_height: pt.DataFrame[BasinHeight] = field(default_factory=lambda: BasinHeight.DataFrame(schema=BasinHeight.columns).cast())
+    hydro_power_plant: pt.DataFrame[HydroPowerPlant] = field(default_factory=lambda: HydroPowerPlant.DataFrame(schema=HydroPowerPlant.columns).cast())
+    ssd: pt.DataFrame[Ssd] = field(default_factory=lambda: Ssd.DataFrame(schema=Ssd.columns).cast())
+    precipitation: pt.DataFrame[Precipitation] = field(default_factory=lambda: Precipitation.DataFrame(schema=Precipitation.columns).cast())
     market_price: pt.DataFrame[MarketPrice] = field(default_factory=lambda: MarketPrice.DataFrame(schema=MarketPrice.columns).cast())
+    power_plant_state: pt.DataFrame[PowerPlantState] = field(default_factory=lambda: PowerPlantState.DataFrame(schema=PowerPlantState.columns).cast())
+    basin_height_volume_table: pt.DataFrame[BasinHeightVolumeTable] = field(default_factory=lambda: BasinHeightVolumeTable.DataFrame(schema=BasinHeightVolumeTable.columns).cast())
+    water_basin: pt.DataFrame[WaterBasin] = field(default_factory=lambda: WaterBasin.DataFrame(schema=WaterBasin.columns).cast())
+    irradiation: pt.DataFrame[Irradiation] = field(default_factory=lambda: Irradiation.DataFrame(schema=Irradiation.columns).cast())
+    hydro_power_performance_table: pt.DataFrame[HydroPowerPerformanceTable] = field(default_factory=lambda: HydroPowerPerformanceTable.DataFrame(schema=HydroPowerPerformanceTable.columns).cast())
+    resource: pt.DataFrame[Resource] = field(default_factory=lambda: Resource.DataFrame(schema=Resource.columns).cast())
+    temperature: pt.DataFrame[Temperature] = field(default_factory=lambda: Temperature.DataFrame(schema=Temperature.columns).cast())
+    wind: pt.DataFrame[Wind] = field(default_factory=lambda: Wind.DataFrame(schema=Wind.columns).cast())
+    discharge_flow: pt.DataFrame[DischargeFlow] = field(default_factory=lambda: DischargeFlow.DataFrame(schema=DischargeFlow.columns).cast())
 
     def __post_init__(self):
         validate(**self.__dict__)
