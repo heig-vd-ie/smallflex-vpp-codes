@@ -20,7 +20,7 @@
   //   "-i"
   // ],
   "terminal.integrated.fontSize": 12,
-
+  "explorer.autoReveal": false,
   "workbench.action.terminal.setDimension": 1000,
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"

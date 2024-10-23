@@ -11,57 +11,48 @@ import polars as pl
 import patito as pt
 
 from data_federation import input_model
-from data_federation.input_model.humidity import Humidity
-from data_federation.input_model.basin_height import BasinHeight
+from data_federation.input_model.market_price_measurement import MarketPriceMeasurement
+from data_federation.input_model.discharge_flow_measurement import DischargeFlowMeasurement
 from data_federation.input_model.hydro_power_plant import HydroPowerPlant
-from data_federation.input_model.ssd import Ssd
-from data_federation.input_model.precipitation import Precipitation
-from data_federation.input_model.market_price import MarketPrice
 from data_federation.input_model.power_plant_state import PowerPlantState
 from data_federation.input_model.basin_height_volume_table import BasinHeightVolumeTable
+from data_federation.input_model.wind_power_plant import WindPowerPlant
+from data_federation.input_model.basin_height_measurement import BasinHeightMeasurement
 from data_federation.input_model.water_basin import WaterBasin
-from data_federation.input_model.irradiation import Irradiation
+from data_federation.input_model.weather_measurement import WeatherMeasurement
 from data_federation.input_model.hydro_power_performance_table import HydroPowerPerformanceTable
+from data_federation.input_model.power_production_measurement import PowerProductionMeasurement
 from data_federation.input_model.resource import Resource
-from data_federation.input_model.temperature import Temperature
-from data_federation.input_model.wind import Wind
-from data_federation.input_model.discharge_flow import DischargeFlow
 
-from utility.general_function import snake_to_camel
+from utility.general_function import snake_to_camel, build_non_existing_dirs
 
 class SmallFlexPolarsModel(TypedDict, total=False):
-    humidity: pl.DataFrame
-    basin_height: pl.DataFrame
+    market_price_measurement: pl.DataFrame
+    discharge_flow_measurement: pl.DataFrame
     hydro_power_plant: pl.DataFrame
-    ssd: pl.DataFrame
-    precipitation: pl.DataFrame
-    market_price: pl.DataFrame
     power_plant_state: pl.DataFrame
     basin_height_volume_table: pl.DataFrame
+    wind_power_plant: pl.DataFrame
+    basin_height_measurement: pl.DataFrame
     water_basin: pl.DataFrame
-    irradiation: pl.DataFrame
+    weather_measurement: pl.DataFrame
     hydro_power_performance_table: pl.DataFrame
+    power_production_measurement: pl.DataFrame
     resource: pl.DataFrame
-    temperature: pl.DataFrame
-    wind: pl.DataFrame
-    discharge_flow: pl.DataFrame
 
 class SmallFlexInputModel(TypedDict, total=False):
-    humidity: pt.DataFrame[Humidity]
-    basin_height: pt.DataFrame[BasinHeight]
+    market_price_measurement: pt.DataFrame[MarketPriceMeasurement]
+    discharge_flow_measurement: pt.DataFrame[DischargeFlowMeasurement]
     hydro_power_plant: pt.DataFrame[HydroPowerPlant]
-    ssd: pt.DataFrame[Ssd]
-    precipitation: pt.DataFrame[Precipitation]
-    market_price: pt.DataFrame[MarketPrice]
     power_plant_state: pt.DataFrame[PowerPlantState]
     basin_height_volume_table: pt.DataFrame[BasinHeightVolumeTable]
+    wind_power_plant: pt.DataFrame[WindPowerPlant]
+    basin_height_measurement: pt.DataFrame[BasinHeightMeasurement]
     water_basin: pt.DataFrame[WaterBasin]
-    irradiation: pt.DataFrame[Irradiation]
+    weather_measurement: pt.DataFrame[WeatherMeasurement]
     hydro_power_performance_table: pt.DataFrame[HydroPowerPerformanceTable]
+    power_production_measurement: pt.DataFrame[PowerProductionMeasurement]
     resource: pt.DataFrame[Resource]
-    temperature: pt.DataFrame[Temperature]
-    wind: pt.DataFrame[Wind]
-    discharge_flow: pt.DataFrame[DischargeFlow]
 
 def validate(**kwargs: Unpack[SmallFlexInputModel]) -> None:
     for df in kwargs.values():
@@ -69,21 +60,18 @@ def validate(**kwargs: Unpack[SmallFlexInputModel]) -> None:
 
 @dataclass(frozen=True)
 class SmallflexInputSchema:
-    humidity: pt.DataFrame[Humidity] = field(default_factory=lambda: Humidity.DataFrame(schema=Humidity.columns).cast())
-    basin_height: pt.DataFrame[BasinHeight] = field(default_factory=lambda: BasinHeight.DataFrame(schema=BasinHeight.columns).cast())
+    market_price_measurement: pt.DataFrame[MarketPriceMeasurement] = field(default_factory=lambda: MarketPriceMeasurement.DataFrame(schema=MarketPriceMeasurement.columns).cast())
+    discharge_flow_measurement: pt.DataFrame[DischargeFlowMeasurement] = field(default_factory=lambda: DischargeFlowMeasurement.DataFrame(schema=DischargeFlowMeasurement.columns).cast())
     hydro_power_plant: pt.DataFrame[HydroPowerPlant] = field(default_factory=lambda: HydroPowerPlant.DataFrame(schema=HydroPowerPlant.columns).cast())
-    ssd: pt.DataFrame[Ssd] = field(default_factory=lambda: Ssd.DataFrame(schema=Ssd.columns).cast())
-    precipitation: pt.DataFrame[Precipitation] = field(default_factory=lambda: Precipitation.DataFrame(schema=Precipitation.columns).cast())
-    market_price: pt.DataFrame[MarketPrice] = field(default_factory=lambda: MarketPrice.DataFrame(schema=MarketPrice.columns).cast())
     power_plant_state: pt.DataFrame[PowerPlantState] = field(default_factory=lambda: PowerPlantState.DataFrame(schema=PowerPlantState.columns).cast())
     basin_height_volume_table: pt.DataFrame[BasinHeightVolumeTable] = field(default_factory=lambda: BasinHeightVolumeTable.DataFrame(schema=BasinHeightVolumeTable.columns).cast())
+    wind_power_plant: pt.DataFrame[WindPowerPlant] = field(default_factory=lambda: WindPowerPlant.DataFrame(schema=WindPowerPlant.columns).cast())
+    basin_height_measurement: pt.DataFrame[BasinHeightMeasurement] = field(default_factory=lambda: BasinHeightMeasurement.DataFrame(schema=BasinHeightMeasurement.columns).cast())
     water_basin: pt.DataFrame[WaterBasin] = field(default_factory=lambda: WaterBasin.DataFrame(schema=WaterBasin.columns).cast())
-    irradiation: pt.DataFrame[Irradiation] = field(default_factory=lambda: Irradiation.DataFrame(schema=Irradiation.columns).cast())
+    weather_measurement: pt.DataFrame[WeatherMeasurement] = field(default_factory=lambda: WeatherMeasurement.DataFrame(schema=WeatherMeasurement.columns).cast())
     hydro_power_performance_table: pt.DataFrame[HydroPowerPerformanceTable] = field(default_factory=lambda: HydroPowerPerformanceTable.DataFrame(schema=HydroPowerPerformanceTable.columns).cast())
+    power_production_measurement: pt.DataFrame[PowerProductionMeasurement] = field(default_factory=lambda: PowerProductionMeasurement.DataFrame(schema=PowerProductionMeasurement.columns).cast())
     resource: pt.DataFrame[Resource] = field(default_factory=lambda: Resource.DataFrame(schema=Resource.columns).cast())
-    temperature: pt.DataFrame[Temperature] = field(default_factory=lambda: Temperature.DataFrame(schema=Temperature.columns).cast())
-    wind: pt.DataFrame[Wind] = field(default_factory=lambda: Wind.DataFrame(schema=Wind.columns).cast())
-    discharge_flow: pt.DataFrame[DischargeFlow] = field(default_factory=lambda: DischargeFlow.DataFrame(schema=DischargeFlow.columns).cast())
 
     def __post_init__(self):
         validate(**self.__dict__)
@@ -100,10 +88,8 @@ class SmallflexInputSchema:
                 raise ValueError(f"Table {table_name} is not a valid DataFrame")
             if table_name not in self.__dict__.keys():
                 raise ValueError(f"{table_name} is not a valid name")
-            
             pt_table: pt.DataFrame = getattr(self, table_name)
             col_list: list[str] = list(set(pl_table.columns).intersection(set(pt_table.columns)))
-            
             new_table: pl.DataFrame = pl.concat([pt_table, pl_table.select(col_list)], how="diagonal_relaxed")
 
             new_kwargs[table_name] = pt.DataFrame(new_table)\
@@ -112,9 +98,27 @@ class SmallflexInputSchema:
         return new_kwargs
 
     def schema_to_duckdb(self, file_path: str):
+        build_non_existing_dirs(os.path.dirname(file_path))
         if os.path.exists(file_path):
             os.remove(file_path)
         with duckdb.connect(file_path) as con:
+            con.execute("SET TimeZone='UTC'")
             for table_name, table_pl in tqdm.tqdm(self.__dict__.items(), desc="Save raw data into duckdb file", ncols=150):
                 query = f"CREATE TABLE {table_name} AS SELECT * FROM table_pl"
                 con.execute(query)
+                
+    def duckdb_to_schema(self, file_path: str) -> SmallflexInputSchema:
+        schema_dict: dict[str, pl.DataFrame] = {} # type: ignore
+
+        with duckdb.connect(database=file_path) as con:
+            con.execute("SET TimeZone='UTC'")
+            query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+            pbar = tqdm.tqdm(
+                con.execute(query).fetchall(), ncols=150, 
+                desc="Read and validate tables from {} file".format(os.path.basename(file_path))
+                )
+            for table_name in pbar:
+                query: str = f"SELECT * FROM {table_name[0]}"
+                schema_dict[table_name[0]] = con.execute(query).pl()
+                    
+        return self.add_table(**schema_dict)

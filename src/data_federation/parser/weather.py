@@ -8,20 +8,15 @@ from data_federation.input_model import SmallflexInputSchema
 
 
 NAME_MAPPING: dict[str, str] = { 
-    "irradiation": "glob_", "humidity": "hum_", 
-    "precipitation": "prec_", "temperature": "temp_",
-    "wind": "wind_", "ssd": "ssd"
+    "glob": "irradiation", "hum": "humidity", "prec": "precipitation", 
+    "temp": "temperature", "wind": "wind", "ssd": "ssd"
     }
 
 def parse_weather(
     small_flex_input_schema:SmallflexInputSchema, input_file_names: dict[str, str], area: str
     ) -> SmallflexInputSchema:
     
-    cleaned_data_dict = {
-        "irradiation": pl.DataFrame(), "humidity": pl.DataFrame(), 
-        "precipitation": pl.DataFrame(), "temperature": pl.DataFrame(),
-        "wind": pl.DataFrame(), "ssd": pl.DataFrame()
-    }
+    weather_measurement: pl.DataFrame = pl.DataFrame()
 
     for entry in list(os.scandir(input_file_names["greis_wsl_data"])):
         if entry.name.endswith("_meteo.csv"):
@@ -34,19 +29,20 @@ def parse_weather(
             data = data.with_columns(
                     (c("time").str.to_datetime("%Y-%m-%d %H:%M:%S", time_zone="UTC") - pl.lit(timedelta(hours=1)))
                     .alias("timestamp"),
-                ).drop(cs.ends_with("X0"))
+                ).drop(cs.ends_with("X0")).drop(["index", "time",  "weekday", "yy", "dd", "mm", "hh"])
 
-            for table, column_name in NAME_MAPPING.items():
+
+            data = data.unpivot(
+                    index=["timestamp"], on= cs.exclude("timestamp"), # type: ignore
+                    variable_name="metadata", value_name="value", 
+                ).with_columns(
+                    c("metadata").str.replace("__", "_").str.split_exact("_X", 1).struct.rename_fields(["type", "location"]),
+                ).unnest("metadata").with_columns(
+                    (area + "_" + c("location").str.slice(0, 1)).alias("sub_basin"),
+                    ((c("location").str.slice(1, 2) + "00").cast(pl.Int32)-50).alias("start_height"),
+                ).pivot(on="type", values="value", index=["start_height", "sub_basin", "timestamp"])\
+                .rename(NAME_MAPPING)
                 
-                cleaned_data_dict[table] = pl.concat([
-                    cleaned_data_dict[table], 
-                    data.unpivot(
-                        index=["timestamp"], on=cs.starts_with(column_name),
-                        variable_name="metadata", value_name="value", 
-                    ).with_columns(
-                        (area + "_" + c("metadata").str.slice(-3, 1)).alias("sub_basin"),
-                        ((c("metadata").str.slice(-2) + "00").cast(pl.Int32)-50).alias("start_height")
-                    )],  how="diagonal_relaxed"
-                )
+            weather_measurement = pl.concat([weather_measurement, data], how="diagonal_relaxed")
 
-    return small_flex_input_schema.add_table(**cleaned_data_dict)
+    return small_flex_input_schema.add_table(weather_measurement=weather_measurement)

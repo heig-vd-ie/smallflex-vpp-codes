@@ -8,8 +8,10 @@ import polars.selectors as cs
 from data_federation.input_model import SmallflexInputSchema
 from utility.general_function import dictionary_key_filtering
 
-def parse_apg_market_price(small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
-    market_price: pl.DataFrame = pl.DataFrame()
+def parse_apg_market_price(
+    small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
+    
+    market_price_measurement: pl.DataFrame = pl.DataFrame()
     
     for name in ["apg_capacity", "apg_energy"]:
         col_name = "Capacity Price [€/MWh]" if name == "apg_capacity" else "Energy Price [€/MWh]"
@@ -30,12 +32,12 @@ def parse_apg_market_price(small_flex_input_schema:SmallflexInputSchema, market_
             ).unnest("metadata")\
             .filter(pl.any_horizontal(~c("max", "avg", "min").is_null()))
             
-            market_price = pl.concat([market_price, data], how="diagonal_relaxed")
+            market_price_measurement = pl.concat([market_price_measurement, data], how="diagonal_relaxed")
         
-    return small_flex_input_schema.add_table(market_price=market_price)
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
 
 def parse_da_ida_market_price(small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
-    market_price: pl.DataFrame = pl.DataFrame()
+    market_price_measurement: pl.DataFrame = pl.DataFrame()
     for name in ["da", "ida"]:
 
         data = pl.read_csv(market_price_metadata[name]["file"], separator=";")\
@@ -47,8 +49,8 @@ def parse_da_ida_market_price(small_flex_input_schema:SmallflexInputSchema, mark
                 ).with_columns(
                     pl.lit(value).alias(name) for name, value in market_price_metadata[name]["data"].items()
                 ).drop_nulls("avg")
-        market_price = pl.concat([market_price, data], how="diagonal_relaxed")
-    return small_flex_input_schema.add_table(market_price=market_price)
+        market_price_measurement = pl.concat([market_price_measurement, data], how="diagonal_relaxed")
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
 
 def get_reg_timestamps(date_str: pl.Expr, time_str: pl.Expr):
     date: pl.Expr = date_str.cast(pl.Datetime(time_zone="UTC"))
@@ -56,7 +58,7 @@ def get_reg_timestamps(date_str: pl.Expr, time_str: pl.Expr):
     return date + time
 
 def parse_reg_frc_market_price(small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
-    market_price: pl.DataFrame = pl.DataFrame()
+    market_price_measurement: pl.DataFrame = pl.DataFrame()
     name = "reg_fcr"
     for entry in list(os.scandir(market_price_metadata[name]["folder"])):
         if entry.name.startswith("RESULT_OVERVIEW"):
@@ -76,11 +78,12 @@ def parse_reg_frc_market_price(small_flex_input_schema:SmallflexInputSchema, mar
             ).with_columns(
                 pl.lit(value).alias(name) for name, value in market_price_metadata[name]["data"].items()
             ).drop_nulls(subset=["max", "country"])
-            market_price = pl.concat([market_price, data], how="diagonal_relaxed")
-    return small_flex_input_schema.add_table(market_price=market_price)
+            market_price_measurement = pl.concat([market_price_measurement, data], how="diagonal_relaxed")
+            
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
 
 def parse_reg_frr_market_price(small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
-    market_price: pl.DataFrame = pl.DataFrame()
+    market_price_measurement: pl.DataFrame = pl.DataFrame()
     for name in  ["reg_afrr_ene", "reg_afrr_cap", "reg_mfrr_ene", "reg_mfrr_cap"]:
         for entry in list(os.scandir(market_price_metadata[name]["folder"])):
             if entry.name.startswith("RESULT_OVERVIEW"):
@@ -106,18 +109,18 @@ def parse_reg_frr_market_price(small_flex_input_schema:SmallflexInputSchema, mar
                 ).with_columns(
                     pl.lit(value).alias(name) for name, value in market_price_metadata[name]["data"].items()
                 ).filter(pl.any_horizontal(~c("max", "avg", "min").is_null()))
-                market_price = pl.concat([market_price, data], how="diagonal_relaxed")
-    return small_flex_input_schema.add_table(market_price=market_price)
+                market_price_measurement = pl.concat([market_price_measurement, data], how="diagonal_relaxed")
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
 
 def parse_rte_cap_market_price(
     small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict
     ) -> SmallflexInputSchema:
 
     name = "rte_cap"
-    market_price: pl.DataFrame = pl.read_csv(
+    market_price_measurement: pl.DataFrame = pl.read_csv(
         market_price_metadata[name]["file"], separator=";", null_values=["*"])
 
-    market_price = market_price.rename(market_price_metadata[name]["col_mapping"]).with_columns(
+    market_price_measurement = market_price_measurement.rename(market_price_metadata[name]["col_mapping"]).with_columns(
         c("timestamp").str.to_datetime("%Y-%m-%d %H:%M:%S", time_zone="UTC").dt.truncate(every="4h").alias("timestamp"),
         c(["market", "direction"]).replace_strict(market_price_metadata[name]["value_mapping"], default=None)
     ).drop_nulls(subset=["market", "direction"])\
@@ -128,7 +131,68 @@ def parse_rte_cap_market_price(
     ).with_columns(
         pl.lit(value).alias(name) for name, value in market_price_metadata[name]["data"].items()
     )
-    return small_flex_input_schema.add_table(market_price=market_price)
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
+
+def parse_rte_ene_market_price(
+    small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict
+    ) -> SmallflexInputSchema:
+
+    metadata:dict = market_price_metadata["rte_ene"]
+
+    market_price_measurement: pl.DataFrame = pl.read_csv(metadata["file"], separator=";")\
+        .rename(metadata["col_mapping"])[list(metadata["col_mapping"].values())]\
+        .with_columns(
+            c("timestamp").str.to_datetime("%Y-%m-%d %H:%M:%S", time_zone="UTC").alias("timestamp")
+        ).unpivot(
+            index="timestamp", on = cs.exclude("timestamp"),  # type: ignore
+            value_name="avg", variable_name="market"
+        ).with_columns(
+            c("market").str.replace("-", "-act_").str.split_exact("_", n=1)
+            .struct.rename_fields(["market", "direction"]),
+        ).unnest("market").with_columns(
+            pl.lit(value).alias(name) for name, value in metadata["data"].items()
+        ).drop_nulls("avg")
+        
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
+
+def parse_swissgrid_cap_market_price(
+    small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict
+    ) -> SmallflexInputSchema:
+    
+    metadata = market_price_metadata["swissgrid_cap"]
+    
+    market_price_measurement: pl.DataFrame = pl.DataFrame()
+
+    for entry in list(os.scandir(metadata["folder"])):
+
+        data: pl.DataFrame = pl.read_csv(entry.path, separator=";", encoding='iso-8859-1', null_values=["*", "N/A"])
+        # We have removed weekly-based market prices
+        data = data.rename(metadata["col_mapping"])\
+            .filter(pl.col("quantity") > 0)\
+            .filter(~ pl.col("metadata").str.contains("KW"))
+            
+        data = data.with_columns(
+            pl.col("time").str.split(" bis ").list.get(0).str.split(" ").list.get(-1).alias("time"),
+            pl.col("metadata").str.split_exact("_", 3).struct.rename_fields(["market", "y", "m", "d"]),
+        ).unnest("metadata")\
+        .with_columns(
+            pl.concat_str(["y", "m", "d", "time"], separator="-")
+            .str.to_datetime("%y-%m-%d-%H:%M", time_zone="UTC", strict=False).alias("timestamp")
+        ).drop_nulls("timestamp")
+        
+        data = data.group_by(["timestamp", "market"]).agg(
+            c("price").min().alias("min"),
+            ((c("price") *c("quantity")).sum()/c("quantity").sum()).alias("avg"),
+            c("price").max().alias("max"),
+        ).with_columns(
+            c("market").replace_strict(metadata["market_mapping"])
+        ).with_columns(
+            pl.lit(value).alias(name) for name, value in metadata["data"].items()
+        ).unnest("market")
+        
+        market_price_measurement = pl.concat([market_price_measurement, data], how="diagonal_relaxed")
+    return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
+
 
 def parse_market_price(
     small_flex_input_schema:SmallflexInputSchema, input_file_names: dict[str, str]) -> SmallflexInputSchema:
@@ -136,9 +200,11 @@ def parse_market_price(
     market_price_metadata: dict = json.load(open(input_file_names["market_price_metadata"]))
     
     kwargs: dict= {"small_flex_input_schema": small_flex_input_schema, "market_price_metadata": market_price_metadata}
-    # kwargs["small_flex_input_schema"] = parse_apg_market_price(**kwargs)
-    # kwargs["small_flex_input_schema"] = parse_da_ida_market_price(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_apg_market_price(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_da_ida_market_price(**kwargs)
     kwargs["small_flex_input_schema"] = parse_reg_frr_market_price(**kwargs)
-    # kwargs["small_flex_input_schema"] = parse_reg_frc_market_price(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_reg_frc_market_price(**kwargs)
     kwargs["small_flex_input_schema"] = parse_rte_cap_market_price(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_rte_ene_market_price(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_swissgrid_cap_market_price(**kwargs)                                                        
     return kwargs["small_flex_input_schema"]

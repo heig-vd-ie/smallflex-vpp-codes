@@ -11,7 +11,7 @@ from utility.polars_operation import generate_uuid_col
 from itertools import product
 
 # Define the UUIDs
-POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina")
+POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina hydro power plant")
 TURBINE_UUID: str = generate_uuid(base_value="Aegina turbine")
 PUMP1_UUID: str = generate_uuid(base_value="Aegina pump 1")
 PUMP2_UUID: str = generate_uuid(base_value="Aegina pump 2")
@@ -20,10 +20,10 @@ DOWNSTREAM_UUID: str = generate_uuid(base_value="Aegina downstream basin")
 RESOURCE_MAPPING: dict[str, str] = {"Pe_GR1": TURBINE_UUID, "Pe_GR2": PUMP1_UUID, "Pe_GR3": PUMP2_UUID}
 
 
-def parse_aegina_resources(small_flex_input_schema: SmallflexInputSchema, **kwargs) -> tuple[SmallflexInputSchema, pl.DataFrame] :
+def parse_aegina_water_resources(small_flex_input_schema: SmallflexInputSchema, **kwargs) -> tuple[SmallflexInputSchema, pl.DataFrame] :
 
     hydro_power_plant: pl.DataFrame = pl.from_dicts([{
-            "name": "Aegina", "uuid": POWER_PLANT_UUID, "resource_fk_list": list(RESOURCE_MAPPING.values()), 
+            "name": "Aegina hydro power plant", "uuid": POWER_PLANT_UUID, "resource_fk_list": list(RESOURCE_MAPPING.values()), 
             "upstream_basin_fk": UPSTREAM_UUID, "downstream_basin_fk": DOWNSTREAM_UUID,
             "rated_power": 9.2, "rated_flow": 2.8, 
             "control": "discrete", "type": "buildup_pump_turbine",
@@ -81,14 +81,15 @@ def parse_aegina_basin_height_data(
     small_flex_input_schema:SmallflexInputSchema, input_file_names: dict[str, str], **kwargs) -> SmallflexInputSchema:
     file_name = input_file_names["aegina_basin_height_data"]
 
-    basin_height: pl.DataFrame = pl.read_csv(file_name, separator=";", infer_schema_length=0)\
+    basin_height_measurement: pl.DataFrame = pl.read_csv(file_name, separator=";", infer_schema_length=0)\
         .select(
             c("Date").str.to_datetime(format="%d.%m.%Y", time_zone="UTC").alias("timestamp"),
             c("Last").str.replace(",", ".").cast(pl.Float64).alias("height"),
             pl.lit(UPSTREAM_UUID).alias("water_basin_fk")
         )
+        
 
-    return small_flex_input_schema.add_table(basin_height=basin_height)
+    return small_flex_input_schema.add_table(basin_height_measurement=basin_height_measurement)
 
 def parse_aegina_performance_table(
     small_flex_input_schema:SmallflexInputSchema, input_file_names: dict[str, str], 
@@ -127,7 +128,7 @@ def parse_aegina_hydro_power_plant(
     
     kwargs = {"small_flex_input_schema": small_flex_input_schema, "input_file_names": input_file_names}
     
-    kwargs["small_flex_input_schema"], kwargs["power_plant_state"] = parse_aegina_resources(**kwargs)
+    kwargs["small_flex_input_schema"], kwargs["power_plant_state"] = parse_aegina_water_resources(**kwargs)
     kwargs["small_flex_input_schema"] = parse_aegina_basin_height_volume_table(**kwargs)
     kwargs["small_flex_input_schema"] = parse_aegina_basin_height_data(**kwargs)
     kwargs["small_flex_input_schema"] = parse_aegina_performance_table(**kwargs)

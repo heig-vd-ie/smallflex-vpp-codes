@@ -15,7 +15,7 @@ from data_federation import input_model
 from data_federation.input_model.{{ m.filename }} import {{ m.name }}
 {%- endfor %}
 
-from utility.general_function import snake_to_camel
+from utility.general_function import snake_to_camel, build_non_existing_dirs
 
 class SmallFlexPolarsModel(TypedDict, total=False):
     {%- for m in models_list %}
@@ -64,9 +64,22 @@ class SmallflexInputSchema:
         return new_kwargs
 
     def schema_to_duckdb(self, file_path: str):
+        build_non_existing_dirs(file_path)
         if os.path.exists(file_path):
             os.remove(file_path)
         with duckdb.connect(file_path) as con:
             for table_name, table_pl in tqdm.tqdm(self.__dict__.items(), desc="Save raw data into duckdb file", ncols=150):
                 query = f"CREATE TABLE {table_name} AS SELECT * FROM table_pl"
                 con.execute(query)
+
+    def duckdb_to_schema(self, file_path: str) -> SmallflexInputSchema:
+        schema_dict: dict[str, pt.Model.DataFrame] = {} # type: ignore
+        pbar = tqdm.tqdm(
+            total=1, ncols=150, desc="Read and validate tables from {} file".format(os.path.basename(file_path)))
+        with pbar:
+            with duckdb.connect(database=file_path) as con:
+                query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+                for table_name in con.execute(query).fetchall():
+                    query: str = f"SELECT * FROM {table_name[0]}"
+                    schema_dict[table_name[0]] = con.execute(query).pl()
+        return self.add_table(**schema_dict)

@@ -16,7 +16,7 @@ COUNTRY = Literal[
 
 UNIT = Literal["EUR/MWh", "EUR/MW", "CH/MWh", "CH/MW"]
 
-class MarketPrice(pt.Model):
+class MarketPriceMeasurement(pt.Model):
     timestamp: datetime = pt.Field(dtype=pl.Datetime(time_unit='us', time_zone='UTC'), description="Timestamp of the market price")
     market: MARKET = pt.Field(
         dtype=pl.Utf8, constraints=literal_constraint(pt.field, MARKET), description="Market type")

@@ -11,7 +11,7 @@ def parse_discharge_flow(
     small_flex_input_schema:SmallflexInputSchema, input_file_names: dict[str, str]
     ) -> SmallflexInputSchema:
     
-    discharge_flow: pl.DataFrame = pl.DataFrame()
+    discharge_flow_measurement: pl.DataFrame = pl.DataFrame()
     for entry in list(os.scandir(input_file_names["greis_wsl_data"])):
         if entry.name.endswith("_hydro.csv"):
 
@@ -28,6 +28,6 @@ def parse_discharge_flow(
             ).with_columns(
                 c("river").str.replace("discharge_", "")
             )
-            discharge_flow = pl.concat([discharge_flow, data], how="diagonal_relaxed")
+            discharge_flow_measurement = pl.concat([discharge_flow_measurement, data], how="diagonal_relaxed")
 
-    return small_flex_input_schema.add_table(discharge_flow=discharge_flow)
+    return small_flex_input_schema.add_table(discharge_flow_measurement=discharge_flow_measurement)
