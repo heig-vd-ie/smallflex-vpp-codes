@@ -24,7 +24,7 @@ def parse_morel_resources(small_flex_input_schema: SmallflexInputSchema, **kwarg
 
     hydro_power_plant: pl.DataFrame = pl.from_dicts([{
     "name": "Morel", "uuid": POWER_PLANT_UUID, "resource_fk_list": list(RESOURCE_MAPPING.values()), 
-    "upstream_basin_fk": UPSTREAM_UUID, "rated_power": 51, "rated_flow": 22,
+    "upstream_basin_fk": UPSTREAM_UUID, "downstream_basin_fk": DOWNSTREAM_UUID,"rated_power": 51, "rated_flow": 22,
     "control": "continuous", "type": "buildup_pump_turbine",
     }])
 

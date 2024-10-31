@@ -74,7 +74,7 @@ def pl_to_dict(df: pl.DataFrame) -> dict:
     df = df.drop_nulls(columns_name)
     if df[columns_name].is_duplicated().sum() != 0:
         raise ValueError("Key values are not unique")
-    return dict(df.to_numpy())
+    return dict(df.rows())
 
 def modify_string(string: str, format_str: dict) -> str:
     """

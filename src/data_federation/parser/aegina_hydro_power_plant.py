@@ -11,7 +11,7 @@ from utility.polars_operation import generate_uuid_col
 from itertools import product
 
 # Define the UUIDs
-POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina hydro power plant")
+POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina hydro")
 TURBINE_UUID: str = generate_uuid(base_value="Aegina turbine")
 PUMP1_UUID: str = generate_uuid(base_value="Aegina pump 1")
 PUMP2_UUID: str = generate_uuid(base_value="Aegina pump 2")
@@ -23,7 +23,7 @@ RESOURCE_MAPPING: dict[str, str] = {"Pe_GR1": TURBINE_UUID, "Pe_GR2": PUMP1_UUID
 def parse_aegina_water_resources(small_flex_input_schema: SmallflexInputSchema, **kwargs) -> tuple[SmallflexInputSchema, pl.DataFrame] :
 
     hydro_power_plant: pl.DataFrame = pl.from_dicts([{
-            "name": "Aegina hydro power plant", "uuid": POWER_PLANT_UUID, "resource_fk_list": list(RESOURCE_MAPPING.values()), 
+            "name": "Aegina hydro", "uuid": POWER_PLANT_UUID, "resource_fk_list": list(RESOURCE_MAPPING.values()), 
             "upstream_basin_fk": UPSTREAM_UUID, "downstream_basin_fk": DOWNSTREAM_UUID,
             "rated_power": 9.2, "rated_flow": 2.8, 
             "control": "discrete", "type": "buildup_pump_turbine",
@@ -54,7 +54,7 @@ def parse_aegina_water_resources(small_flex_input_schema: SmallflexInputSchema, 
     water_basin: pl.DataFrame = pl.from_dicts([
         {
             "name": "Aegina upstream basin", "uuid": UPSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
-            "volume_max": 15.8e6, "volume_min": 56.996e3, "height_max": 2382, "height_min": 2340
+            "volume_max": 15.8e6, "volume_min": 56.996e3, "height_max": 2386, "height_min": 2350
         }, {
             "name": "Aegina downstream basin", "uuid": DOWNSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
             "volume_max": 1e6, "height_max": 1970, 

@@ -7,7 +7,7 @@ from data_federation.input_model import SmallflexInputSchema
 from utility.general_function import generate_uuid
 
 
-POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina wind power plant")
+POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina wind")
 TURBINE1_UUID: str = generate_uuid(base_value="Aegina wind turbine 1")
 TURBINE2_UUID: str = generate_uuid(base_value="Aegina wind turbine 2")
 TURBINE3_UUID: str = generate_uuid(base_value="Aegina wind turbine 3")
@@ -21,7 +21,7 @@ UNIT_MAPPING = {"A": "current", "kV": "voltage", "MW": "active_power", "Mvar": "
 def parse_aegina_wind_resources(small_flex_input_schema: SmallflexInputSchema, **kwargs) -> SmallflexInputSchema:
     
     wind_power_plant: pl.DataFrame = pl.from_dicts([{
-        "name": "Aegina wind power plant", "uuid": POWER_PLANT_UUID, "resource_fk_list": RESOURCE_LIST, 
+        "name": "Aegina wind", "uuid": POWER_PLANT_UUID, "resource_fk_list": RESOURCE_LIST, 
         "rated_power": 8,
     }])
 
@@ -80,7 +80,7 @@ def parse_aegina_wind_power_plant(
     
     kwargs = {"small_flex_input_schema": small_flex_input_schema, "input_file_names": input_file_names}
     
-    # kwargs["small_flex_input_schema"] = parse_aegina_wind_resources(**kwargs)
+    kwargs["small_flex_input_schema"] = parse_aegina_wind_resources(**kwargs)
     kwargs["small_flex_input_schema"] = parse_aegina_wind_power_production(**kwargs)
     
     return kwargs["small_flex_input_schema"]

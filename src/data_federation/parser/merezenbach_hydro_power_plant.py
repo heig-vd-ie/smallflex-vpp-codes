@@ -18,7 +18,7 @@ def parse_merezenbach_resources(small_flex_input_schema: SmallflexInputSchema, *
 
     hydro_power_plant: pl.DataFrame = pl.from_dicts([{
         "name": "Merezenbach", "uuid": POWER_PLANT_UUID, "resource_fk_list": [TURBINE_UUID], 
-        "upstream_basin_fk": UPSTREAM_UUID, "rated_power": 1.9, "rated_flow": 0.5,
+        "upstream_basin_fk": UPSTREAM_UUID,"downstream_basin_fk": DOWNSTREAM_UUID, "rated_power": 1.9, "rated_flow": 0.5,
         "control": "continuous", "type": "buildup_turbine",
         }])
     resource: pl.DataFrame = pl.from_dicts([
