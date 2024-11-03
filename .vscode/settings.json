@@ -38,4 +38,5 @@
   "files.autoSave": "afterDelay",
   "editor.defaultFormatter": "njpwerner.autodocstring",
   "autoDocstring.docstringFormat": "numpy",
+  "jupyter.runStartupCommands": [direnv allow .]
 }

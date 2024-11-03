@@ -142,3 +142,21 @@ def generate_uuid(base_value: str, base_uuid: Optional[uuid.UUID] = None, added_
         base_uuid = uuid.UUID('{bc4d4e0c-98c9-11ec-b909-0242ac120002}')
     return str(uuid.uuid5(base_uuid, added_string + base_value))
 
+def load_envrc(filepath=".envrc"):
+    """Reads a .envrc file and loads its variables into the environment."""
+    if not os.path.isfile(filepath):
+        print(f"File '{filepath}' not found.")
+        return
+
+    with open(filepath) as f:
+        for line in f:
+            # Match "KEY=value" lines, ignoring comments and empty lines
+            match = re.match(r'^\s*export\s+(\w+)\s*=\s*(.*)?\s*$', line)
+            if match:
+                key, val = match.groups()
+                # Strip quotes if the value is quoted
+                if val and (val.startswith('"') and val.endswith('"') or val.startswith("'") and val.endswith("'")):
+                    val = val[1:-1]
+                os.environ[key] = val  # Set the variable in the environment
+
+    print("Environment variables from .envrc loaded successfully.")

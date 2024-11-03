@@ -4,6 +4,7 @@ import json
 from datetime import timedelta, datetime
 from math import prod
 from typing import Optional
+import math
 
 import numpy as np
 import polars as pl
@@ -67,3 +68,21 @@ def generate_uuid_col(col: pl.Expr, base_uuid: uuid.UUID  | None = None, added_s
         col.cast(pl.Utf8)
         .map_elements(lambda x: generate_uuid(base_value=x, base_uuid=base_uuid, added_string=added_string), pl.Utf8)
     )
+
+
+def linear_interpolation_for_bound(col: pl.Expr) -> pl.Expr:
+
+    diff = pl.coalesce(
+        pl.when(col.is_null()).then(col.diff().forward_fill()).otherwise(pl.lit(0)).cum_sum(),
+        pl.when(col.is_null()).then(-col.diff().backward_fill()).otherwise(pl.lit(0)).cum_sum(reverse=True)
+    )
+
+    return col.forward_fill().backward_fill() + diff
+
+def arange_float(high, low, step):
+    return pl.arange(
+        start=0,
+        end=math.floor((high-low)/step) + 1,
+        step=1,
+        eager=True
+    ).cast(pl.Float64)*step + low
