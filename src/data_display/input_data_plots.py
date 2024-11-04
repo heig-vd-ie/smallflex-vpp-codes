@@ -201,7 +201,7 @@ def plot_basin_height_volume_table(small_flex_input_schema: SmallflexInputSchema
                     go.Scatter(
                         x=x[segments], y=y[segments], 
                         mode='lines+markers', line=dict(color="red"), showlegend=True,
-                        hovertemplate=hovertemplate, name="Approached"
+                        hovertemplate=hovertemplate, name="Linearized"
                     )
                 )
 
@@ -209,7 +209,7 @@ def plot_basin_height_volume_table(small_flex_input_schema: SmallflexInputSchema
                     go.Scatter(
                         x=plot_data["height"].to_list(), y=(plot_data["volume"]).to_list(), 
                         mode='lines', line=dict(color=COLORS[0]), showlegend=True,
-                        hovertemplate=hovertemplate, name="Measurements"
+                        hovertemplate=hovertemplate, name="Measured"
                     )
                 )
 

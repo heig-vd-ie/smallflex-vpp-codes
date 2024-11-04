@@ -66,8 +66,9 @@ def generate_clean_timeseries(
             index_column=timestamp_col, start_by="datapoint", every=time_delta, closed="left"
         ).agg(
                 c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
-        )
-
+                c(col_name).max().name.prefix("max_"),
+                c(col_name).min().name.prefix("min_"),
+            )
     return (
         datetime_index["index", "timestamp"]\
             .join(cleaned_data, left_on="timestamp", right_on=timestamp_col, how="left")\
@@ -128,7 +129,7 @@ def generate_datetime_index(
 
     return first_datetime_index, second_datetime_index
 
-def extract_optimization_results(model_instance: pyo.ConcreteModel, var_name: str) -> pl.DataFrame:
+def extract_optimization_results(model_instance: pyo.Model, var_name: str) -> pl.DataFrame:
     index_list = [set_.name for set_ in getattr(model_instance, var_name).index_set().subsets() ]
     
     if len(index_list) == 1:
