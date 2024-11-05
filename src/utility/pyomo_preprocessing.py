@@ -117,20 +117,20 @@ def generate_datetime_index(
     second_datetime_index: pl.DataFrame = pl.datetime_range(
         start=min_datetime, end=max_datetime,
         interval= second_time_delta, eager=True, closed="left", time_zone="UTC"
-    ).to_frame(name="timestamp").with_row_index(name="index")
+    ).to_frame(name="timestamp").with_row_index(name="T")
 
     first_datetime_index: pl.DataFrame = second_datetime_index.group_by_dynamic(
         every=first_time_delta, index_column="timestamp", start_by="datapoint", closed="left"
         ).agg(
-            c("index").min().alias("index_min"),
-            c("index").max().alias("index_max"),
-            c("index").count().alias("n_index")
-        ).with_row_index(name="index")
+            c("T").min().alias("T_min"),
+            c("T").max().alias("T_max"),
+            c("T").count().alias("n_index")
+        ).with_row_index(name="T")
 
     return first_datetime_index, second_datetime_index
 
 def extract_optimization_results(model_instance: pyo.Model, var_name: str) -> pl.DataFrame:
-    index_list = [set_.name for set_ in getattr(model_instance, var_name).index_set().subsets() ]
+    index_list = [set_.name for set_ in getattr(model_instance, var_name).index_set().subsets()]
     
     if len(index_list) == 1:
         return pl.DataFrame(map(list, getattr(model_instance, var_name).extract_values().items()), schema= [index_list[0], var_name])

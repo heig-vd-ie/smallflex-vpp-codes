@@ -76,7 +76,7 @@ def linear_interpolation_for_bound(col: pl.Expr) -> pl.Expr:
         pl.when(col.is_null()).then(col.diff().forward_fill()).otherwise(pl.lit(0)).cum_sum(),
         pl.when(col.is_null()).then(-col.diff().backward_fill()).otherwise(pl.lit(0)).cum_sum(reverse=True)
     )
-
+    print(diff)
     return col.forward_fill().backward_fill() + diff
 
 def arange_float(high, low, step):
@@ -86,3 +86,10 @@ def arange_float(high, low, step):
         step=1,
         eager=True
     ).cast(pl.Float64)*step + low
+
+def linear_interpolation_using_cols(x_col: pl.Series, y_col: pl.Series) -> pl.Series:
+    x = x_col.to_numpy()
+    y = y_col.to_numpy()
+    mask = ~np.isnan(y)
+
+    return pl.Series(np.interp(x, x[mask], y[mask]))
