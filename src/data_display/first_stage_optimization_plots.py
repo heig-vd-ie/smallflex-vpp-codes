@@ -5,9 +5,8 @@ from polars import col as c
 import pyomo.environ as pyo
 from plotly.subplots import make_subplots
 
-from utility.pyomo_preprocessing import extract_optimization_results
+from utility.pyomo_preprocessing import extract_optimization_results, linear_interpolation_using_cols
 
-from utility.polars_operation import linear_interpolation_using_cols
 from utility.general_function import build_non_existing_dirs
 
 COLORS = px.colors.qualitative.Plotly

@@ -76,6 +76,13 @@ def pl_to_dict(df: pl.DataFrame) -> dict:
         raise ValueError("Key values are not unique")
     return dict(df.rows())
 
+def pl_to_dict_with_tuple(df: pl.DataFrame) -> dict:
+    if df.shape[1] != 2:
+        raise ValueError("DataFrame is not composed of two columns")
+    return dict(map(
+        lambda data: (tuple(data[0]), data[1]), df.rows()
+    ))
+
 def modify_string(string: str, format_str: dict) -> str:
     """
     Modify a string by replacing substrings according to a format dictionary.

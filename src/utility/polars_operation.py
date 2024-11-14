@@ -70,26 +70,6 @@ def generate_uuid_col(col: pl.Expr, base_uuid: uuid.UUID  | None = None, added_s
     )
 
 
-def linear_interpolation_for_bound(col: pl.Expr) -> pl.Expr:
 
-    diff = pl.coalesce(
-        pl.when(col.is_null()).then(col.diff().forward_fill()).otherwise(pl.lit(0)).cum_sum(),
-        pl.when(col.is_null()).then(-col.diff().backward_fill()).otherwise(pl.lit(0)).cum_sum(reverse=True)
-    )
-    print(diff)
-    return col.forward_fill().backward_fill() + diff
 
-def arange_float(high, low, step):
-    return pl.arange(
-        start=0,
-        end=math.floor((high-low)/step) + 1,
-        step=1,
-        eager=True
-    ).cast(pl.Float64)*step + low
 
-def linear_interpolation_using_cols(x_col: pl.Series, y_col: pl.Series) -> pl.Series:
-    x = x_col.to_numpy()
-    y = y_col.to_numpy()
-    mask = ~np.isnan(y)
-
-    return pl.Series(np.interp(x, x[mask], y[mask]))

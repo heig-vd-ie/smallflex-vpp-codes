@@ -6,9 +6,19 @@ from polars import col as c
 import polars.selectors as cs
 from typing_extensions import Optional, Literal
 import pyomo.environ as pyo
+from typing import Union
+import math
 
-from utility.polars_operation import linear_interpolation_for_bound, arange_float
 from data_federation.input_model import SmallflexInputSchema
+
+
+def arange_float(high, low, step):
+    return pl.arange(
+        start=0,
+        end=math.floor((high-low)/step) + 1,
+        step=1,
+        eager=True
+    ).cast(pl.Float64)*step + low
 
 def calculate_segment_error(x, y):
     """Fit a line to the points (x, y) and calculate the mean squared error."""
@@ -70,32 +80,45 @@ def generate_clean_timeseries(
                 c(col_name).min().name.prefix("min_"),
             )
     return (
-        datetime_index["index", "timestamp"]\
+        datetime_index["T", "timestamp"]\
             .join(cleaned_data, left_on="timestamp", right_on=timestamp_col, how="left")\
             .with_columns(c(col_name).interpolate().forward_fill().backward_fill())
     )
     
 def generate_segments(
-        data: pl.DataFrame, x_col: str, y_col: str, n_segments: int):
+        data: pl.DataFrame, x_col: str, y_cols: Union[str, list[str]], n_segments: int):
     data = data.sort(x_col)
-    segments = optimal_segments(
-        x=np.array(data[x_col]),
-        y=np.array(data[y_col]),
-        n_segments=n_segments
-    )
-
-    return (
-        data\
-        .with_row_index(name= "val_index").filter(pl.col("val_index").is_in(segments))\
-        .drop("val_index")\
+    segments: list = []
+    
+    if isinstance(y_cols, str):
+        y_cols = [y_cols]
+        
+    columns: list[str] = [x_col] + y_cols
+    
+    for y_col in y_cols:
+    
+        segments.append(
+            optimal_segments(
+            x=np.array(data[x_col]),
+            y=np.array(data[y_col]),
+            n_segments=n_segments
+        ))
+    # Get the mean of the segments index founded for each segmentation
+    segments = list(np.array(segments).mean(axis=0, dtype=int))
+    
+    return(
+        data
+        .with_row_index(name= "val_index").filter(pl.col("val_index").is_in(segments))
+        .drop("val_index")[[x_col] + y_cols]
         .with_columns(
-            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in data.columns)\
-        .with_row_index(name = "index").slice(offset=0, length=n_segments)\
+            # Define max and min values for each segment
+            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in columns)
+        .slice(offset=0, length=n_segments) # Remove last segment not bounded
         .with_columns(
-            (pl.all().exclude(x_col, "index")
+            # Calculate the slope of the segments
+            (pl.all().exclude(x_col)
             .list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0) /
             c(x_col).list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0)).name.prefix("d_"),
-            (pl.all().exclude("index").list.sum()/2).name.prefix("mean_"),
         )
     )
 
@@ -139,46 +162,78 @@ def extract_optimization_results(model_instance: pyo.Model, var_name: str) -> pl
             c("index").list.to_struct(fields=index_list)
         ).unnest("index")
         
-def process_performance_table(
-    small_flex_input_schema: SmallflexInputSchema, power_plant_name: str, state: list[bool], d_height: float = 1, n_segments: int = 5 ):
+# def process_performance_table(
+#     small_flex_input_schema: SmallflexInputSchema, power_plant_name: str, state: list[bool], d_height: float = 1, n_segments: int = 5 ):
 
-    power_plant_metadata = small_flex_input_schema.hydro_power_plant\
-        .filter(c("name") == power_plant_name).to_dicts()[0]
-    water_basin_uuid = power_plant_metadata["upstream_basin_fk"]
-    power_plant_uuid = power_plant_metadata["uuid"]
-    basin_metadata = small_flex_input_schema.water_basin.filter(c("uuid") == water_basin_uuid).to_dicts()[0]
+#     power_plant_metadata = small_flex_input_schema.hydro_power_plant\
+#         .filter(c("name") == power_plant_name).to_dicts()[0]
+#     water_basin_uuid = power_plant_metadata["upstream_basin_fk"]
+#     power_plant_uuid = power_plant_metadata["uuid"]
+#     basin_metadata = small_flex_input_schema.water_basin.filter(c("uuid") == water_basin_uuid).to_dicts()[0]
 
-    basin_height_volume_table: pl.DataFrame = small_flex_input_schema\
-            .basin_height_volume_table\
-            .filter(c("water_basin_fk") == water_basin_uuid)
+#     basin_height_volume_table: pl.DataFrame = small_flex_input_schema\
+#             .basin_height_volume_table\
+#             .filter(c("water_basin_fk") == water_basin_uuid)
 
-    down_stream_height = small_flex_input_schema.water_basin.filter(c("uuid") == power_plant_metadata["downstream_basin_fk"])["height_max"][0]
+#     down_stream_height = small_flex_input_schema.water_basin.filter(c("uuid") == power_plant_metadata["downstream_basin_fk"])["height_max"][0]
 
-    power_plant_state = small_flex_input_schema.power_plant_state.filter(c("power_plant_fk") == power_plant_uuid)
-    power_performance_table: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table.with_columns((c("head") + down_stream_height).alias("height"))
+#     power_plant_state = small_flex_input_schema.power_plant_state.filter(c("power_plant_fk") == power_plant_uuid)
+#     power_performance_table: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table.with_columns((c("head") + down_stream_height).alias("height"))
 
-    state_uuid = power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]
-    height_min: float= basin_metadata["height_min"] if basin_metadata["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore
-    height_max: float= basin_metadata["height_max"] if basin_metadata["height_max"] is not None else basin_height_volume_table["height"].max() # type: ignore
+#     state_uuid = power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]
+#     height_min: float= basin_metadata["height_min"] if basin_metadata["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore
+#     height_max: float= basin_metadata["height_max"] if basin_metadata["height_max"] is not None else basin_height_volume_table["height"].max() # type: ignore
 
-    volume_table: pl.DataFrame = arange_float(height_max, height_min, d_height)\
-        .to_frame(name="height")\
-        .join(basin_height_volume_table, on ="height", how="full", coalesce=True)\
-        .sort("height").interpolate()\
-        .with_columns(
-            c("volume").pipe(linear_interpolation_for_bound).alias("volume")
-        ).drop_nulls("height")[["height", "volume"]]
+#     volume_table: pl.DataFrame = arange_float(height_max, height_min, d_height)\
+#         .to_frame(name="height")\
+#         .join(basin_height_volume_table, on ="height", how="full", coalesce=True)\
+#         .sort("height").interpolate()\
+#         .with_columns(
+#             c("volume").pipe(linear_interpolation_for_bound).alias("volume")
+#         ).drop_nulls("height")[["height", "volume"]]
         
-    performance_table_per_volume = volume_table.join(
-        power_performance_table.filter(c("power_plant_state_fk") == state_uuid)[["height", "flow", "electrical_power"]],
-        on ="height", how="full", coalesce=True
-        ).sort("height").interpolate()\
-        .with_columns(
-            c("flow", "electrical_power").pipe(linear_interpolation_for_bound)
-        ).filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
-        .with_columns((c("electrical_power")/c("flow")).alias("alpha"))\
-        [["height", "volume", "flow", "electrical_power", "alpha"]]
+#     performance_table_per_volume = volume_table.join(
+#         power_performance_table.filter(c("power_plant_state_fk") == state_uuid)[["height", "flow", "electrical_power"]],
+#         on ="height", how="full", coalesce=True
+#         ).sort("height").interpolate()\
+#         .with_columns(
+#             c("flow", "electrical_power").pipe(linear_interpolation_for_bound)
+#         ).filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
+#         .with_columns((c("electrical_power")/c("flow")).alias("alpha"))\
+#         [["height", "volume", "flow", "electrical_power", "alpha"]]
         
-    performance_table_per_state = generate_segments(performance_table_per_volume, x_col="volume", y_col="alpha", n_segments=n_segments)
+#     performance_table_per_state = generate_segments(performance_table_per_volume, x_col="volume", y_col="alpha", n_segments=n_segments)
     
-    return performance_table_per_volume, performance_table_per_state
+#     return performance_table_per_volume, performance_table_per_state
+
+def linear_interpolation_for_bound(x_col: pl.Expr, y_col: pl.Expr) -> pl.Expr:
+    
+    a_diff: pl.Expr = y_col.diff()/x_col.diff()
+    x_diff: pl.Expr = x_col.diff().backward_fill()
+    y_diff: pl.Expr = pl.coalesce(
+        pl.when(y_col.is_null().or_(y_col.is_nan()))
+        .then(a_diff.forward_fill()*x_diff)
+        .otherwise(pl.lit(0)).cum_sum(),
+        pl.when(y_col.is_null().or_(y_col.is_nan()))
+        .then(-a_diff.backward_fill()*x_diff)
+        .otherwise(pl.lit(0)).cum_sum(reverse=True)
+    )
+
+    return y_col.backward_fill().forward_fill() + y_diff
+
+def linear_interpolation_using_cols(
+    df: pl.DataFrame, x_col: str, y_col: Union[list[str], str]
+    ) -> pl.DataFrame:
+    df = df.sort(x_col)
+    x = df[x_col].to_numpy()
+    if isinstance(y_col, str):
+        y_col = [y_col]
+    for col in y_col:
+        y = df[col].to_numpy()
+        mask = ~np.isnan(y)
+        df = df.with_columns(
+            pl.Series(np.interp(x, x[mask], y[mask], left=np.nan, right=np.nan)).fill_nan(None).alias(col)
+        ).with_columns(
+            linear_interpolation_for_bound(x_col=c(x_col), y_col=c(col)).alias(col)
+        )
+    return df

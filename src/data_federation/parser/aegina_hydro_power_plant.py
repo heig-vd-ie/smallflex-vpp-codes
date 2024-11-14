@@ -54,7 +54,7 @@ def parse_aegina_water_resources(small_flex_input_schema: SmallflexInputSchema, 
     water_basin: pl.DataFrame = pl.from_dicts([
         {
             "name": "Aegina upstream basin", "uuid": UPSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
-            "volume_max": 15.8e6, "volume_min": 56.996e3, "height_max": 2385, "height_min": 2350, "n_state_min":5
+            "volume_max": 15.8e6, "volume_min": 56.996e3, "height_max": 2386, "height_min": 2350, "n_state_min":5
         }, {
             "name": "Aegina downstream basin", "uuid": DOWNSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
             "volume_max": 1e6, "height_max": 1970, 
