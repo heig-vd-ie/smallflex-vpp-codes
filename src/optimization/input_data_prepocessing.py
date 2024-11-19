@@ -75,13 +75,13 @@ def generate_basin_volume_table(
             
     return volume_table
 
-def get_hydro_power_state_index(
+def clean_hydro_power_performance_table(
     small_flex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], 
     basin_volume_table: dict[int, Optional[pl.DataFrame]]
-    ) -> tuple[dict[str, pl.DataFrame], dict[int, Optional[pl.DataFrame]]]:
+    ) -> list[dict]:
 
-    state_index: pl.DataFrame = pl.DataFrame()
-    power_performance_table: dict[int, Optional[pl.DataFrame]]  = {}
+
+    power_performance_table: list[dict] = []
     for power_plant_data in index["hydro_power_plant"].to_dicts():
         downstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["downstream_basin_fk"]).to_dicts()[0]
         upstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["upstream_basin_fk"]).to_dicts()[0]
@@ -91,65 +91,84 @@ def get_hydro_power_state_index(
 
         volume_table = basin_volume_table[upstream_basin["B"]]
         if volume_table is None:
-            power_performance_table[power_plant_data["H"]] = None
-        else:
-            state_dict = {}
+            continue
+        
+        state_dict = {}
+        
+        turbine_fk = small_flex_input_schema.resource\
+            .filter(c("uuid").is_in(power_plant_data["resource_fk_list"]))\
+            .filter(c("type") == "hydro_turbine")["uuid"].to_list()
+
+        state_list = [
+                ("turbined", list(map(lambda uuid: uuid in turbine_fk, power_plant_data["resource_fk_list"]))), 
+                ("pumped", list(map(lambda uuid: uuid not in turbine_fk, power_plant_data["resource_fk_list"])))
+            ]
+        for name, state in state_list:
+            state_dict[power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]] = name
             
-            turbine_fk = small_flex_input_schema.resource\
-                .filter(c("uuid").is_in(power_plant_data["resource_fk_list"]))\
-                .filter(c("type") == "hydro_turbine")["uuid"].to_list()
+        power_performance: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table\
+            .with_columns((c("head") + downstream_basin["height_max"]).alias("height"))
 
-            state_list = [
-                    ("turbined", list(map(lambda uuid: uuid in turbine_fk, power_plant_data["resource_fk_list"]))), 
-                    ("pumped", list(map(lambda uuid: uuid not in turbine_fk, power_plant_data["resource_fk_list"])))
-                ]
-            for name, state in state_list:
-                state_dict[power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]] = name
-                
-            power_performance: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table\
-                .with_columns((c("head") + downstream_basin["height_max"]).alias("height"))
+        power_performance = power_performance.with_columns(
+                c("power_plant_state_fk").replace_strict(state_dict, default=None).alias("state_name")
+            ).drop_nulls("state_name").pivot(
+                values=["flow" , "electrical_power"], on="state_name", index="height"
+            ).join(volume_table, on ="height", how="full", coalesce=True)\
+            .sort("height")
+        
+        power_performance = linear_interpolation_using_cols(
+            df=power_performance, 
+            x_col="height", 
+            y_col=power_performance.select(pl.all().exclude("height", "volume")).columns
+            ).filter(c("height").ge(volume_table["height"].min()).and_(c("height").le(volume_table["height"].max())))
 
-            power_performance = power_performance.with_columns(
-                    c("power_plant_state_fk").replace_strict(state_dict, default=None).alias("state_name")
-                ).drop_nulls("state_name").pivot(
-                    values=["flow" , "electrical_power"], on="state_name", index="height"
-                ).join(volume_table, on ="height", how="full", coalesce=True)\
-                .sort("height")
+        power_performance = power_performance.with_columns(
+            (c("electrical_power_" + state[0]) / c("flow_" + state[0])).alias("alpha_" + state[0]) 
+            for state in state_list
+        )
+            
+        power_performance_table.append({
+            "H": power_plant_data["H"], "B": upstream_basin["B"], "power_performance": power_performance
+            })
+            
+    return  power_performance_table
 
-
-            power_performance = linear_interpolation_using_cols(
-                df=power_performance, 
-                x_col="height", 
-                y_col=power_performance.select(pl.all().exclude("height", "volume")).columns
-                ).filter(c("height").ge(volume_table["height"].min()).and_(c("height").le(volume_table["height"].max())))
-
-            power_performance_table[power_plant_data["H"]] = power_performance
+            
+def generate_hydro_power_state(
+    power_performance_table: list[dict], index: dict[str, pl.DataFrame], state_curviness_mapping: dict[float, int]
+    ) -> dict[str, pl.DataFrame]: 
     
-            y_cols: list[str] = power_performance.select(cs.starts_with("flow"), cs.starts_with("electrical_power")).columns
-            state_performance_table: pl.DataFrame = generate_segments(
-                data=power_performance, 
-                x_col= "volume", y_cols=y_cols, 
-                n_segments=upstream_basin["n_state_min"])
-            
-            state_index = pl.concat([
-                state_index , 
-                state_performance_table.with_columns(
-                    pl.lit(power_plant_data["H"]).alias("H"),
-                    pl.lit(upstream_basin["B"]).alias("B"))
-                ], how="diagonal")
+    state_index: pl.DataFrame = pl.DataFrame()
+    for data in power_performance_table: 
+        power_performance: pl.DataFrame = data["power_performance"] 
+        # power_plant_data = index["hydro_power_plant"] .filter(c("H") == data["H"]).to_dicts()[0]
+        # upstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["upstream_basin_fk"]).to_dicts()[0]    
+        # y_cols: list[str] = power_performance.select(cs.starts_with("flow"), cs.starts_with("electrical_power")).columns
+        y_cols: list[str] = power_performance.select(cs.starts_with("alpha")).columns
+        state_performance_table: pl.DataFrame = generate_segments(
+            data=power_performance, 
+            x_col= "volume", y_cols=y_cols, 
+            n_segments=5)
+        
+        state_index = pl.concat([
+            state_index , 
+            state_performance_table.with_columns(
+                pl.lit(data["H"]).alias("H"),
+                pl.lit(data["B"]).alias("B"))
+            ], how="diagonal")
         # Add every downstream basin
         missing_basin: pl.DataFrame = index["water_basin"].filter(~c("B").is_in(state_index["B"])).select(
             c("B"),
             pl.concat_list(c("volume_min").fill_null(0.0), c("volume_max").fill_null(0.0)).alias("volume")
         )
-        state_index = pl.concat([state_index, missing_basin], how="diagonal_relaxed")
-        index["state"] = state_index.with_row_index(name="S").with_columns(
-            pl.concat_list("H", "B", "S", "S").alias("S_BH"),
-            pl.concat_list("B", "S").alias("BS"),
-            pl.concat_list("H", "S").alias("HS")
-        )
+    state_index = pl.concat([state_index, missing_basin], how="diagonal_relaxed")
+    index["state"] = state_index.with_row_index(name="S").with_columns(
+        pl.concat_list("H", "B", "S", "S").alias("S_BH"),
+        pl.concat_list("B", "S").alias("BS"),
+        pl.concat_list("H", "S").alias("HS")
+    )
         
-    return index, power_performance_table
+    return index
 
 # def generate_first_problem_input_data(
 #     small_flex_input_schema: SmallflexInputSchema, max_flow_factor: float, min_flow_factor: float,

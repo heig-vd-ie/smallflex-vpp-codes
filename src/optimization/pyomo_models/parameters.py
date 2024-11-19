@@ -13,13 +13,16 @@ def baseline_parameters(model):
     
     model.min_flow_turbined = pyo.Param(model.HS, default=0)  #m^3/s
     model.min_flow_pumped = pyo.Param(model.HS, default=0) #m^3/s
-    model.d_flow_turbined = pyo.Param(model.HS, default=0)  
-    model.d_flow_pumped = pyo.Param(model.HS, default=0)
+    model.max_flow_turbined = pyo.Param(model.HS, default=0) #m^3/s 
+    model.max_flow_pumped = pyo.Param(model.HS, default=0) #m^3/s
     
     model.min_power_turbined = pyo.Param(model.HS, default=0)  #MW
-    model.min_power_pumped = pyo.Param(model.HS, default=0) # MW
-    model.d_power_turbined = pyo.Param(model.HS, default=0) 
-    model.d_power_pumped = pyo.Param(model.HS, default=0)
+    model.min_power_pumped = pyo.Param(model.HS, default=0) #MW
+    
+    model.min_alpha_turbined = pyo.Param(model.HS, default=0)  #MW/(m^3/s)
+    model.min_alpha_pumped = pyo.Param(model.HS, default=0)  #MW/(m^3/s)
+    model.d_alpha_turbined = pyo.Param(model.HS, default=0) 
+    model.d_alpha_pumped = pyo.Param(model.HS, default=0)
     
     model.discharge_volume = pyo.Param(model.T, model.B, default=0) # m^3
     model.market_price = pyo.Param(model.T)

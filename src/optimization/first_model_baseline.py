@@ -9,9 +9,11 @@ from optimization.pyomo_models.constraints.hydropower_plan import hydropower_pla
 def generate_baseline_model():
     
     model: pyo.AbstractModel = pyo.AbstractModel()
+    
     model = baseline_sets(model)
     model = baseline_parameters(model)
     model = baseline_variables(model)
+    
     model = baseline_objective(model)
     model = basin_volume_constraint(model)
     model = hydropower_plan_constraint(model)

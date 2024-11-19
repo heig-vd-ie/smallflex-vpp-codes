@@ -5,6 +5,7 @@ import polars as pl
 from polars import col as c
 import polars.selectors as cs
 from typing_extensions import Optional, Literal
+from itertools import chain
 import pyomo.environ as pyo
 from typing import Union
 import math
@@ -75,10 +76,10 @@ def generate_clean_timeseries(
         .group_by_dynamic(
             index_column=timestamp_col, start_by="datapoint", every=time_delta, closed="left"
         ).agg(
-                c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
-                c(col_name).max().name.prefix("max_"),
-                c(col_name).min().name.prefix("min_"),
-            )
+            c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
+            c(col_name).max().name.prefix("max_"),
+            c(col_name).min().name.prefix("min_"),
+        )
     return (
         datetime_index["T", "timestamp"]\
             .join(cleaned_data, left_on="timestamp", right_on=timestamp_col, how="left")\
@@ -93,8 +94,6 @@ def generate_segments(
     if isinstance(y_cols, str):
         y_cols = [y_cols]
         
-    columns: list[str] = [x_col] + y_cols
-    
     for y_col in y_cols:
     
         segments.append(
@@ -107,16 +106,17 @@ def generate_segments(
     segments = list(np.array(segments).mean(axis=0, dtype=int))
     
     return(
-        data
-        .with_row_index(name= "val_index").filter(pl.col("val_index").is_in(segments))
-        .drop("val_index")[[x_col] + y_cols]
+        data.with_columns(
+            cs.exclude(cs.starts_with("alpha")).abs()
+        ).with_row_index(name= "val_index").filter(pl.col("val_index").is_in(segments))
+        .drop("val_index")
         .with_columns(
             # Define max and min values for each segment
-            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in columns)
-        .slice(offset=0, length=n_segments) # Remove last segment not bounded
+            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in data.columns)
+        .slice(offset=0, length=n_segments) 
         .with_columns(
             # Calculate the slope of the segments
-            (pl.all().exclude(x_col)
+            (cs.starts_with("alpha")
             .list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0) /
             c(x_col).list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0)).name.prefix("d_"),
         )
@@ -152,59 +152,22 @@ def generate_datetime_index(
 
     return first_datetime_index, second_datetime_index
 
-def extract_optimization_results(model_instance: pyo.Model, var_name: str) -> pl.DataFrame:
-    index_list = [set_.name for set_ in getattr(model_instance, var_name).index_set().subsets()]
+def extract_optimization_results(model_instance: pyo.Model, var_name: str, subset_mapping: dict) -> pl.DataFrame:
+    index_list = list(chain(*map(lambda x: subset_mapping[x.name], getattr(model_instance, var_name).index_set().subsets())))
     
     if len(index_list) == 1:
-        return pl.DataFrame(map(list, getattr(model_instance, var_name).extract_values().items()), schema= [index_list[0], var_name])
+        data_pl: pl.DataFrame = pl.DataFrame(
+            map(list, getattr(model_instance, var_name).extract_values().items()), 
+            schema= [index_list[0], var_name]
+        )
     else:
-        return pl.DataFrame(map(list, getattr(model_instance, var_name).extract_values().items()), schema= ["index", var_name]).with_columns(
+        data_pl: pl.DataFrame = pl.DataFrame(
+            map(list, getattr(model_instance, var_name).extract_values().items()), 
+            schema= ["index", var_name]
+        ).with_columns(
             c("index").list.to_struct(fields=index_list)
         ).unnest("index")
-        
-# def process_performance_table(
-#     small_flex_input_schema: SmallflexInputSchema, power_plant_name: str, state: list[bool], d_height: float = 1, n_segments: int = 5 ):
-
-#     power_plant_metadata = small_flex_input_schema.hydro_power_plant\
-#         .filter(c("name") == power_plant_name).to_dicts()[0]
-#     water_basin_uuid = power_plant_metadata["upstream_basin_fk"]
-#     power_plant_uuid = power_plant_metadata["uuid"]
-#     basin_metadata = small_flex_input_schema.water_basin.filter(c("uuid") == water_basin_uuid).to_dicts()[0]
-
-#     basin_height_volume_table: pl.DataFrame = small_flex_input_schema\
-#             .basin_height_volume_table\
-#             .filter(c("water_basin_fk") == water_basin_uuid)
-
-#     down_stream_height = small_flex_input_schema.water_basin.filter(c("uuid") == power_plant_metadata["downstream_basin_fk"])["height_max"][0]
-
-#     power_plant_state = small_flex_input_schema.power_plant_state.filter(c("power_plant_fk") == power_plant_uuid)
-#     power_performance_table: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table.with_columns((c("head") + down_stream_height).alias("height"))
-
-#     state_uuid = power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]
-#     height_min: float= basin_metadata["height_min"] if basin_metadata["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore
-#     height_max: float= basin_metadata["height_max"] if basin_metadata["height_max"] is not None else basin_height_volume_table["height"].max() # type: ignore
-
-#     volume_table: pl.DataFrame = arange_float(height_max, height_min, d_height)\
-#         .to_frame(name="height")\
-#         .join(basin_height_volume_table, on ="height", how="full", coalesce=True)\
-#         .sort("height").interpolate()\
-#         .with_columns(
-#             c("volume").pipe(linear_interpolation_for_bound).alias("volume")
-#         ).drop_nulls("height")[["height", "volume"]]
-        
-#     performance_table_per_volume = volume_table.join(
-#         power_performance_table.filter(c("power_plant_state_fk") == state_uuid)[["height", "flow", "electrical_power"]],
-#         on ="height", how="full", coalesce=True
-#         ).sort("height").interpolate()\
-#         .with_columns(
-#             c("flow", "electrical_power").pipe(linear_interpolation_for_bound)
-#         ).filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
-#         .with_columns((c("electrical_power")/c("flow")).alias("alpha"))\
-#         [["height", "volume", "flow", "electrical_power", "alpha"]]
-        
-#     performance_table_per_state = generate_segments(performance_table_per_volume, x_col="volume", y_col="alpha", n_segments=n_segments)
-    
-#     return performance_table_per_volume, performance_table_per_state
+    return data_pl.with_columns(c(index_list).cast(pl.UInt32))
 
 def linear_interpolation_for_bound(x_col: pl.Expr, y_col: pl.Expr) -> pl.Expr:
     
@@ -237,3 +200,60 @@ def linear_interpolation_using_cols(
             linear_interpolation_for_bound(x_col=c(x_col), y_col=c(col)).alias(col)
         )
     return df
+
+def join_index(index_list: list[str]) -> pl.Expr:
+    return pl.concat_list(index_list).cast(pl.List(pl.Utf8)).list.join(separator="_").alias("_".join(index_list))
+
+def explode_index(index_name) -> pl.Expr:
+    return c(index_name).str.split("_").cast(pl.List(pl.UInt32)).list.to_struct(fields=index_name.split("_"))
+
+def join_pyomo_variables(
+    model_instance: pyo.Model, subset_mapping: dict, index_list: list[str], var_list: list[str]
+    ) -> pl.DataFrame:
+    
+    index_name: str = "_".join(index_list)
+    results: pl.DataFrame = pl.DataFrame(schema=[(index_name, pl.Utf8)])
+    for var_name in var_list:
+        results = results.join(
+            extract_optimization_results(
+                model_instance=model_instance, var_name=var_name, subset_mapping=subset_mapping
+            ).select(var_name, join_index(index_list)), 
+            on=index_name, how="full", coalesce=True)
+        
+    return results.with_columns(explode_index(index_name)).unnest(index_name)
+
+
+def numerical_curviness(d: str, d2: str) -> pl.Expr:
+    return c(d2).abs()/((1 + c(d)**2)**(3/2))
+
+
+def numerical_derivative(x_col: str, y_col: str):
+    d_ff: pl.Expr = c(y_col).diff(1)/c(x_col).diff(1)
+    d_bf: pl.Expr = c(y_col).diff(-1)/c(x_col).diff(-1)
+    return (pl.coalesce(d_ff, d_bf) + pl.coalesce(d_bf, d_ff))/2
+
+
+def calculate_curviness(df: pl.DataFrame, x_col: str, y_col_list: list[str]):
+    
+    df = df.with_columns(
+        (c(col)/c(col).max()).alias(f"n_{col}")
+        # (c(col)).alias(f"n_{col}")
+        for col in y_col_list + [x_col]
+        ).with_columns(
+            numerical_derivative(x_col=f"n_{x_col}", y_col=f"n_{y_col}").alias(f"d_{y_col}")
+            for y_col in y_col_list
+        ).with_columns(
+            numerical_derivative(x_col=f"n_{x_col}", y_col=f"d_{y_col}").alias(f"d2_{y_col}")
+            for y_col in y_col_list
+        ).with_columns(
+            numerical_curviness(d=f"d_{y_col}", d2=f"d2_{y_col}").alias(f"k_{y_col}")
+            for y_col in y_col_list
+        )
+
+    return df
+
+def max_curviness(df: pl.DataFrame, x_col: str, y_col_list: list[str]):
+    result: pl.DataFrame = calculate_curviness(df=df, x_col=x_col, y_col_list=y_col_list)
+    return (
+        result.select(pl.max_horizontal(cs.starts_with("k_")).alias("max")).max().row(0)[0]
+    )
