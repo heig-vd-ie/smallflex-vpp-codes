@@ -233,24 +233,18 @@ def numerical_derivative(x_col: str, y_col: str):
     return (pl.coalesce(d_ff, d_bf) + pl.coalesce(d_bf, d_ff))/2
 
 
-def calculate_curviness(df: pl.DataFrame, x_col: str, y_col_list: list[str]):
-    
-    df = df.with_columns(
-        (c(col)/c(col).max()).alias(f"n_{col}")
-        # (c(col)).alias(f"n_{col}")
-        for col in y_col_list + [x_col]
-        ).with_columns(
-            numerical_derivative(x_col=f"n_{x_col}", y_col=f"n_{y_col}").alias(f"d_{y_col}")
-            for y_col in y_col_list
-        ).with_columns(
-            numerical_derivative(x_col=f"n_{x_col}", y_col=f"d_{y_col}").alias(f"d2_{y_col}")
-            for y_col in y_col_list
-        ).with_columns(
-            numerical_curviness(d=f"d_{y_col}", d2=f"d2_{y_col}").alias(f"k_{y_col}")
-            for y_col in y_col_list
+def calculate_curviness(data: pl.DataFrame, x_col: str, y_col_list: list[str]): 
+    x  = (data[x_col]/data[x_col].max()).to_numpy()
+    # x  = data[x_col].to_numpy()
+    for y_col in y_col_list:
+        y = (data[y_col]/data[y_col].max()).to_numpy()
+        # y  = data[y_col].to_numpy()
+        d1 = np.gradient(y, x)
+        d2 = np.gradient(d1, x)
+        data = data.with_columns(
+            pl.Series(np.abs(d2)/((1 + d1**2)**(3/2))).alias(f"k_{y_col}")
         )
-
-    return df
+    return data
 
 def max_curviness(df: pl.DataFrame, x_col: str, y_col_list: list[str]):
     result: pl.DataFrame = calculate_curviness(df=df, x_col=x_col, y_col_list=y_col_list)

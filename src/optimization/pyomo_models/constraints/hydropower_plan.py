@@ -5,28 +5,28 @@ def hydropower_plan_constraint(model):
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def state_turbined_volume_constraint(model, t, h, b, s_b, s_h):
         return (
-            model.turbined_volume_by_state[t, h, s_h] <= 
-            model.min_flow_turbined[h, s_h] * model.basin_state[t, b, s_b] * 3600 * model.nb_hours[t] 
+            model.turbined_volume_by_state[t, h, s_h] <=
+            model.min_flow_turbined[h, s_h] * model.basin_state[t, b, s_b] * 3600 * model.nb_hours[t]
         )  
     
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def state_turbined_energy_constraint(model, t, h, b, s_b, s_h):
         return (
-            model.turbined_energy_by_state[t, h, s_h] == 
+            model.turbined_energy_by_state[t, h, s_h] ==
             model.turbined_volume_by_state[t, h, s_h] * model.min_alpha_turbined[h, s_h] / 3600
         )
 
     @model.Constraint(model.T, model.H) # type: ignore
     def turbined_volume_constraint(model, t, h):
         return (
-            model.turbined_volume[t, h] == 
-            sum(model.turbined_volume_by_state[t, h, s_h] for s_h in model.S_h[h]) 
+            model.turbined_volume[t, h] ==
+            sum(model.turbined_volume_by_state[t, h, s_h] for s_h in model.S_h[h])
         )  
     @model.Constraint(model.T, model.H) # type: ignore
     def turbined_energy_constraint(model, t, h):
         return (
-            model.turbined_energy[t, h] == 
-            sum(model.turbined_energy_by_state[t, h, s_h] for s_h in model.S_h[h]) 
+            model.turbined_energy[t, h] ==
+            sum(model.turbined_energy_by_state[t, h, s_h] for s_h in model.S_h[h])
         )  
         
     ####################################################################################################################
@@ -35,14 +35,14 @@ def hydropower_plan_constraint(model):
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def state_pumped_volume_constraint(model, t, h, b, s_b, s_h):
         return (
-            model.pumped_volume_by_state[t, h, s_h] <= 
-            model.min_flow_pumped[h, s_h] * model.basin_state[t, b, s_b] * 3600 * model.nb_hours[t] 
+            model.pumped_volume_by_state[t, h, s_h] <=
+            model.min_flow_pumped[h, s_h] * model.basin_state[t, b, s_b] * 3600 * model.nb_hours[t]
         )  
     
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def state_pumped_energy_constraint(model, t, h, b, s_b, s_h):
         return (
-            model.pumped_energy_by_state[t, h, s_h] == 
+            model.pumped_energy_by_state[t, h, s_h] ==
             model.pumped_volume_by_state[t, h, s_h] * model.min_alpha_pumped[h, s_h] / 3600
         )
 
@@ -50,13 +50,13 @@ def hydropower_plan_constraint(model):
     def pumped_volume_constraint(model, t, h):
         return (
             model.pumped_volume[t, h] == 
-            sum(model.pumped_volume_by_state[t, h, s_h] for s_h in model.S_h[h]) 
+            sum(model.pumped_volume_by_state[t, h, s_h] for s_h in model.S_h[h])
         )  
     @model.Constraint(model.T, model.H) # type: ignore
     def pumped_energy_constraint(model, t, h):
         return (
-            model.pumped_energy[t, h] == 
-            sum(model.pumped_energy_by_state[t, h, s_h] for s_h in model.S_h[h]) 
+            model.pumped_energy[t, h] ==
+            sum(model.pumped_energy_by_state[t, h, s_h] for s_h in model.S_h[h])
         )  
     # def baseline_turbined_volume_constraint(model):
     # # Basin energy constraints

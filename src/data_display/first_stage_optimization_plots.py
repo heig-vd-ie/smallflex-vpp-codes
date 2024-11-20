@@ -122,7 +122,7 @@ def plot_result_summarized(
         fig.update_layout(
                 barmode='relative',
                 margin=dict(t=60, l=65, r= 10, b=60), 
-                width=1000,   # Set the width of the figure
+                width=1200,   # Set the width of the figure
                 height=800,
                 legend=dict(title_text="Legend"),
                 legend_tracegroupgap=50
