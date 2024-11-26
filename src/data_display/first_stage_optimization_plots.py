@@ -81,8 +81,8 @@ def plot_powered_volume(
     subset_mapping: dict, fig: Figure, row: int, time_divider: int, **kwargs
     ) -> Figure:
     c_nb = 0
-    for i, var_name in enumerate(["turbined_volume", "pumped_volume"]):
-        factor = 1e-6 if i == 0 else -1e-6
+    for i, var_name in enumerate(["turbined_flow", "pumped_flow"]):
+        factor = 1 if i == 0 else -1
         results = extract_optimization_results(
             model_instance=model_instance, var_name=var_name, subset_mapping=subset_mapping
             ).join(index["hydro_power_plant"][["H", "name"]], on="H", how="left")\
