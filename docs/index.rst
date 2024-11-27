@@ -6,7 +6,13 @@
 SmallFlex documentation
 =======================
 
+User Manual
+***************
+
+This section outlines the steps a user can follow to generate a new database with updated data.
+
 .. toctree::
    :maxdepth: 2
+   
    first_model_baseline
 
