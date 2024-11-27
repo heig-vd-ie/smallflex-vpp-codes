@@ -17,7 +17,6 @@ Water basin volume evolution
         \end{cases}
     \\end{align}
 
-
 .. math::
     :label: basin-end-volume
     
