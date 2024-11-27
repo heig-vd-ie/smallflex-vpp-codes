@@ -2814,20 +2814,6 @@ standalone = ["Sphinx (>=5)"]
 test = ["pytest"]
 
 [[package]]
-name = "sphinxcontrib-umlet"
-version = "1.0.2"
-description = "Sphinx Extension to embed UMLet diagrams"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "sphinxcontrib-umlet-1.0.2.tar.gz", hash = "sha256:c342c2506675f135baafc19f44fa0375d6d508655b12f33cdc8b7b91c20c62a3"},
-    {file = "sphinxcontrib_umlet-1.0.2-py3-none-any.whl", hash = "sha256:0b028e2be46a8312b497cae3370ffb0b5b3c1470dae75a3ad33aa32bf7af45f0"},
-]
-
-[package.dependencies]
-sphinx = ">=2"
-
-[[package]]
 name = "stack-data"
 version = "0.6.3"
 description = "Extract data from python stack frames and tracebacks for informative displays"
@@ -3123,4 +3109,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "cd7dfb127dfc44ce321820e97103b0f7b779e2f300873a7a1d5a908239eefb32"
+content-hash = "ad924e6b1250a86cf26c1421a630b1951ec7b8114e874be95f6ce5dbaf52658f"

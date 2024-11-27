@@ -22,10 +22,8 @@ extensions = [
     "nbsphinx",
     "myst_parser",
     "sphinx_copybutton",
-    "sphinxcontrib.umlet"
 ]
 
-umlet_binary_path = 'umlet'
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
