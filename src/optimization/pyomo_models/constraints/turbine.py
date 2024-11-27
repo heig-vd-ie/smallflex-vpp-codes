@@ -2,20 +2,20 @@
 Water turbined
 ~~~~~~~~~~~~~~~
 .. math::
-   :label: turbined-flow-state
-   
-   Q_\\text{TUR, S}^{t,~h,~s\_h} \leq Q_\\text{TUR, MAX}^{h,~s\_h} \cdot S_\\text{BAS}^{t,~b,~s\_b}
+    :label: turbined-flow-state
+    
+    Q_\\text{TUR, S}^{t,~h,~s\_h} \leq Q_\\text{TUR, MAX}^{h,~s\_h} \cdot S_\\text{BAS}^{t,~b,~s\_b}
 
 .. math::
-   :label: turbined-flow
-   
-   Q_\\text{TUR}^{t,~h} = \sum_{s \in S\_H^{h}} Q_\\text{TUR, S}^{t,~h,~s}
-   
-.. math::
-   :label: turbined-power
-   
-   P_\\text{TUR}^{t,~h} = \sum_{s \in S\_H^{h}} \\alpha_\\text{TUR, AVG}^{h,~s} \cdot  Q_\\text{TUR, S}^{t,~h,~s} 
+    :label: turbined-flow
 
+    Q_\\text{TUR}^{t,~h} = \sum_{s \in S\_H\{h\}} Q_\\text{TUR, S}^{t,~h,~s} 
+    
+.. math::
+    :label: turbined-power
+    
+    P_\\text{TUR}^{t,~h} = \sum_{s \in S\_H\{h\}} \\alpha_\\text{TUR, AVG}^{h,~s} \cdot  Q_\\text{TUR, S}^{t,~h,~s}
+    
 The constraint :eq:`turbined-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
 basin set :math:`B` and the hydro powerplant set :math:`H`.
 """

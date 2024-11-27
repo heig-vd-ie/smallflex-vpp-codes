@@ -1,9 +1,7 @@
-﻿Name,Dimension,Subset of,Description
+﻿Name,Dimension,Sub index,Description
 :math:`T`,1,,time
 :math:`H`,1,,Hydro powerplants
 :math:`B`,1,,Water basins
 :math:`S\_H`,2,:math:`H`,State of each hydro powerplants
 :math:`S\_B`,2,:math:`B`,State of each basins
-:math:`HS`,2,,"Index to list every hydro powerplants, state pair"
-:math:`BS`,2,,"Index to list every hydro powerplants, state pair"
 :math:`S\_BH`,4,:math:`\{ H; ~B; ~S\_H \;~S\_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"

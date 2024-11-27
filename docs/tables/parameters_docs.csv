@@ -1,5 +1,6 @@
 ﻿Name,Description,Type,Default value,Units
 :math:`c_\text{DA}^{t}`,Day-ahead energy market price,:math:`\mathbb{R}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
+:math:`nb_\text{SEC}`,Number of seconds in one hour,:math:`\mathbb{R}^{+}`,3600,
 :math:`nb_\text{HOUR}^{t}`,Number of hours for each time-step,:math:`\mathbb{R}^{+}`,,
 ":math:`V_\text{BAS, START}^{b}`",Basins stating water volume,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{BAS, MAX}^{b,~s\_b}`",Basins water volume upper boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`

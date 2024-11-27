@@ -1,3 +1,25 @@
+"""
+:math:`S\_H` and :math:`S\_B` include subset to specify the corresponding hydro powerplants and basins that the 
+state is associated with, respectively. The sets are constructed as demonstrated in the following example.
+
+:math:`S\_H =\\begin{cases} 1: \left[1, 2\\right] \\\\ 2: \left[4, 5, 6\\right]  \\\\ 3: \left[6\\right] \\end{cases}`
+
+To collect all states associated with a basin :math:`b` we can use the notation :math:`S\_B\{B\}`
+
+In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets, 
+such as :math:`S\_H`  To handle this limitation, we need to create new sets, and :math:`S\_B`, which will explicitly 
+represent the deployment of these subsets. These new sets will be structured to map the relationships required for 
+indexing variables and parameters in the model effectively.
+
+:math:`HS \in \{s, s\_h\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
+
+
+The set :math:`S\_BH` defines the connections between each basin, its corresponding state, and the hydro powerplants. 
+This link is established solely between a hydro powerplant and its associated upstream basin. It is assumed that the 
+water level in downstream basins does not affect the behavior of turbined or pumped energy.
+
+"""
+
 import pyomo.environ as pyo
 
 def baseline_sets(model):

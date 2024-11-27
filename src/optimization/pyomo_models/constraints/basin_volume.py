@@ -3,50 +3,58 @@ Water basin volume evolution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
-   :label: basin-volume-evolution
-   
-   V_\\text{BAS}^{t,~b} =
-   \\begin{cases} 
-       V_\\text{BAS, START}^{b}, & \\text{if } t = t_0 \\\\
-       V_\\text{BAS}^{t - 1,~b} + 3600 \cdot nb_\\text{HOUR}^{t-1} \cdot
-       \sum_{h \in H} \left(
-           F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t-1,~h} +
-           F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t-1,~h}
-       \\right), & \\text{otherwise}
-   \end{cases}
-   
-.. math::
-   :label: basin-end-volume
-   
-   V_\\text{BAS, START}^{b} = V_\\text{BAS}^{t_{end},~b} + 3600 \cdot nb_\\text{HOUR}^{t_{end}} \cdot
-       \sum_{h \in H} \left(
-           F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t_{end},~h} +
-           F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t_{end},~h}
-       \\right)
+    :label: basin-volume-evolution
+    
+    \\begin{align}
+        V_\\text{BAS}^{t,~b} =
+        \\begin{cases} 
+            &V_\\text{BAS, START}^{b} & \\text{if } t = t_0 \\\\
+            &V_\\text{BAS}^{t - 1,~b} - V_\\text{SPIL}^{t - 1,~b} + nb_\\text{SEC} \cdot nb_\\text{HOUR}^{t-1} \cdot 
+            \sum_{h \in H} \left( 
+                F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t-1,~h} + 
+                F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t-1,~h} 
+            \\right) \quad & \\text{if } t \\neq t_0
+        \end{cases}
+    \\end{align}
 
+
+.. math::
+    :label: basin-end-volume
+    
+    V_\\text{BAS, START}^{b} = V_\\text{BAS}^{t_{end},~b} - V_\\text{SPIL}^{t_{end},~b} + 
+    nb_\\text{SEC} \cdot nb_\\text{HOUR}^{t_{end}} \cdot
+        \sum_{h \in H} \left(
+            F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t_{end},~h} +
+            F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t_{end},~h}
+        \\right)
+
+    
 Water basin state
 ~~~~~~~~~~~~~~~~~~
 
 .. math::
-   :label: basin-max-state
-   
-   V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s\_b} +  V_\\text{BAS, MAX}^{b,~S\_B_\\text{MAX}^{b}} 
-   \cdot \left(1 -S_\\text{BAS}^{t,~b,~s\_b} \\right)
-   
-.. math::
-   :label: basin-min-state
-   
-   V_\\text{BAS}^{t,~b} \geq V_\\text{BAS, MIN}^{b,~s\_b} \cdot S_\\text{BAS}^{t,~b,~s\_b}
-   
-.. math::
-   :label: basin-total-state
-   
-   \sum_{s \in S\_B^{b}} S_\\text{BAS}^{t,~b,~s} = 1
+    :label: basin-max-state
 
+    V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s\_b} +  V_\\text{BAS, MAX}^{b,~S\_B_\\text{MAX}\{b\}} 
+    \cdot \left(1 -S_\\text{BAS}^{t,~b,~s\_b} \\right)
+
+    
 .. math::
-   :label: basin-volume-state
-   
-   V_\\text{BAS, S}^{t,~b,~s\_b} =  V_\\text{BAS}^{t,~b} \cdot S_\\text{BAS}^{t,~b,~s}
+    :label: basin-min-state
+
+    V_\\text{BAS}^{t,~b} \geq V_\\text{BAS, MIN}^{b,~s\_b} \cdot S_\\text{BAS}^{t,~b,~s\_b}
+
+    
+.. math::
+    :label: basin-total-state
+
+    \sum_{s \in S\_B\{b\}} S_\\text{BAS}^{t,~b,~s} = 1
+
+    
+.. math::
+    :label: basin-volume-state
+
+    V_\\text{BAS, S}^{t,~b,~s\_b} =  V_\\text{BAS}^{t,~b} \cdot S_\\text{BAS}^{t,~b,~s}
 
 The constraint :eq:`basin-volume-state` involves the multiplication of a floating-point variable and a binary variable. To 
 address this, the constraint requires the application of a *Big M Linearization* technique.
