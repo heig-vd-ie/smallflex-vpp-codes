@@ -1,3 +1,26 @@
+"""
+Water turbined
+~~~~~~~~~~~~~~~
+.. math::
+   :label: turbined-flow-state
+   
+   Q_\\text{TUR, S}^{t,~h,~s\_h} \leq Q_\\text{TUR, MAX}^{h,~s\_h} \cdot S_\\text{BAS}^{t,~b,~s\_b}
+
+.. math::
+   :label: turbined-flow
+   
+   Q_\\text{TUR}^{t,~h} = \sum_{s \in S\_H^{h}} Q_\\text{TUR, S}^{t,~h,~s}
+   
+.. math::
+   :label: turbined-power
+   
+   P_\\text{TUR}^{t,~h} = \sum_{s \in S\_H^{h}} \\alpha_\\text{TUR, AVG}^{h,~s} \cdot  Q_\\text{TUR, S}^{t,~h,~s} 
+
+The constraint :eq:`turbined-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
+basin set :math:`B` and the hydro powerplant set :math:`H`.
+"""
+
+
 def turbine_constraints(model):
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
@@ -29,77 +52,56 @@ def turbine_constraints(model):
             sum(model.turbined_alpha_by_state[t, h, s_h] for s_h in model.S_h[h])
         ) 
         
+    return model
+
+
+def turbine_power_1_constraints(model):
+    @model.Constraint(model.T, model.HS) # type: ignore
+    def turbined_power_by_state_constraint(model, t, h, s_h):
+        return (
+            model.turbined_power_by_state[t, h, s_h] == 
+            model.turbined_flow_by_state[t, h, s_h] * 
+            (model.max_alpha_turbined[h, s_h] + model.min_alpha_turbined[h, s_h]) / 2
+        ) 
+    
     @model.Constraint(model.T, model.H) # type: ignore
     def turbined_power_constraint(model, t, h):
         return (
             model.turbined_power[t, h] ==
             sum(model.turbined_power_by_state[t, h, s_h] for s_h in model.S_h[h])
         ) 
-        
+    return model
+
+def turbine_power_2_constraints(model):
     ####################################################################################################################
     ## Turbined power constraints ######################################################################################
     #################################################################################################################### 
     @model.Constraint(model.T, model.HS) # type: ignore
     def turbined_power_max_constraint(model, t, h, s_h):
-        max_flow = model.min_flow_pumped[h, model.S_h[h].last()]
         return (
             model.turbined_power_by_state[t, h, s_h] >= 
-            # model.turbined_alpha_by_state[t, h, s_h] * model.min_flow_turbined[h, s_h] + 
-            # model.turbined_flow_by_state[t, h, s_h] * model.max_alpha_turbined[h, s_h] 
-            model.turbined_alpha_by_state[t, h, s_h] * max_flow +
-            model.turbined_flow[t, h] * model.max_alpha_turbined[h, s_h] 
-            - max_flow * model.max_alpha_turbined[h, s_h]
+            model.turbined_alpha_by_state[t, h, s_h] * model.min_flow_turbined[h, s_h] + 
+            model.turbined_flow_by_state[t, h, s_h] * model.max_alpha_turbined[h, s_h] 
+            - model.min_flow_turbined[h,s_h] * model.max_alpha_turbined[h, s_h]
         ) 
 
-    
     @model.Constraint(model.T, model.HS) # type: ignore
     def turbined_power_min_max_constraint(model, t, h, s_h):
         return (
             model.turbined_power_by_state[t, h, s_h] <= 
-            model.turbined_flow[t, h] * model.max_alpha_turbined[h, s_h] 
-            # model.turbined_flow_by_state[t, h, s_h] * model.max_alpha_turbined[h, s_h] 
+            model.turbined_flow_by_state[t, h, s_h] * model.max_alpha_turbined[h, s_h] 
         ) 
     
     @model.Constraint(model.T, model.HS) # type: ignore
     def turbined_power_max_min_constraint(model, t, h, s_h):
-        max_flow = model.min_flow_pumped[h, model.S_h[h].last()]
         return (
             model.turbined_power_by_state[t, h, s_h] <= 
-            model.turbined_alpha_by_state[t, h, s_h] * max_flow
+            model.turbined_alpha_by_state[t, h, s_h] * model.min_flow_turbined[h, s_h]
         )  
-    
+    @model.Constraint(model.T, model.H) # type: ignore
+    def turbined_power_constraint(model, t, h):
+        return (
+            model.turbined_power[t, h] ==
+            sum(model.turbined_power_by_state[t, h, s_h] for s_h in model.S_h[h])
+        ) 
     return model
-
-    
-    # @model.Constraint(model.T, model.H) # type: ignore
-    # def turbined_power_max_constraint(model, t, h):
-    #     return (
-    #         model.turbined_power[t, h] >= 
-    #         model.turbined_alpha[t, h] * model.min_flow_turbined[h, model.S_h[h].last()] + 
-    #         model.turbined_flow[t, h] * model.max_alpha_turbined[h, model.S_h[h].last()] -
-    #         model.min_flow_turbined[h, model.S_h[h].last()] * model.max_alpha_turbined[h, model.S_h[h].last()]
-    #     ) 
-        
-    # @model.Constraint(model.T, model.H) # type: ignore
-    # def turbined_power_min_constraint(model, t, h):
-    #     return (
-    #         model.turbined_power[t, h] >= 
-    #         model.turbined_flow[t, h] * model.min_alpha_turbined[h, model.S_h[h].first()]
-    #     ) 
-    
-    # @model.Constraint(model.T, model.H) # type: ignore
-    # def turbined_power_min_max_constraint(model, t, h):
-    #     return (
-    #         model.turbined_power[t, h] <= 
-    #         model.turbined_flow[t, h] * model.max_alpha_turbined[h, model.S_h[h].last()] 
-    #     ) 
-    
-    # @model.Constraint(model.T, model.H) # type: ignore
-    # def turbined_power_max_min_constraint(model, t, h):
-    #     return (
-    #         model.turbined_power[t, h] <= 
-    #         model.turbined_alpha[t, h] * model.min_flow_turbined[h, model.S_h[h].last()] + 
-    #         model.turbined_flow[t, h] * model.min_alpha_turbined[h, model.S_h[h].first()] -
-    #         model.min_flow_turbined[h, model.S_h[h].last()] * model.min_alpha_turbined[h, model.S_h[h].first()]
-    #     )    
-    

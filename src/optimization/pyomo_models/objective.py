@@ -1,3 +1,12 @@
+"""
+.. math::
+   :label: first-objective
+   
+   \max \sum_{t \in T} c_\\text{DA}^{t} \cdot nb_\\text{HOUR}^{t} \cdot 
+   \sum_{b \in B} \left( P_\\text{TUR}^{t,~h} - P_\\text{PUM}^{t,~h} \\right) 
+
+"""
+
 import pyomo.environ as pyo
 def baseline_objective(model):
 

@@ -1,0 +1,11 @@
+﻿Name,Description,Type,Units
+":math:`V_\text{BAS}^{t,~b}`",Basins actual water volume,:math:`\mathbb{R}^{+}`,:math:`m^{3}`
+":math:`V_\text{SPIL}^{t,~b}`",Spilled water volumes when basins are full,:math:`\mathbb{R}^{+}`,:math:`m^{3}`
+":math:`S_\text{BAS}^{t,~b,~s\_b}`","The state of a basin derived from its volumw:  :math:`S_\text{BAS}^{t, b, s\_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s\_b} ;V_\text{BAS, MAX}^{b,~s\_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
+":math:`P_\text{TUR}^{t,~h}`",Electrical power produced by a turbine,:math:`\mathbb{R}^{+}`,:math:`MW`
+":math:`Q_\text{TUR}^{t,~h}`",Amount of water that flows through a turbine,:math:`\mathbb{R}^{+}`,:math:`m^{3}/s`
+":math:`P_\text{PUM}^{t,~h}`",Electrical power produced by a pump,:math:`\mathbb{R}^{+}`,:math:`MW`
+":math:`Q_\text{PUM}^{t,~h}`",Amount of water that flows through a pump,:math:`\mathbb{R}^{+}`,:math:`m^{3}/s`
+":math:`V_\text{BAS, S}^{t,~b,~s\_b}`",Basin actual volumes for each state,:math:`\mathbb{R}^{+}`,:math:`m^{3}`
+":math:`Q_\text{TUR, S}^{t,~h,~s\_h}`",Amount of water that flows through a turbine for each state,:math:`\mathbb{R}^{+}`,:math:`m^{3}/s`
+":math:`Q_\text{PUM, S}^{t,~h,~s\_h}`",Amount of water that flows through a pump for each state,:math:`\mathbb{R}^{+}`,:math:`m^{3}/s`
