@@ -40,7 +40,7 @@ Water basin state
     :nowrap:
     
     \\begin{align}
-    V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s\_b} +  V_\\text{BAS, MAX}^{b,~S\_B_\\text{MAX}\{b\}} 
+    V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s\_b} +  V_\\text{BAS, MAX}^{b,~S\_B_\\text{END}\{b\}} 
     \cdot \left(1 -S_\\text{BAS}^{t,~b,~s\_b} \\right)
     \\end{align}
 

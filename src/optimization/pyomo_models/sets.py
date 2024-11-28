@@ -1,6 +1,7 @@
 """
 The sets :math:`T`, :math:`S\_H` and :math:`S\_B` are arranged in a specific order such that indexing a variable with 
-the last element of a set (i.e :math:`t_{LAST} \in T`) corresponds to the highest or final element of that variable.
+the first or last element of a set (i.e :math:`t_{0} ant math:`t_{\\text{END}} \in T`) corresponds respectively to the 
+lowest/first or highest/final element of that variable.
 
 :math:`S\_H` and :math:`S\_B` include subset to specify the corresponding hydro powerplants and basins that the 
 state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect 
