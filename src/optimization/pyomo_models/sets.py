@@ -21,6 +21,7 @@ This link is established solely between a hydro powerplant and its associated up
 water level in downstream basins does not affect the behavior of turbined or pumped energy.
 
 :math:`S\_BH \in \{b, h\, s\_b, s\_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}` 
+
 """
 
 import pyomo.environ as pyo
