@@ -52,7 +52,7 @@ Water basin state
 .. math::
     :label: basin-volume-state
 
-    V_\\text{BAS, S}^{t,~b,~s\_b} =  V_\\text{BAS}^{t,~b} \cdot S_\\text{BAS}^{t,~b,~s}
+    V_\\text{BAS, S}^{t,~b,~s\_b} =  V_\\text{BAS}^{t,~b} \cdot S_\\text{BAS}^{t,~b,~s\_b}
 
 The constraint :eq:`basin-volume-state` involves the multiplication of a floating-point variable and a binary variable. To 
 address this, the constraint requires the application of a *Big M Linearization* technique.
