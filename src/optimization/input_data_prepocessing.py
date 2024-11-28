@@ -135,7 +135,7 @@ def clean_hydro_power_performance_table(
 
             
 def generate_hydro_power_state(
-    power_performance_table: list[dict], index: dict[str, pl.DataFrame], state_curviness_mapping: dict[float, int]
+    power_performance_table: list[dict], index: dict[str, pl.DataFrame]
     ) -> dict[str, pl.DataFrame]: 
     
     state_index: pl.DataFrame = pl.DataFrame()

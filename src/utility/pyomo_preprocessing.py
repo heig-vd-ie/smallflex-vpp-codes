@@ -112,9 +112,11 @@ def generate_segments(
         .drop("val_index")
         .with_columns(
             # Define max and min values for each segment
-            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in data.columns)
-        .slice(offset=0, length=n_segments) 
+            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in data.columns
+        ).slice(offset=0, length=n_segments) 
         .with_columns(
+            c(col).list.mean().alias("avg_" + col)  for col in data.columns
+        ).with_columns(
             # Calculate the slope of the segments
             (cs.starts_with("alpha")
             .list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0) /

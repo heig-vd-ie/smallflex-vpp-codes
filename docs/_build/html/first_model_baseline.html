@@ -59,6 +59,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#water-basin-volume-evolution">Water basin volume evolution</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#water-basin-state">Water basin state</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#water-turbined">Water turbined</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#water-pumped">Water pumped</a></li>
 </ul>
 </li>
 </ul>
@@ -117,38 +118,39 @@
 <td></td>
 <td><p>Water basins</p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S\_H\)</span></p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S_H\)</span></p></td>
 <td><p>2</p></td>
 <td><p><span class="math notranslate nohighlight">\(H\)</span></p></td>
 <td><p>State of each hydro powerplants</p></td>
 </tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S\_B\)</span></p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S_B\)</span></p></td>
 <td><p>2</p></td>
 <td><p><span class="math notranslate nohighlight">\(B\)</span></p></td>
 <td><p>State of each basins</p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S\_BH\)</span></p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S_{BH}\)</span></p></td>
 <td><p>4</p></td>
-<td><p><span class="math notranslate nohighlight">\(\{ H; ~B; ~S\_H \;~S\_B \}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\{ H; ~B; ~S_H \;~S_B \}\)</span></p></td>
 <td><p>Index to make the correspondence between the states, basins and hydro powerplants</p></td>
 </tr>
 </tbody>
 </table>
-<p>The sets <span class="math notranslate nohighlight">\(T\)</span>, <span class="math notranslate nohighlight">\(S\_H\)</span> and <span class="math notranslate nohighlight">\(S\_B\)</span> are arranged in a specific order such that indexing a variable with
-the last element of a set (i.e <span class="math notranslate nohighlight">\(t_{LAST} \in T\)</span>) corresponds to the highest or final element of that variable.</p>
-<p><span class="math notranslate nohighlight">\(S\_H\)</span> and <span class="math notranslate nohighlight">\(S\_B\)</span> include subset to specify the corresponding hydro powerplants and basins that the
+<p>The sets <span class="math notranslate nohighlight">\(T\)</span>, <span class="math notranslate nohighlight">\(S_H\)</span> and <span class="math notranslate nohighlight">\(S_B\)</span> are arranged in a specific order such that indexing a variable with
+the first or last element of a set (i.e <span class="math notranslate nohighlight">\(t^{0}\)</span> and <span class="math notranslate nohighlight">\(t^{\text{END}} \in T\)</span>) corresponds respectively to
+the lowest/first or highest/final element of that variable.</p>
+<p><span class="math notranslate nohighlight">\(S_H\)</span> and <span class="math notranslate nohighlight">\(S_B\)</span> include subset to specify the corresponding hydro powerplants and basins that the
 state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect
-all states associated with a basin <span class="math notranslate nohighlight">\(b\)</span> we can use the notation <span class="math notranslate nohighlight">\(S\_B\{B\}\)</span></p>
-<p><span class="math notranslate nohighlight">\(S\_B =\begin{cases} 1: \left[1, 2\right] \\ 2: \left[4, 5, 6\right]  \\ 3: \left[6\right] \end{cases}\)</span></p>
+all states associated with a basin <span class="math notranslate nohighlight">\(b\)</span> we can use the notation <span class="math notranslate nohighlight">\(S_B\{b\}\)</span></p>
+<p><span class="math notranslate nohighlight">\(S_B =\begin{cases} 1: \left[1, 2, 3\right] \\ 2: \left[4, 5\right]  \\ 3: \left[6\right] \end{cases}\)</span></p>
 <p>In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets,
 such as <span class="math notranslate nohighlight">\(S\_B\)</span>. To handle this limitation, we need to create new sets (i.e. <span class="math notranslate nohighlight">\(BS\)</span>) which will explicitly
 represent the deployment of these subsets. These new sets will be structured to map the relationships required for
 indexing variables and parameters in the model effectively.</p>
-<p><span class="math notranslate nohighlight">\(BS \in \{b, s\_b\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}\)</span></p>
+<p><span class="math notranslate nohighlight">\(SB \in \{b, s_b\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}\)</span></p>
 <p>The set <span class="math notranslate nohighlight">\(S\_BH\)</span> defines the connections between each basin, its corresponding state, and the hydro powerplants.
 This link is established solely between a hydro powerplant and its associated upstream basin. It is assumed that the
 water level in downstream basins does not affect the behavior of turbined or pumped energy.</p>
-<p><span class="math notranslate nohighlight">\(S\_BH \in \{b, h\, s\_b, s\_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}\)</span></p>
+<p><span class="math notranslate nohighlight">\(S_{BH} \in \{b, h\, s_b, s_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}\)</span></p>
 </section>
 <section id="variables">
 <h2>Variables<a class="headerlink" href="#variables" title="Link to this heading"></a></h2>
@@ -171,8 +173,8 @@ water level in downstream basins does not affect the behavior of turbined or pum
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
 </tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S_\text{BAS}^{t,~b,~s\_b}\)</span></p></td>
-<td><p>The state of a basin derived from its volume:  <span class="math notranslate nohighlight">\(S_\text{BAS}^{t, b, s\_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s\_b} ;V_\text{BAS, MAX}^{b,~s\_b} \right] \\ 0 \text{ otherwise} \end{cases}\)</span></p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S_\text{BAS}^{t,~b,~s_b}\)</span></p></td>
+<td><p>The state of a basin derived from its volume:  <span class="math notranslate nohighlight">\(S_\text{BAS}^{t, b, s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{B}\)</span></p></td>
 <td></td>
 </tr>
@@ -196,18 +198,13 @@ water level in downstream basins does not affect the behavior of turbined or pum
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, S}^{t,~b,~s\_b}\)</span></p></td>
-<td><p>Basin actual volumes for each state</p></td>
-<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
-<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
-</tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q_\text{TUR, S}^{t,~h,~s\_h}\)</span></p></td>
-<td><p>Amount of water that flows through a turbine for each state</p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q_\text{TUR, S}^{t,~h,~s_h}\)</span></p></td>
+<td><p>Amount of water that flows through a turbine for each hydro powerplant state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q_\text{PUM, S}^{t,~h,~s\_h}\)</span></p></td>
-<td><p>Amount of water that flows through a pump for each state</p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q_\text{PUM, S}^{t,~h,~s_h}\)</span></p></td>
+<td><p>Amount of water that flows through a pump for each hydro powerplant state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
 </tr>
@@ -250,13 +247,13 @@ water level in downstream basins does not affect the behavior of turbined or pum
 <td><p>0</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
 </tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MAX}^{b,~s\_b}\)</span></p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MAX}^{b,~s_b}\)</span></p></td>
 <td><p>Basins water volume upper boundary for each state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MIN}^{b,~s\_b}\)</span></p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MIN}^{b,~s_b}\)</span></p></td>
 <td><p>Basins water volume lower boundary for each state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
@@ -280,25 +277,25 @@ water level in downstream basins does not affect the behavior of turbined or pum
 <td><p>0</p></td>
 <td></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q_\text{TUR, MAX}^{h,~s\_h}\)</span></p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q_\text{TUR, MAX}^{h,~s_h}\)</span></p></td>
 <td><p>Max water flows that can be turbined for each state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
 </tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q_\text{PUM, MAX}^{h,~s\_h}\)</span></p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q_\text{PUM, MAX}^{h,~s_h}\)</span></p></td>
 <td><p>Max water flows that can be pumped for each state</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\alpha_\text{TUR, AVG}^{h,~s\_h}\)</span></p></td>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\alpha_\text{TUR, AVG}^{h,~s_h}\)</span></p></td>
 <td><p>Average factor for converting turbined water flow into generated electrical power for each state.</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathrm{MW} \cdot  \mathrm{s}/ \mathrm{m}^{3}\)</span></p></td>
 </tr>
-<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\alpha_\text{PUM, AVG}^{h,~s\_h}\)</span></p></td>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\alpha_\text{PUM, AVG}^{h,~s_h}\)</span></p></td>
 <td><p>Average factor for converting pumped water flow into consumed electrical power for each state.</p></td>
 <td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
 <td><p>0</p></td>
@@ -322,52 +319,71 @@ water level in downstream basins does not affect the behavior of turbined or pum
 \begin{align}
     V_\text{BAS}^{t,~b} =
     \begin{cases}
-        &amp;V_\text{BAS, START}^{b} &amp; \text{if } t = t_0 \\
-        &amp;V_\text{BAS}^{t - 1,~b} - V_\text{SPIL}^{t - 1,~b} + nb_\text{SEC} \cdot nb_\text{HOUR}^{t-1} \cdot
+        V_\text{BAS, START}^{b} &amp; \text{if } t = t_0 \\
+        V_\text{BAS}^{t - 1,~b} + V_\text{DIS}^{t - 1,~b} - V_\text{SPIL}^{t - 1,~b} +
+        nb_\text{SEC} \cdot nb_\text{HOUR}^{t-1} \cdot
         \sum_{h \in H} \left(
             F_\text{TUR}^{b,~h} \cdot Q_\text{TUR}^{t-1,~h} +
             F_\text{PUM}^{b,~h} \cdot Q_\text{PUM}^{t-1,~h}
         \right) \quad &amp; \text{if } t \neq t_0
-    \end{cases}
+    \end{cases} \qquad \forall \{t\in T, b \in B \}
 \end{align}</div><div class="math notranslate nohighlight" id="equation-basin-end-volume">
 \begin{align}
-V_\text{BAS, START}^{b} = V_\text{BAS}^{t_{end},~b} - V_\text{SPIL}^{t_{end},~b} +
+V_\text{BAS, START}^{b} = V_\text{BAS}^{t_{end},~b} + V_\text{DIS}^{t_{end},~b}  - V_\text{SPIL}^{t_{end},~b} +
 nb_\text{SEC} \cdot nb_\text{HOUR}^{t_{end}} \cdot
     \sum_{h \in H} \left(
         F_\text{TUR}^{b,~h} \cdot Q_\text{TUR}^{t_{end},~h} +
         F_\text{PUM}^{b,~h} \cdot Q_\text{PUM}^{t_{end},~h}
-    \right)
+    \right) \qquad \forall \{b \in B \}
 \end{align}</div></section>
 <section id="water-basin-state">
 <h3>Water basin state<a class="headerlink" href="#water-basin-state" title="Link to this heading"></a></h3>
 <div class="math notranslate nohighlight" id="equation-basin-max-state">
 \begin{align}
-V_\text{BAS}^{t,~b} \leq V_\text{BAS, MAX}^{b,~s\_b} +  V_\text{BAS, MAX}^{b,~S\_B_\text{MAX}\{b\}}
-\cdot \left(1 -S_\text{BAS}^{t,~b,~s\_b} \right)
+V_\text{BAS}^{t,~b} \leq V_\text{BAS, MAX}^{b,~s_b} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}}
+\cdot \left(1 -S_\text{BAS}^{t,~b,~s_b} \right)
+\qquad \forall \{t\in T~\vert~b \in B~\vert~ s_b \in S_B\{b\} \}
+
 \end{align}</div><div class="math notranslate nohighlight" id="equation-basin-min-state">
 \begin{align}
-V_\text{BAS}^{t,~b} \geq V_\text{BAS, MIN}^{b,~s\_b} \cdot S_\text{BAS}^{t,~b,~s\_b}
+V_\text{BAS}^{t,~b} \geq V_\text{BAS, MIN}^{b,~s_b} \cdot S_\text{BAS}^{t,~b,~s_b}
+\qquad \forall \{t\in T~\vert~b \in B \}
 \end{align}</div><div class="math notranslate nohighlight" id="equation-basin-total-state">
 \begin{align}
-\sum_{s \in S\_B\{b\}} S_\text{BAS}^{t,~b,~s} = 1
-\end{align}</div><div class="math notranslate nohighlight" id="equation-basin-volume-state">
-\begin{align}
-V_\text{BAS, S}^{t,~b,~s\_b} =  V_\text{BAS}^{t,~b} \cdot S_\text{BAS}^{t,~b,~s\_b}
-\end{align}</div><p>The constraint <a class="reference internal" href="#equation-basin-volume-state">(7)</a> involves the multiplication of a floating-point variable and a binary variable. To
-address this, the constraint requires the application of a <em>Big M Linearization</em> technique.</p>
-</section>
+\sum_{s \in S_B\{b\}} S_\text{BAS}^{t,~b,~s} = 1 \qquad \forall \{t\in T~\vert~b \in B \}
+\end{align}</div></section>
 <section id="water-turbined">
 <h3>Water turbined<a class="headerlink" href="#water-turbined" title="Link to this heading"></a></h3>
 <div class="math notranslate nohighlight" id="equation-turbined-flow-state">
 \begin{align}
-Q_\text{TUR, S}^{t,~h,~s\_h} \leq Q_\text{TUR, MAX}^{h,~s\_h} \cdot S_\text{BAS}^{t,~b,~s\_b}
+Q_\text{TUR, S}^{t,~h,~s_h} \leq Q_\text{TUR, MAX}^{h,~s_h} \cdot S_\text{BAS}^{t,~b,~s_b}
+\qquad \forall \{t\in T~\vert~b,~h,~s_h ~s_h \in S_{BH} \}
 \end{align}</div><div class="math notranslate nohighlight" id="equation-turbined-flow">
 \begin{align}
-Q_\text{TUR}^{t,~h} = \sum_{s \in S\_H\{h\}} Q_\text{TUR, S}^{t,~h,~s}
+Q_\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\text{TUR, S}^{t,~h,~s}
+\qquad \forall \{t\in T~\vert~h \in H~\}
 \end{align}</div><div class="math notranslate nohighlight" id="equation-turbined-power">
 \begin{align}
-P_\text{TUR}^{t,~h} = \sum_{s \in S\_H\{h\}} \alpha_\text{TUR, AVG}^{h,~s} \cdot  Q_\text{TUR, S}^{t,~h,~s}
-\end{align}</div><p>The constraint <a class="reference internal" href="#equation-turbined-flow-state">(8)</a> takes the set <span class="math notranslate nohighlight">\(S\_BH\)</span> as argument, enabling the connection between the
+P_\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} \alpha_\text{TUR, AVG}^{h,~s} \cdot  Q_\text{TUR, S}^{t,~h,~s}
+\qquad \forall \{t\in T~\vert~h \in H\}
+\end{align}</div><p>The constraint <a class="reference internal" href="#equation-turbined-flow-state">(7)</a> takes the set <span class="math notranslate nohighlight">\(S\_BH\)</span> as argument, enabling the connection between the
+basin set <span class="math notranslate nohighlight">\(B\)</span> and the hydro powerplant set <span class="math notranslate nohighlight">\(H\)</span>.</p>
+</section>
+<section id="water-pumped">
+<h3>Water pumped<a class="headerlink" href="#water-pumped" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight" id="equation-pumped-flow-state">
+\begin{align}
+Q_\text{PUM, S}^{t,~h,~s_h} \leq Q_\text{PUM, MAX}^{h,~s_h} \cdot S_\text{BAS}^{t,~b,~s_b}
+\qquad \forall \{t\in T~\vert~b,~h,~s_h ~s_h \in S_{BH} \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-pumped-flow">
+\begin{align}
+Q_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\text{PUM, S}^{t,~h,~s}
+\qquad \forall \{t\in T~\vert~h \in H~\}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-pumped-power">
+\begin{align}
+P_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} \alpha_\text{PUM, AVG}^{h,~s} \cdot  Q_\text{PUM, S}^{t,~h,~s}
+\qquad \forall \{t\in T~\vert~h \in H\}
+\end{align}</div><p>The constraint <a class="reference internal" href="#equation-pumped-flow-state">(10)</a> takes the set <span class="math notranslate nohighlight">\(S\_BH\)</span> as argument, enabling the connection between the
 basin set <span class="math notranslate nohighlight">\(B\)</span> and the hydro powerplant set <span class="math notranslate nohighlight">\(H\)</span>.</p>
 </section>
 </section>

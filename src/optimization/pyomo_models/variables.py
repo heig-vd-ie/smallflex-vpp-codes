@@ -14,16 +14,7 @@ def baseline_variables(model):
     model.turbined_power = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals) # MWh
     model.pumped_power= pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)  # MWh
     
-    model.turbined_alpha = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals) # MWh
-    model.pumped_alpha = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)  # MWh
-    
-    model.turbined_power_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
     model.turbined_flow_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
-    model.pumped_power_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
     model.pumped_flow_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
-    model.turbined_alpha_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # MWh
-    model.pumped_alpha_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals)  # MWh
-
-
 
     return model

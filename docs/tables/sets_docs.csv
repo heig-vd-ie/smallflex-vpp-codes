@@ -2,6 +2,6 @@
 :math:`T`,1,,time
 :math:`H`,1,,Hydro powerplants
 :math:`B`,1,,Water basins
-:math:`S\_H`,2,:math:`H`,State of each hydro powerplants
-:math:`S\_B`,2,:math:`B`,State of each basins
-:math:`S\_BH`,4,:math:`\{ H; ~B; ~S\_H \;~S\_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"
+:math:`S_H`,2,:math:`H`,State of each hydro powerplants
+:math:`S_B`,2,:math:`B`,State of each basins
+:math:`S_{BH}`,4,:math:`\{ H; ~B; ~S_H \;~S_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"

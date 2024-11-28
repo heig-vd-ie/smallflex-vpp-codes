@@ -46,3 +46,6 @@ Constraints
 
 .. automodule:: optimization.pyomo_models.constraints.turbine
    :no-index:
+
+.. automodule:: optimization.pyomo_models.constraints.pump
+   :no-index:
