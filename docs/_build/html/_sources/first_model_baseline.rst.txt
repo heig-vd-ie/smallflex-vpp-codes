@@ -4,12 +4,9 @@ First Model Baseline
 Sets
 ----
 
-.. math::
-
 .. csv-table:: 
    :file: /tables/sets_docs.csv
    :header-rows: 1
-
 .. automodule:: optimization.pyomo_models.sets
    :no-index:
 
