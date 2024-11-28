@@ -4,7 +4,8 @@ Water basin volume evolution
 
 .. math::
     :label: basin-volume-evolution
-    
+    :nowrap:
+        
     \\begin{align}
         V_\\text{BAS}^{t,~b} =
         \\begin{cases} 
@@ -18,14 +19,17 @@ Water basin volume evolution
     \\end{align}
 
 .. math::
-    :label: basin-end-volume
+    :label: basin-end-volume    
+    :nowrap:
     
+    \\begin{align}
     V_\\text{BAS, START}^{b} = V_\\text{BAS}^{t_{end},~b} - V_\\text{SPIL}^{t_{end},~b} + 
     nb_\\text{SEC} \cdot nb_\\text{HOUR}^{t_{end}} \cdot
         \sum_{h \in H} \left(
             F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t_{end},~h} +
             F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t_{end},~h}
         \\right)
+    \\end{align} 
 
     
 Water basin state
@@ -33,26 +37,36 @@ Water basin state
 
 .. math::
     :label: basin-max-state
-
+    :nowrap:
+    
+    \\begin{align}
     V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s\_b} +  V_\\text{BAS, MAX}^{b,~S\_B_\\text{MAX}\{b\}} 
     \cdot \left(1 -S_\\text{BAS}^{t,~b,~s\_b} \\right)
-  
+    \\end{align}
+
 .. math::
     :label: basin-min-state
-
+    :nowrap:
+    
+    \\begin{align}
     V_\\text{BAS}^{t,~b} \geq V_\\text{BAS, MIN}^{b,~s\_b} \cdot S_\\text{BAS}^{t,~b,~s\_b}
-
+    \\end{align}
     
 .. math::
     :label: basin-total-state
-
+    :nowrap:
+    
+    \\begin{align}
     \sum_{s \in S\_B\{b\}} S_\\text{BAS}^{t,~b,~s} = 1
-
+    \\end{align}
     
 .. math::
     :label: basin-volume-state
-
+    :nowrap:
+    
+    \\begin{align}
     V_\\text{BAS, S}^{t,~b,~s\_b} =  V_\\text{BAS}^{t,~b} \cdot S_\\text{BAS}^{t,~b,~s\_b}
+    \\end{align}
 
 The constraint :eq:`basin-volume-state` involves the multiplication of a floating-point variable and a binary variable. To 
 address this, the constraint requires the application of a *Big M Linearization* technique.

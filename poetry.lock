@@ -2720,6 +2720,39 @@ code-style = ["pre-commit (==2.12.1)"]
 rtd = ["ipython", "myst-nb", "sphinx", "sphinx-book-theme", "sphinx-examples"]
 
 [[package]]
+name = "sphinx-rtd-size"
+version = "0.2.0"
+description = "Sphinx extension for resizing your RTD theme."
+optional = false
+python-versions = ">=3.6,<4.0"
+files = [
+    {file = "sphinx-rtd-size-0.2.0.tar.gz", hash = "sha256:00168969c870923dca449c3264741a0b77607e3419b9af1faafcf008dab9a730"},
+    {file = "sphinx_rtd_size-0.2.0-py3-none-any.whl", hash = "sha256:fb1c78fbab1880ae6c2092359aa7401b61716dcb97c8694b7b990f69a98dac62"},
+]
+
+[package.dependencies]
+Sphinx = ">=2"
+
+[[package]]
+name = "sphinx-rtd-theme"
+version = "3.0.2"
+description = "Read the Docs theme for Sphinx"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sphinx_rtd_theme-3.0.2-py2.py3-none-any.whl", hash = "sha256:422ccc750c3a3a311de4ae327e82affdaf59eb695ba4936538552f3b00f4ee13"},
+    {file = "sphinx_rtd_theme-3.0.2.tar.gz", hash = "sha256:b7457bc25dda723b20b086a670b9953c859eab60a2a03ee8eb2bb23e176e5f85"},
+]
+
+[package.dependencies]
+docutils = ">0.18,<0.22"
+sphinx = ">=6,<9"
+sphinxcontrib-jquery = ">=4,<5"
+
+[package.extras]
+dev = ["bump2version", "transifex-client", "twine", "wheel"]
+
+[[package]]
 name = "sphinxcontrib-applehelp"
 version = "2.0.0"
 description = "sphinxcontrib-applehelp is a Sphinx extension which outputs Apple help books"
@@ -2766,6 +2799,20 @@ files = [
 lint = ["mypy", "ruff (==0.5.5)", "types-docutils"]
 standalone = ["Sphinx (>=5)"]
 test = ["html5lib", "pytest"]
+
+[[package]]
+name = "sphinxcontrib-jquery"
+version = "4.1"
+description = "Extension to include jQuery on newer Sphinx releases"
+optional = false
+python-versions = ">=2.7"
+files = [
+    {file = "sphinxcontrib-jquery-4.1.tar.gz", hash = "sha256:1620739f04e36a2c779f1a131a2dfd49b2fd07351bf1968ced074365933abc7a"},
+    {file = "sphinxcontrib_jquery-4.1-py2.py3-none-any.whl", hash = "sha256:f936030d7d0147dd026a4f2b5a57343d233f1fc7b363f68b3d4f1cb0993878ae"},
+]
+
+[package.dependencies]
+Sphinx = ">=1.8"
 
 [[package]]
 name = "sphinxcontrib-jsmath"
@@ -3109,4 +3156,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ad924e6b1250a86cf26c1421a630b1951ec7b8114e874be95f6ce5dbaf52658f"
+content-hash = "ef4af0b6e42308154639f46f87626e995f83cc8d7b579eee66b8dad3f4a3c05b"

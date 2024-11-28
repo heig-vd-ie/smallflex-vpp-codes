@@ -1,23 +1,26 @@
 """
+The sets :math:`T`, :math:`S\_H` and :math:`S\_B` are arranged in a specific order such that indexing a variable with 
+the last element of a set (i.e :math:`t_{LAST} \in T`) corresponds to the highest or final element of that variable.
+
 :math:`S\_H` and :math:`S\_B` include subset to specify the corresponding hydro powerplants and basins that the 
-state is associated with, respectively. The sets are constructed as demonstrated in the following example.
+state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect 
+all states associated with a basin :math:`b` we can use the notation :math:`S\_B\{B\}`
 
-:math:`S\_H =\\begin{cases} 1: \left[1, 2\\right] \\\\ 2: \left[4, 5, 6\\right]  \\\\ 3: \left[6\\right] \\end{cases}`
-
-To collect all states associated with a basin :math:`b` we can use the notation :math:`S\_B\{B\}`
+:math:`S\_B =\\begin{cases} 1: \left[1, 2\\right] \\\\ 2: \left[4, 5, 6\\right]  \\\\ 3: \left[6\\right] \\end{cases}`
 
 In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets, 
-such as :math:`S\_H`  To handle this limitation, we need to create new sets, and :math:`S\_B`, which will explicitly 
+such as :math:`S\_B`. To handle this limitation, we need to create new sets (i.e. :math:`BS`) which will explicitly 
 represent the deployment of these subsets. These new sets will be structured to map the relationships required for 
 indexing variables and parameters in the model effectively.
 
-:math:`HS \in \{s, s\_h\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
+:math:`BS \in \{b, s\_b\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
 
 
 The set :math:`S\_BH` defines the connections between each basin, its corresponding state, and the hydro powerplants. 
 This link is established solely between a hydro powerplant and its associated upstream basin. It is assumed that the 
 water level in downstream basins does not affect the behavior of turbined or pumped energy.
 
+:math:`S\_BH \in \{b, h\, s\_b, s\_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}` 
 """
 
 import pyomo.environ as pyo

@@ -1,4 +1,4 @@
-﻿Name,Description,Type,Default value,Units
+﻿Name,Description,Type,Default,Units
 :math:`c_\text{DA}^{t}`,Day-ahead energy market price,:math:`\mathbb{R}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
 :math:`nb_\text{SEC}`,Number of seconds in one hour,:math:`\mathbb{R}^{+}`,3600,
 :math:`nb_\text{HOUR}^{t}`,Number of hours for each time-step,:math:`\mathbb{R}^{+}`,,
@@ -6,8 +6,8 @@
 ":math:`V_\text{BAS, MAX}^{b,~s\_b}`",Basins water volume upper boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{BAS, MIN}^{b,~s\_b}`",Basins water volume lower boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{BAS, DIS}^{t,~b}`",Water volume entering a basin due to runoff and snowmelt,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
-":math:`F_\text{TUR}^{b,~h}`",Factor to specify whether the turbined water of a plant is added into a basin or removed,:math:`\in \{-1; ~0; ~1\}`,0,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`F_\text{PUM}^{b,~h}`",Factor to specify whether the pumped water of a plant is added into a basin or removed,:math:`\in \{-1; ~0; ~1\}`,0,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`F_\text{TUR}^{b,~h}`",Factor to specify whether the turbined water of a plant is added into a basin or removed,:math:`\{-1; ~0; ~1\}`,0,
+":math:`F_\text{PUM}^{b,~h}`",Factor to specify whether the pumped water of a plant is added into a basin or removed,:math:`\{-1; ~0; ~1\}`,0,
 ":math:`Q_\text{TUR, MAX}^{h,~s\_h}`",Max water flows that can be turbined for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}/\mathrm{s}`
 ":math:`Q_\text{PUM, MAX}^{h,~s\_h}`",Max water flows that can be pumped for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}/\mathrm{s}`
 ":math:`\alpha_\text{TUR, AVG}^{h,~s\_h}`",Average factor for converting turbined water flow into generated electrical power for each state.,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{MW} \cdot  \mathrm{s}/ \mathrm{m}^{3}`
