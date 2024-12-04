@@ -11,8 +11,22 @@ import re
 import owncloud
 import tqdm
 import duckdb
+import logging
+import coloredlogs
 
 from config import settings
+
+def generate_log(name: str):
+    """
+    Load configurations from .env file and set up logging.
+
+    Returns:
+        log (logging.Logger): Logger object.
+        config (dict): Dictionary containing the loaded configurations.
+    """
+    log = logging.getLogger(name)
+    coloredlogs.install(level=settings.LOG_LEVEL)
+    return log
 
 
 def scan_switch_directory(oc: owncloud.Client, local_folder_path: str, switch_folder_path: str, download_anyway: bool) -> list[str]:

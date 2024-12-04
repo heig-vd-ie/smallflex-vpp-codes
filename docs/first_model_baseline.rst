@@ -8,13 +8,13 @@ Sets
    :file: /tables/sets_docs.csv
    :header-rows: 1
    
-.. automodule:: optimization.pyomo_models.sets
+.. automodule:: pyomo_models.baseline.first_stage.sets
    :no-index:
 
 Variables
 ----------
 
-.. automodule:: optimization.pyomo_models.variables
+.. automodule:: pyomo_models.baseline.first_stage.variables
    :no-index:
 
 .. csv-table:: 
@@ -24,7 +24,7 @@ Variables
 Parameters
 ----------
 
-.. automodule:: optimization.pyomo_models.parameters
+.. automodule:: pyomo_models.baseline.first_stage.parameters
    :no-index:
 
 .. csv-table:: 
@@ -34,18 +34,18 @@ Parameters
 Objective
 ----------
 
-.. automodule:: optimization.pyomo_models.objective
+.. automodule:: pyomo_models.baseline.first_stage.objective
    :no-index:
 
 Constraints
 ------------
 
 
-.. automodule:: optimization.pyomo_models.constraints.basin_volume
+.. automodule:: pyomo_models.baseline.first_stage.constraints.basin_volume
    :no-index:
 
-.. automodule:: optimization.pyomo_models.constraints.turbine
+.. automodule:: pyomo_models.baseline.first_stage.constraints.turbine
    :no-index:
 
-.. automodule:: optimization.pyomo_models.constraints.pump
+.. automodule:: pyomo_models.baseline.first_stage.constraints.pump
    :no-index:

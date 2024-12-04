@@ -95,11 +95,11 @@ def plot_powered_volume(
                 go.Bar(
                     x=results["T"].to_list(), y=(factor*results[col_name]).to_list(), showlegend=True,
                     marker=dict(color=COLORS[c_nb]), width=1, name= col_name.replace("_", " ") + " " + var_name.replace("_", " "),
-                    legendgroup="volume_powered"
+                    legendgroup="volume_flowed"
                 ), row=row, col=1
             )
             c_nb += 1
-    fig.update_traces(selector=dict(legendgroup="volume_powered"), legendgrouptitle_text="Powered water volume")
+    fig.update_traces(selector=dict(legendgroup="volume_flowed"), legendgrouptitle_text="Powered water flow")
     return fig
 
 def plot_result_summarized(
@@ -107,7 +107,7 @@ def plot_result_summarized(
 
         fig: Figure = make_subplots(
                 rows=3, cols = 1, shared_xaxes=True, vertical_spacing=0.02, x_title="<b>Weeks<b>", 
-                row_titles= ["DA price [EUR/MWh]", "Basin water volume [%]", "Powered volume [Mm3]"])
+                row_titles= ["DA price [EUR/MWh]", "Basin water volume [%]", "Avg powered flow [Mm3/s]"])
 
         kwargs: dict = {
                 "model_instance": model_instance, 

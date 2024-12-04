@@ -58,14 +58,15 @@ def optimal_segments(x, y, n_segments: int):
     return segments
 
 def generate_clean_timeseries(
-    data: pl.DataFrame, datetime_index: pl.DataFrame, 
-    col_name : str, min_datetime: datetime, max_datetime: datetime, time_delta: timedelta, 
+    data: pl.DataFrame, col_name : str, min_datetime: datetime, max_datetime: datetime, timestep: timedelta, 
     max_value: Optional[int] = None, min_value: Optional[int] = None,
     agg_type: Literal["mean", "sum", "first"] = "first", timestamp_col: str = "timestamp"
     ) -> pl.DataFrame:
 
-
-    cleaned_data = data\
+    datetime_index = generate_datetime_index(
+            min_datetime=min_datetime, max_datetime=max_datetime, real_timestep=timestep)
+    
+    cleaned_data: pl.DataFrame = data\
         .filter(c(timestamp_col).ge(min_datetime).and_(c(timestamp_col).lt(max_datetime)))\
         .sort(timestamp_col)\
         .with_columns(
@@ -74,7 +75,7 @@ def generate_clean_timeseries(
     
     cleaned_data = cleaned_data\
         .group_by_dynamic(
-            index_column=timestamp_col, start_by="datapoint", every=time_delta, closed="left"
+            index_column=timestamp_col, start_by="datapoint", every=timestep, closed="left"
         ).agg(
             c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
             c(col_name).max().name.prefix("max_"),
@@ -103,26 +104,39 @@ def generate_segments(
             n_segments=n_segments
         ))
     # Get the mean of the segments index founded for each segmentation
-    segments = list(np.array(segments).mean(axis=0, dtype=int))
+    return list(np.array(segments).mean(axis=0, dtype=int))
     
-    return(
-        data.with_columns(
-            cs.exclude(cs.starts_with("alpha")).abs()
-        ).with_row_index(name= "val_index").filter(pl.col("val_index").is_in(segments))
-        .drop("val_index")
+def define_state(data: pl.DataFrame, x_col: str, y_cols: Union[str, list[str]], error_threshold: float= 0.1):
+    nb = 1
+    if isinstance(y_cols, str):
+        y_cols = [y_cols]
+        
+    data = data[[x_col] + y_cols].with_row_index(name="index")
+    while True:
+        row_idx: list = generate_segments(data=data, x_col="volume", y_cols=y_cols, n_segments=nb)
+        new_data: pl.DataFrame = data.with_columns(
+            pl.when(c("index").is_in(row_idx))
+            .then(c(col)).otherwise(pl.lit(None))
+            for col in y_cols)
+        
+        new_data = linear_interpolation_using_cols(new_data, x_col="volume", y_col=y_cols )
+        
+        error: float = ((new_data[y_cols] - data[y_cols])/ data[y_cols])\
+            .select(
+                pl.max_horizontal(pl.all().abs()*100).alias("max")
+            )["max"].mean() # type: ignore
+        if error < error_threshold :
+            break
+        nb += 1
+    return (
+        data.filter(c("index").is_in(row_idx)).drop("index")
         .with_columns(
-            # Define max and min values for each segment
-            pl.concat_list(c(col), c(col).shift(-1)).alias(col)  for col in data.columns
-        ).slice(offset=0, length=n_segments) 
-        .with_columns(
-            c(col).list.mean().alias("avg_" + col)  for col in data.columns
+            (c(col).diff()/c(x_col).diff()).shift(-1).alias("d_" + col) for col in y_cols
         ).with_columns(
-            # Calculate the slope of the segments
-            (cs.starts_with("alpha")
-            .list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0) /
-            c(x_col).list.eval(pl.element().get(1) - pl.element().get(0)).list.get(0)).name.prefix("d_"),
-        )
+            pl.struct(c(x_col).alias("min"), c(x_col).shift(-1).alias("max")).alias(x_col),
+        ).slice(0, -1)
     )
+
 
 def limit_column(
     col: pl.Expr, lower_bound: Optional[int | datetime | float | date] = None, 
@@ -136,23 +150,23 @@ def limit_column(
 
 def generate_datetime_index(
     min_datetime: datetime, max_datetime: datetime, 
-    first_time_delta: timedelta, second_time_delta: timedelta
-    ) -> tuple[pl.DataFrame, pl.DataFrame]:
+    real_timestep: timedelta, model_timestep: Optional[timedelta] = None,
+    ) ->  pl.DataFrame:
 
-    second_datetime_index: pl.DataFrame = pl.datetime_range(
+    datetime_index: pl.DataFrame = pl.datetime_range(
         start=min_datetime, end=max_datetime,
-        interval= second_time_delta, eager=True, closed="left", time_zone="UTC"
+        interval= real_timestep, eager=True, closed="left", time_zone="UTC"
     ).to_frame(name="timestamp").with_row_index(name="T")
+    if model_timestep:
+        datetime_index: pl.DataFrame = datetime_index.group_by_dynamic(
+            every=model_timestep, index_column="timestamp", start_by="datapoint", closed="left"
+            ).agg(
+                c("T").count().alias("n_index")
+            ).with_row_index(name="T")
+    else:
+        datetime_index = datetime_index.with_columns(pl.lit(1).alias("n_index"))
 
-    first_datetime_index: pl.DataFrame = second_datetime_index.group_by_dynamic(
-        every=first_time_delta, index_column="timestamp", start_by="datapoint", closed="left"
-        ).agg(
-            c("T").min().alias("T_min"),
-            c("T").max().alias("T_max"),
-            c("T").count().alias("n_index")
-        ).with_row_index(name="T")
-
-    return first_datetime_index, second_datetime_index
+    return datetime_index
 
 def extract_optimization_results(model_instance: pyo.Model, var_name: str, subset_mapping: dict) -> pl.DataFrame:
     index_list = list(chain(*map(lambda x: subset_mapping[x.name], getattr(model_instance, var_name).index_set().subsets())))
@@ -249,7 +263,59 @@ def calculate_curviness(data: pl.DataFrame, x_col: str, y_col_list: list[str]):
     return data
 
 def max_curviness(df: pl.DataFrame, x_col: str, y_col_list: list[str]):
-    result: pl.DataFrame = calculate_curviness(df=df, x_col=x_col, y_col_list=y_col_list)
+    result: pl.DataFrame = calculate_curviness(data=df, x_col=x_col, y_col_list=y_col_list)
     return (
         result.select(pl.max_horizontal(cs.starts_with("k_")).alias("max")).max().row(0)[0]
     )
+    
+def get_nb_states(col: pl.Expr, error_percent: float) -> pl.Expr:
+    return (
+        100 / error_percent * (col.max() - col.min()) / (col.max() +  col.min())
+    )
+    
+def digitize_col(col: pl.Expr,  data: pl.DataFrame, nb_state: int):
+    bin = np.linspace(data.select(col.min()).item(), data.select(col.max()).item(), nb_state + 1)
+    return (
+        col.map_elements(lambda x: np.digitize(x, bin), return_dtype=pl.Int64)
+    )
+def generate_state_index_using_errors(
+    data: pl.DataFrame, column_list: list[str], error_percent: float
+    ) -> list[int]:  
+    nb_state: int = int(np.ceil(
+        data.select(
+            pl.max_horizontal(c(col).pipe(get_nb_states, error_percent=error_percent).alias(col)
+            for col in column_list
+        )).rows()[0][0]
+    ))
+
+    segments: list[int] = data.select(
+        c(cols).pipe(digitize_col,data=data, nb_state=nb_state).alias(cols + "_bin") for cols in column_list
+    ).with_row_index(name="index")\
+    .select(
+        c("index").first().over(cols + "_bin").alias(cols).unique() for cols in column_list
+    ).select(   
+        pl.mean_horizontal(pl.all()).cast(pl.UInt32).alias("state_index"),
+    )["state_index"].to_list()
+
+    return segments
+
+def filter_by_index(data: pl.DataFrame, index_list: list[int]) -> pl.DataFrame:
+    return data.with_row_index(name= "val_index").filter(pl.col("val_index").is_in(index_list)).drop("val_index")
+
+def get_min_avg_max_diff(col: pl.Expr) -> pl.Expr:
+    return (
+        pl.concat_list(col.min(), (col + col.shift(-1))/2, col.max(), col.diff().shift(-1))
+        .list.to_struct(fields=["min", "avg", "max", "diff"])
+    )
+    
+
+
+def filter_data_with_next(data: pl.DataFrame, col: str, boundaries: tuple[float, float]) -> pl.DataFrame:
+    lower = data.filter(c(col).lt(boundaries[0]))[col].max()
+    larger = data.filter(c(col).gt(boundaries[1]))[col].min()
+    if lower is None:
+        lower = data.min()
+    if larger is None:
+        larger = data.max()
+
+    return data.filter(c(col).ge(lower).and_(c(col).le(larger)))
