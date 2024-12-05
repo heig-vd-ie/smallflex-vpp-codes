@@ -39,7 +39,8 @@ def turbine_constraints(model):
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def turbined_flow_by_state_constraint(model, t, h, b, s_h, s_b):
         return (
-            model.turbined_flow_by_state[t, h, s_h] <= model.max_flow_turbined[h, s_h] * model.basin_state[t, b, s_b]
+            model.turbined_flow_by_state[t, h, s_h] <= 
+            model.turbine_factor * model.max_flow_turbined[h, s_h] * model.basin_state[t, b, s_b]
         ) 
     @model.Constraint(model.T, model.H) # type: ignore
     def turbined_flow_constraint(model, t, h):

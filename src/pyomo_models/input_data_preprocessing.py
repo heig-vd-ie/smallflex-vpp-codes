@@ -195,10 +195,11 @@ def generate_second_stage_state(
     index: dict[str, pl.DataFrame], power_performance_table: list[dict],
     start_volume_dict: dict, discharge_volume:dict,
     timestep: timedelta, error_threshold: float, 
-    ) -> pl.DataFrame:
+    ) -> dict[str, pl.DataFrame]:
     
     rated_flow_dict = pl_to_dict(index["hydro_power_plant"][["H", "rated_flow"]])
     state_index: pl.DataFrame = pl.DataFrame()
+    start_state: int = 0
     for performance_table in power_performance_table:
         start_volume = start_volume_dict[performance_table["B"]]
         rated_flow = rated_flow_dict[performance_table["H"]] * timestep.total_seconds()
@@ -207,30 +208,47 @@ def generate_second_stage_state(
             start_volume - rated_flow, start_volume + rated_flow + discharge_volume[performance_table["B"]]
         )
 
-        data: pl.DataFrame = filter_data_with_next(data=performance_table["power_performance"], col="volume", boundaries=boundaries)
+        data: pl.DataFrame = filter_data_with_next(
+            data=performance_table["power_performance"], col="volume", boundaries=boundaries)
         y_cols = data.select(cs.starts_with(name) for name in ["flow", "electrical"]).columns
         state_name_list = set(map(lambda x : x.split("_")[-1], y_cols))
         
         data = define_state(data=data, x_col="volume", y_cols=y_cols, error_threshold=error_threshold)\
+            .with_row_index(offset=start_state, name="S")\
             .with_columns(
                     pl.lit(performance_table["H"]).alias("H"),
                     pl.lit(performance_table["B"]).alias("B")
             ).with_columns(
                 pl.struct(cs.ends_with(col_name)).name.map_fields(lambda x: "_".join(x.split("_")[:-1])).alias(col_name)
                 for col_name in list(state_name_list)
+            ).with_columns(
+                pl.struct(
+                    pl.lit(0).alias(col_name) 
+                    for col_name in ["flow","d_flow", "electrical_power", "d_electrical_power" ]
+                ).alias("off")  
             ).unpivot(
-                on=list(state_name_list), index= ["volume", "H", "B"], value_name="data", variable_name="state"
+                on=list(state_name_list) + ["off"], index= ["volume", "S", "H", "B"], value_name="data", variable_name="state"
             ).unnest("data").drop("state")
             
         state_index = pl.concat([state_index, data], how="diagonal")
+        start_state = state_index["S"].max() + 1 # type: ignore
+        
     state_index = state_index.with_row_index(name="F")    
-    missing_basin: pl.DataFrame = index["water_basin"].filter(~c("B").is_in(state_index["B"])).select(
+    missing_basin: pl.DataFrame = index["water_basin"]\
+        .filter(~c("B").is_in(state_index["B"]))\
+        .select(
             c("B"),
             pl.struct(
                 c("volume_min").fill_null(0.0).alias("min"), 
                 c("volume_max").fill_null(0.0).alias("max"),
             ).alias("volume")
-        )
+        ).with_row_index(offset=start_state, name="S")
 
-
-    return pl.concat([state_index, missing_basin], how="diagonal_relaxed")
+    index["state"] = pl.concat([state_index, missing_basin], how="diagonal_relaxed")\
+        .with_columns(
+        pl.concat_list("H", "B", "S", "S").alias("S_BH"),
+        pl.concat_list("B", "S").alias("BS"),
+        pl.concat_list("H", "S").alias("HS"),
+        pl.concat_list("H", "S", "F").alias("HSF")
+    )
+    return index

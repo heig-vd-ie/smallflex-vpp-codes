@@ -24,13 +24,17 @@ from pyomo_models.baseline.first_stage.constraints.pump import pump_constraints
 log = generate_log(name=__name__)
 
 class BaselineFirstStage(BaseLineInput):
-    def __init__(self, input_instance: BaseLineInput, first_time_step: timedelta):
+    def __init__(
+        self, input_instance: BaseLineInput, timestep: timedelta, pump_factor: float = 1, turbine_factor: float= 0.75):
         self.subset_mapping =   {
             "T": "T", "H": "H", "B": "B", "BS": ["B", "S_B"], "HS": ["H", "S_H"], "S_BH": {"H", "H", "S_B", "S_H"}
         }
-        self.first_time_step = first_time_step
+        self.pump_factor: float = pump_factor
+        self.turbine_factor: float = turbine_factor
+        self.timestep: timedelta = timestep
         self.retrieve_input(input_instance)
         self.model_instance: pyo.Model = pyo.ConcreteModel() 
+        
         self.generate_index()
         self.process_timeseries()
         self.generate_model()
@@ -44,8 +48,8 @@ class BaselineFirstStage(BaseLineInput):
         self.index : dict[str, pl.DataFrame]= generate_baseline_index(
             small_flex_input_schema=self.small_flex_input_schema,
             year=self.year,
-            timestep=self.first_time_step, 
-            real_timestep=self.real_time_step,
+            timestep=self.timestep, 
+            real_timestep=self.real_timestep,
             hydro_power_mask=self.hydro_power_mask
         )
         
@@ -68,7 +72,7 @@ class BaselineFirstStage(BaseLineInput):
                 col_name="discharge_volume",
                 min_datetime=self.min_datetime,
                 max_datetime=self.max_datetime, 
-                timestep=self.first_time_step , 
+                timestep=self.timestep , 
                 agg_type="sum"
             ).with_columns(
                 pl.concat_list(["T", pl.lit(0).alias("B")]).alias("TB")
@@ -79,7 +83,7 @@ class BaselineFirstStage(BaseLineInput):
             col_name="avg", 
             min_datetime=self.min_datetime, 
             max_datetime=self.max_datetime, 
-            timestep=self.first_time_step, 
+            timestep=self.timestep, 
             agg_type="mean"
         )
         
@@ -106,6 +110,9 @@ class BaselineFirstStage(BaseLineInput):
         data["S_h"] = pl_to_dict(self.index["state"].drop_nulls("H").group_by("H", maintain_order=True).agg("S"))
         data["S_BH"] = {None: list(map(tuple, self.index["state"].drop_nulls("H")["S_BH"].to_list()))}
     
+        data["pump_factor"] = {None: self.pump_factor}
+        data["turbine_factor"] = {None: self.turbine_factor}
+        
         data["start_basin_volume"] = pl_to_dict(self.index["water_basin"][["B", "start_volume"]])
         data["water_pumped_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "pumped_factor"])
         data["water_turbined_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "turbined_factor"])
@@ -131,7 +138,7 @@ class BaselineFirstStage(BaseLineInput):
 
     def solve_model(self):
         with tqdm.tqdm(total=1, desc="Solving first stage optimization problem") as pbar:
-            
+            self.create_model_instance()
             _ = self.solver.solve(self.model_instance)
             pbar.update()
         

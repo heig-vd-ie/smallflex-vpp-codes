@@ -1,4 +1,6 @@
+import jinja2
 import pyomo.environ as pyo
+from itertools import product
 
 if __name__=="__main__":
     
@@ -7,8 +9,13 @@ if __name__=="__main__":
     model.T = pyo.Set()
     model.I = pyo.Set()
     model.J = pyo.Set(model.I)
+    model.F = pyo.Set(model.I)
     model.JI = pyo.Set(dimen=2, initialize=lambda model: [(i, j) for i in model.I for j in model.J[i]])
-
+    model.JFI = pyo.Set(
+        dimen=3, 
+        initialize=lambda model: [(i, j, f) for i in model.I for j, f in product(model.J[i], model.F[i])]
+    )
+    
     model.x = pyo.Var(model.JI, domain=pyo.NonNegativeReals)
     model.z = pyo.Param(model.I, default=20.0)
 
@@ -21,6 +28,12 @@ if __name__=="__main__":
                 1: [1],
                 2: [2, 3],
                 3: [3, 4, 5]},
+            "F": {
+                0: [0, 1],
+                1: [2],
+                2: [3],
+                3: [4, 4]
+            },
             'z': {0 : 100.0, 1: 50.0, 2: 200.0}
         }
     }
@@ -41,6 +54,9 @@ if __name__=="__main__":
     for c in instance.component_objects(pyo.Param, active=True):
         print(f"Constraint: {c.name}")
         print(c.display())
+        
+
+    print(list(instance.JFI)) # type: ignore
     
     
     

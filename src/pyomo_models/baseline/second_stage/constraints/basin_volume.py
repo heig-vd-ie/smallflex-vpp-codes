@@ -77,23 +77,13 @@ def basin_volume_constraints(model):
             return model.basin_volume[t, b] == model.start_basin_volume[b]
         else:
             return model.basin_volume[t, b] == (
-                model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b]
-                + sum(
-                    model.nb_hours * model.nb_sec * model.water_factor[b, h] * model.flow[t - 1, h]
-                    ) for h in model.H
+                model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] + 
+                sum(
+                    model.nb_hours * model.nb_sec * model.water_factor[b, h] * model.flow[t - 1, h] 
+                    for h in model.H
                 )
-            
-
-    @model.Constraint(model.B) # type: ignore
-    def basin_end_volume_constraint(model, b):
-        t_max = model.T.last()
-        return model.start_basin_volume[b] == (
-            model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b]
-            +sum(
-                model.nb_hours * model.nb_sec * model.water_factor[b, h] * model.flow[t_max, h] 
-                for h in model.H
             )
-        )
+
     ####################################################################################################################
     ### Basin volume boundary constraints used to determine the state of each basin ####################################
     ####################################################################################################################
@@ -101,7 +91,7 @@ def basin_volume_constraints(model):
     def basin_max_state_constraint(model, t, b, s_b):
         return (
             model.basin_volume[t, b] <= model.max_basin_volume[b, s_b] +
-            model.max_basin_volume[b, model.S_b[b].last()] * 
+            model.max_basin_volume[b, model.S_B[b].last()] * 
             (1 - model.basin_state[t, b, s_b])
         )
 
@@ -111,7 +101,7 @@ def basin_volume_constraints(model):
 
     @model.Constraint(model.T, model.B) # type: ignore
     def basin_state_constraint(model, t, b):
-        return sum(model.basin_state[t, b, s] for s in model.S_b[b]) == 1
+        return sum(model.basin_state[t, b, s] for s in model.S_B[b]) == 1
 
     ###################################################################################################################
     ## Basin volume state constraints used to determine the state of each basin #######################################
@@ -121,7 +111,7 @@ def basin_volume_constraints(model):
     def basin_state_max_active_constraint(model, t, b, s_b):
         return (
             model.basin_volume_by_state[t, b, s_b] <= 
-            model.max_basin_volume[b, model.S_b[b].last()] * model.basin_state[t, b, s_b]
+            model.max_basin_volume[b, model.S_B[b].last()] * model.basin_state[t, b, s_b]
         )
         
     @model.Constraint(model.T, model.BS) # type: ignore
@@ -129,14 +119,14 @@ def basin_volume_constraints(model):
         return (
             model.basin_volume_by_state[t, b, s_b] >= 
             model.basin_volume[t, b] -
-            model.max_basin_volume[b, model.S_b[b].last()] * (1 - model.basin_state[t, b, s_b])
+            model.max_basin_volume[b, model.S_B[b].last()] * (1 - model.basin_state[t, b, s_b])
         )
     
     @model.Constraint(model.T, model.BS) # type: ignore
     def basin_state_min_active_constraint(model, t, b, s_b):
         return (
             model.basin_volume_by_state[t, b, s_b] >= 
-            model.min_basin_volume[b, model.S_b[b].first()] * model.basin_state[t, b, s_b]
+            model.min_basin_volume[b, model.S_B[b].first()] * model.basin_state[t, b, s_b]
         )
         
 
@@ -146,7 +136,7 @@ def basin_volume_constraints(model):
         return (
             model.basin_volume_by_state[t, b, s_b] <= 
             model.basin_volume[t, b] - 
-            model.min_basin_volume[b, model.S_b[b].first()] * (1 - model.basin_state[t, b, s_b])
+            model.min_basin_volume[b, model.S_B[b].first()] * (1 - model.basin_state[t, b, s_b])
         )
         
     return model

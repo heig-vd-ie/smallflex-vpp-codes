@@ -40,7 +40,8 @@ def pump_constraints(model):
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def pumped_flow_by_state_constraint(model, t, h, b, s_h, s_b):
         return (
-            model.pumped_flow_by_state[t, h, s_h] <= model.max_flow_pumped[h, s_h] * model.basin_state[t, b, s_b]
+            model.pumped_flow_by_state[t, h, s_h] <= 
+            model.pump_factor * model.max_flow_pumped[h, s_h] * model.basin_state[t, b, s_b]
         ) 
     @model.Constraint(model.T, model.H) # type: ignore
     def pumped_flow_constraint(model, t, h):

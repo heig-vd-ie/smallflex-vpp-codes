@@ -8,6 +8,8 @@ def baseline_parameters(model):
     model.min_market_price = pyo.Param(model.T)
     model.nb_hours = pyo.Param(model.T)
     model.nb_sec = pyo.Param(default=3600) # s
+    model.pump_factor = pyo.Param()
+    model.turbine_factor = pyo.Param()
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
     

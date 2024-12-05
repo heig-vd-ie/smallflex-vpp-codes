@@ -26,6 +26,7 @@ water level in downstream basins does not affect the behavior of turbined or pum
 """
 
 import pyomo.environ as pyo
+from itertools import product
 
 def baseline_sets(model):
     model.T = pyo.Set()
@@ -38,7 +39,12 @@ def baseline_sets(model):
     # index gathering the state of every basin and hydro powerplants
     model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
     model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
-    model.HF = pyo.Set(dimen=2, initialize=lambda model: [(h, s_f) for h in model.H for s_f in model.F[h]])
+    model.HF = pyo.Set(dimen=2, initialize=lambda model: [(h, f) for h in model.H for f in model.F[h]])
+    
+    model.HSF = pyo.Set(
+        dimen=3, 
+        initialize=lambda model: [(h, s_h, f) for h in model.H for s_h, f in product(model.S_H[h], model.F[h])]
+    )
     # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
     model.S_BH = pyo.Set(dimen=4) 
     
