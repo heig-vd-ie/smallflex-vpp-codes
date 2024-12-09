@@ -1,4 +1,0 @@
-{
-    "duckdb_input": ".cache/output/duckdb/small_flex_input_data.db",
-    "plot_folder": ".cache/output/plot"
-}

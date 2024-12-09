@@ -1,6 +1,0 @@
-Eq 7
-Water discharge model
-As 
-Wind Turbines: Do you calculate gamma for every
-Battery: No initial state
-Market: Why battery is only negative in 29, Dont understand 30
