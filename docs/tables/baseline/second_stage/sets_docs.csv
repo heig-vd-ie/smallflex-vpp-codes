@@ -1,0 +1,8 @@
+﻿Name,Dimension,Sub index,Description
+:math:`T`,1,,time
+:math:`H`,1,,Hydro powerplants
+:math:`B`,1,,Water basins
+:math:`S_B`,2,:math:`B`,State of each basins
+:math:`S_H`,2,:math:`H`,State of each hydro powerplants (related to upstream basin state)
+:math:`F`,2,:math:`H`,State of each hydro powerplant  water flow
+:math:`S_{BH}`,4,:math:`\{ H; ~B; ~S_H \;~S_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"
