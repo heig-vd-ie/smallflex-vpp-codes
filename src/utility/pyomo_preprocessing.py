@@ -305,7 +305,7 @@ def filter_by_index(data: pl.DataFrame, index_list: list[int]) -> pl.DataFrame:
 
 def get_min_avg_max_diff(col: pl.Expr) -> pl.Expr:
     return (
-        pl.concat_list(col.min(), (col + col.shift(-1))/2, col.max(), col.diff().shift(-1))
+        pl.concat_list(col, (col + col.shift(-1))/2, col.shift(-1), col.diff().shift(-1))
         .list.to_struct(fields=["min", "avg", "max", "diff"])
     )
     

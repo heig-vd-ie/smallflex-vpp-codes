@@ -8,8 +8,7 @@ def powered_volume_constraints(model):
             pos_volume = model.remaining_volume[h] if model.remaining_volume[h] > 0 else 0
             powered_volume_abs = model.powered_volume[h] if model.powered_volume[h] > 0 else - model.powered_volume[h]
             return (
-                model.diff_volume_pos[h] <= 
-                powered_volume_abs *  model.buffer + pos_volume/2
+                model.diff_volume_pos[h] <= powered_volume_abs * model.buffer + pos_volume/2
             )
         else:
             return pyo.Constraint.Skip
@@ -20,8 +19,7 @@ def powered_volume_constraints(model):
             neg_volume = - model.remaining_volume[h] if model.remaining_volume[h] < 0 else 0
             powered_volume_abs = model.powered_volume[h] if model.powered_volume[h] > 0 else - model.powered_volume[h]
             return (
-                model.diff_volume_neg[h] <= 
-                powered_volume_abs *  model.buffer + neg_volume/2
+                model.diff_volume_neg[h] <= powered_volume_abs * model.buffer + neg_volume/2
             )
         else:
             return pyo.Constraint.Skip
@@ -31,7 +29,7 @@ def powered_volume_constraints(model):
         return (
             model.diff_volume_pos[h] - model.diff_volume_neg[h] ==
             model.remaining_volume[h] + model.powered_volume[h]  - 
-            sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec
+            sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor
         )
     
     return model

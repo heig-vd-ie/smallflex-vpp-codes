@@ -28,11 +28,13 @@ log = generate_log(name=__name__)
 
 class BaselineFirstStage(BaseLineInput):
     def __init__(
-        self, input_instance: BaseLineInput, timestep: timedelta, pump_factor: float = 1, turbine_factor: float= 0.75):
+        self, input_instance: BaseLineInput, timestep: timedelta, pump_factor: float = 1, turbine_factor: float= 0.75,
+        error_percent: float = 2):
         
         self.pump_factor: float = pump_factor
         self.turbine_factor: float = turbine_factor
         self.timestep: timedelta = timestep
+        self.error_percent: float = error_percent
         self.retrieve_input(input_instance)
         self.model_instance: pyo.Model = pyo.ConcreteModel() 
         
@@ -51,19 +53,20 @@ class BaselineFirstStage(BaseLineInput):
             year=self.year,
             timestep=self.timestep, 
             real_timestep=self.real_timestep,
-            hydro_power_mask=self.hydro_power_mask
+            hydro_power_mask=self.hydro_power_mask,
+            volume_factor=self.volume_factor
         )
         
         self.water_flow_factor: pl.DataFrame = generate_water_flow_factor(index=self.index)
         basin_volume_table: dict[int, Optional[pl.DataFrame]] = generate_basin_volume_table(
-        small_flex_input_schema=self.small_flex_input_schema, index=self.index)
+        small_flex_input_schema=self.small_flex_input_schema, index=self.index, volume_factor=self.volume_factor)
 
         self.power_performance_table: list[dict]  = clean_hydro_power_performance_table(
             small_flex_input_schema=self.small_flex_input_schema, index=self.index, 
             basin_volume_table=basin_volume_table)
 
         self.index: dict[str, pl.DataFrame]  = generate_hydro_power_state(
-            power_performance_table=self.power_performance_table, index=self.index, error_percent=1.3
+            power_performance_table=self.power_performance_table, index=self.index, error_percent=self.error_percent
             )
     
     def process_timeseries(self):
@@ -120,17 +123,17 @@ class BaselineFirstStage(BaseLineInput):
             df = basin_volume, on="B", index=["T"], 
             values="basin_volume")
 
-
-
         nb_hours_mapping = pl_to_dict(extract_optimization_results(
                 model_instance=self.model_instance, var_name="nb_hours"
         )[["T", "nb_hours"]])
 
-
         turbined_volume = extract_optimization_results(
                 model_instance=self.model_instance, var_name="turbined_flow"
             ).with_columns(
-                (c("turbined_flow")*3600*c("T").replace_strict(nb_hours_mapping, default=None)).alias("turbined_volume")
+                (
+                    c("turbined_flow") * self.real_timestep.total_seconds() * self.volume_factor *
+                    c("T").replace_strict(nb_hours_mapping, default=None)
+                ).alias("turbined_volume")
             )
             
         turbined_volume = pivot_result_table(
@@ -140,7 +143,10 @@ class BaselineFirstStage(BaseLineInput):
         pumped_volume = extract_optimization_results(
                 model_instance=self.model_instance, var_name="pumped_flow"
             ).with_columns(
-                (c("pumped_flow")*3600*c("T").replace_strict(nb_hours_mapping, default=None)).alias("pumped_volume")
+                (
+                    c("pumped_flow") * self.real_timestep.total_seconds() * self.volume_factor *
+                    c("T").replace_strict(nb_hours_mapping, default=None)
+                ).alias("pumped_volume")
             )
             
         pumped_volume = pivot_result_table(
@@ -199,6 +205,7 @@ class BaselineFirstStage(BaseLineInput):
     
         data["pump_factor"] = {None: self.pump_factor}
         data["turbine_factor"] = {None: self.turbine_factor}
+        data["volume_factor"] = {None: self.volume_factor}
         
         data["start_basin_volume"] = pl_to_dict(self.index["water_basin"][["B", "start_volume"]])
         data["water_pumped_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "pumped_factor"])

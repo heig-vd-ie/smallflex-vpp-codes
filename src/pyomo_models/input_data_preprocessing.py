@@ -17,7 +17,7 @@ log = generate_log(name=__name__)
 
 def generate_baseline_index(
     small_flex_input_schema: SmallflexInputSchema, year: int, 
-    real_timestep: timedelta, timestep: Optional[timedelta] = None, 
+    real_timestep: timedelta, volume_factor: float,  timestep: Optional[timedelta] = None, 
     hydro_power_mask: Optional[pl.Expr]= None
     ):
     
@@ -33,7 +33,10 @@ def generate_baseline_index(
     index["hydro_power_plant"] = small_flex_input_schema.hydro_power_plant\
             .filter(hydro_power_mask).with_row_index(name="H")
     index["water_basin"] = small_flex_input_schema.water_basin\
-            .filter(c("power_plant_fk").is_in(index["hydro_power_plant"]["uuid"])).with_row_index(name="B")
+            .filter(c("power_plant_fk").is_in(index["hydro_power_plant"]["uuid"]))\
+            .with_columns(
+                c("volume_max", "volume_min", "start_volume")*volume_factor
+            ).with_row_index(name="B")
     return index
 
 def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
@@ -54,7 +57,9 @@ def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
     return water_flow_factor
 
 def generate_basin_volume_table(
-    small_flex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], d_height: float = 1
+    small_flex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], volume_factor: float, 
+    d_height: float = 1,
+    
     )-> dict[int, Optional[pl.DataFrame]]:
     
 
@@ -63,7 +68,10 @@ def generate_basin_volume_table(
     for water_basin_index in index["water_basin"].to_dicts():
 
         basin_height_volume_table: pl.DataFrame = small_flex_input_schema.basin_height_volume_table\
-                .filter(c("water_basin_fk") == water_basin_index["uuid"])
+                .filter(c("water_basin_fk") == water_basin_index["uuid"])\
+                .with_columns(
+                    (c("volume") * volume_factor).alias("volume")
+                )
         if basin_height_volume_table.is_empty():
             volume_table[water_basin_index["B"]] = None
             continue
@@ -78,7 +86,8 @@ def generate_basin_volume_table(
             .with_columns(
                 linear_interpolation_for_bound(x_col=c("height"), y_col=c("volume")).alias("volume")
             ).drop_nulls("height")[["height", "volume"]]\
-            .filter(c("height").ge(height_min).and_(c("height").le(height_max)))
+            .filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
+            
             
     return volume_table
 
@@ -114,7 +123,9 @@ def clean_hydro_power_performance_table(
             state_dict[power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]] = name
             
         power_performance: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table\
-            .with_columns((c("head") + downstream_basin["height_max"]).alias("height"))
+            .with_columns(
+                (c("head") + downstream_basin["height_max"]).alias("height"),
+            )
 
         power_performance = power_performance.with_columns(
                 c("power_plant_state_fk").replace_strict(state_dict, default=None).alias("state_name")
@@ -198,7 +209,7 @@ def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = 
 def generate_second_stage_state(
     index: dict[str, pl.DataFrame], power_performance_table: list[dict],
     start_volume_dict: dict, discharge_volume:dict,
-    timestep: timedelta, error_threshold: float, 
+    timestep: timedelta, error_threshold: float, volume_factor: float
     ) -> dict[str, pl.DataFrame]:
     
     rated_flow_dict = pl_to_dict(index["hydro_power_plant"][["H", "rated_flow"]])
@@ -206,12 +217,11 @@ def generate_second_stage_state(
     start_state: int = 0
     for performance_table in power_performance_table:
         start_volume = start_volume_dict[performance_table["B"]]
-        rated_flow = rated_flow_dict[performance_table["H"]] * timestep.total_seconds()
+        rated_volume = rated_flow_dict[performance_table["H"]] * timestep.total_seconds() * volume_factor
         
         boundaries = (
-            start_volume - rated_flow, start_volume + rated_flow + discharge_volume[performance_table["B"]]
+            start_volume - rated_volume, start_volume + rated_volume + discharge_volume[performance_table["B"]]
         )
-
         data: pl.DataFrame = filter_data_with_next(
             data=performance_table["power_performance"], col="volume", boundaries=boundaries)
         y_cols = data.select(cs.starts_with(name) for name in ["flow", "electrical"]).columns

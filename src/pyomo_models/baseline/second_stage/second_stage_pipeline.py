@@ -34,7 +34,7 @@ class BaselineSecondStage(BaseLineInput):
     def __init__(
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, 
         buffer: float = 0.2, big_m: float = 1e6, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
-        quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True,
+        quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
         global_price: bool = False
         ):
         self.retrieve_input(input_instance)
@@ -44,21 +44,25 @@ class BaselineSecondStage(BaseLineInput):
         self.error_threshold = error_threshold
         self.buffer: float = buffer
         self.powered_volume_enabled = powered_volume_enabled
-        self.quantile = 0.5 + quantile
+        self.quantile = quantile
         self.spilled_factor = spilled_factor
         self.global_price = global_price
         self.with_penalty = with_penalty
-        self.data: dict = {}
+        self.log_solver_info = log_solver_info
+        self.timestep = timestep
+        self.divisors: int = int(self.timestep / self.real_timestep)
         
         self.index: dict[str, pl.DataFrame] = first_stage.index
         self.first_stage_timestep: timedelta = first_stage.timestep
         self.water_flow_factor: pl.DataFrame = first_stage.water_flow_factor
         self.first_stage_results: pl.DataFrame = first_stage.simulation_results
+        self.power_performance_table: list = first_stage.power_performance_table
         
-        self.power_performance_table = first_stage.power_performance_table
-        
-        self.timestep = timestep
-        self.divisors: int = int(self.timestep / self.real_timestep)
+        self.result_flow: pl.DataFrame = pl.DataFrame()
+        self.result_power: pl.DataFrame = pl.DataFrame()
+        self.result_basin_volume: pl.DataFrame = pl.DataFrame()
+        self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
+        self.data: dict = {}
         
         self.initialise_volume()
         self.get_alpha_boundaries()
@@ -68,11 +72,6 @@ class BaselineSecondStage(BaseLineInput):
         self.generate_model()
         self.generate_constant_parameters()
         
-        self.result_flow: pl.DataFrame = pl.DataFrame()
-        self.result_power: pl.DataFrame = pl.DataFrame()
-        self.result_basin_volume: pl.DataFrame = pl.DataFrame()
-        self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
-
 
     def initialise_volume(self):
         self.start_basin_volume = self.index["water_basin"].select(
@@ -112,7 +111,7 @@ class BaselineSecondStage(BaseLineInput):
         self.powered_volume = self.first_stage_results.select(
                 c("T"), 
                 cs.starts_with("hydro")
-                .map_elements(lambda x: x["turbined_volume"]  -x["pumped_volume"], return_dtype=pl.Float64)
+                .map_elements(lambda x: x["turbined_volume"]  - x["pumped_volume"], return_dtype=pl.Float64)
                 .name.map(lambda c: c.replace("hydro_", "")),
             ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
             .agg(pl.all().exclude("sim_nb", "T").sum())\
@@ -154,6 +153,7 @@ class BaselineSecondStage(BaseLineInput):
         self.data["big_m"] = {None: self.big_m}
         self.data["min_alpha"] = self.min_alpha
         self.data["max_alpha"] = self.max_alpha
+        self.data["volume_factor"] = {None: self.volume_factor}
         self.data["spilled_factor"] = dict(map(lambda x: (x["B"], self.spilled_factor), self.power_performance_table))
         if self.global_price:
             self.data["neg_unpowered_price"] = {
@@ -201,7 +201,7 @@ class BaselineSecondStage(BaseLineInput):
         self.index = generate_second_stage_state(
             index=self.index, power_performance_table=self.power_performance_table, 
             discharge_volume=discharge_volume_tot, start_volume_dict=start_volume_dict,
-            timestep=self.timestep, error_threshold=self.error_threshold)
+            timestep=self.timestep, error_threshold=self.error_threshold, volume_factor=self.volume_factor)
 
     def extract_result(self):
 
@@ -360,7 +360,7 @@ class BaselineSecondStage(BaseLineInput):
                 self.powered_volume_enabled = False
             self.generate_state_index()
             self.generate_model_instance()
-            solution = self.solver.solve(self.model_instance)
+            solution = self.solver.solve(self.model_instance, tee=self.log_solver_info)
             if solution["Solver"][0]["Status"] != "ok":
                 self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
                 break

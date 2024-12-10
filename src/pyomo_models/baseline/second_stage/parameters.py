@@ -4,6 +4,7 @@ def baseline_parameters(model):
     
     model.market_price = pyo.Param(model.T)
     model.nb_hours = pyo.Param(default=1)
+    model.volume_factor = pyo.Param()
     model.nb_sec = pyo.Param(default=3600) # s
     model.big_m = pyo.Param()  
     model.powered_volume_enabled = pyo.Param(within=pyo.Binary, default=True)

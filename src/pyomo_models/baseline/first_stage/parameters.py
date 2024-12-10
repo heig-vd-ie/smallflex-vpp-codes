@@ -17,6 +17,7 @@ def baseline_parameters(model):
     
     model.water_pumped_factor = pyo.Param(model.B, model.H, default=0) # m^3
     model.water_turbined_factor = pyo.Param(model.B, model.H, default=0) # m^3
+    model.volume_factor = pyo.Param() 
     
     model.max_flow_turbined = pyo.Param(model.HS, default=0) #m^3/s 
     model.max_flow_pumped = pyo.Param(model.HS, default=0) #m^3/s

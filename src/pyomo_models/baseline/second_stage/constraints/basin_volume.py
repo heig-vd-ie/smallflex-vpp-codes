@@ -76,9 +76,8 @@ def basin_volume_constraints(model):
         else:
             return model.basin_volume[t, b] == (
                 model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] + 
-                sum(
-                    model.nb_hours * model.nb_sec * model.water_factor[b, h] * model.flow[t - 1, h] 
-                    for h in model.H
+                model.nb_hours * model.nb_sec * model.volume_factor *
+                sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H
                 )
             )
 
@@ -86,11 +85,9 @@ def basin_volume_constraints(model):
     def basin_end_volume_constraint(model, b):
         t_max = model.T.last()
         return model.end_basin_volume[b] == (
-            model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b]
-            +sum(
-                model.nb_hours * model.nb_sec * model.water_factor[b, h] * model.flow[t_max, h] 
-                for h in model.H
-            )
+            model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b] +
+            model.nb_hours * model.nb_sec * model.volume_factor *
+            sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
         )
     
     @model.Constraint(model.B) # type: ignore

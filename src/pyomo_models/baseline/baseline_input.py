@@ -23,8 +23,8 @@ from pyomo_models.baseline.first_stage.constraints.pump import pump_constraints
 class BaseLineInput():
     def __init__(
         self, input_schema_file_name: str, real_timestep: timedelta, year: int, market_country: str = "CH", 
-        market: str = "DA", hydro_power_mask: Optional[pl.Expr] = None, max_alpha_error: float = 1.3,
-        solver_name: str = 'gurobi'):
+        market: str = "DA", hydro_power_mask: Optional[pl.Expr] = None, max_alpha_error: float = 1.3, 
+        volume_factor: float = 1e-3, solver_name: str = 'gurobi'):
         
         self.real_timestep = real_timestep
         self.min_datetime = datetime(year, 1, 1, tzinfo=timezone.utc)
@@ -36,12 +36,13 @@ class BaseLineInput():
         self.market = market
         self.hydro_power_mask = hydro_power_mask
         self.max_alpha_error = max_alpha_error  
+        self.volume_factor = volume_factor
         self.solver= pyo.SolverFactory(solver_name)
         
         self.discharge_flow_measurement: pl.DataFrame = self.small_flex_input_schema.discharge_flow_measurement\
             .filter(c("river") == "Griessee")\
             .with_columns(
-                (c("value") * real_timestep.total_seconds()).alias("discharge_volume"),
+                (c("value") * real_timestep.total_seconds() * volume_factor).alias("discharge_volume"),
                 pl.lit(0).alias("B")
             )
             
