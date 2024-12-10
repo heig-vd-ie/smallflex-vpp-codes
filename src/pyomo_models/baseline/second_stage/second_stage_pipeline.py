@@ -35,7 +35,7 @@ class BaselineSecondStage(BaseLineInput):
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, 
         buffer: float = 0.2, big_m: float = 1e6, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
         quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
-        global_price: bool = False
+        global_price: bool = False, time_limit:float =  120
         ):
         self.retrieve_input(input_instance)
         self.big_m: float = big_m
@@ -64,6 +64,8 @@ class BaselineSecondStage(BaseLineInput):
         self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
         self.data: dict = {}
         
+        
+        self.solver.options['TimeLimit'] = time_limit
         self.initialise_volume()
         self.get_alpha_boundaries()
         self.calculate_powered_volume()
