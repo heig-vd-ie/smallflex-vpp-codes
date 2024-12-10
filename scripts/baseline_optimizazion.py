@@ -70,7 +70,6 @@ if __name__=="__main__":
                     input_instance=baseline_input, 
                     first_stage=baseline_first_stage, 
                     timestep=timedelta(days=2), 
-                    powered_volume_enabled=True, 
                     **sim_setting
                 )
                 baseline_second_stage.solve_model()
