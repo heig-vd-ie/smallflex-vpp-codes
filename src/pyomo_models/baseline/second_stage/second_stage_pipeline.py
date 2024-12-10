@@ -37,7 +37,7 @@ class BaselineSecondStage(BaseLineInput):
         quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True,
         global_price: bool = False
         ):
-
+        self.retrieve_input(input_instance)
         self.big_m: float = big_m
         self.sim_nb = 0
         self.sim_tot = 0
@@ -49,7 +49,7 @@ class BaselineSecondStage(BaseLineInput):
         self.global_price = global_price
         self.with_penalty = with_penalty
         self.data: dict = {}
-        self.retrieve_input(input_instance)
+        
         self.index: dict[str, pl.DataFrame] = first_stage.index
         self.first_stage_timestep: timedelta = first_stage.timestep
         self.water_flow_factor: pl.DataFrame = first_stage.water_flow_factor
@@ -59,6 +59,22 @@ class BaselineSecondStage(BaseLineInput):
         
         self.timestep = timestep
         self.divisors: int = int(self.timestep / self.real_timestep)
+        
+        self.initialise_volume()
+        self.get_alpha_boundaries()
+        self.calculate_powered_volume()
+        self.generate_index()
+        self.process_timeseries()
+        self.generate_model()
+        self.generate_constant_parameters()
+        
+        self.result_flow: pl.DataFrame = pl.DataFrame()
+        self.result_power: pl.DataFrame = pl.DataFrame()
+        self.result_basin_volume: pl.DataFrame = pl.DataFrame()
+        self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
+
+
+    def initialise_volume(self):
         self.start_basin_volume = self.index["water_basin"].select(
             c("B"),
             pl.lit(self.sim_nb ) .alias("sim_nb"),
@@ -70,20 +86,6 @@ class BaselineSecondStage(BaseLineInput):
                 pl.lit(self.sim_nb).alias("sim_nb"), 
                 pl.lit(0).alias("remaining_volume")
             )
-        
-        self.get_alpha_boundaries(first_stage)
-        self.calculate_powered_volume()
-        
-        self.generate_index()
-        self.process_timeseries(first_stage)
-        self.generate_model()
-        self.generate_constant_parameters()
-        
-        self.result_flow: pl.DataFrame = pl.DataFrame()
-        self.result_power: pl.DataFrame = pl.DataFrame()
-        self.result_basin_volume: pl.DataFrame = pl.DataFrame()
-        self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
-
     
     def generate_model(self):
         self.model: pyo.AbstractModel = pyo.AbstractModel()
@@ -120,11 +122,11 @@ class BaselineSecondStage(BaseLineInput):
                 c("H").cast(pl.Int32).alias("H")
             )
         
-    def get_alpha_boundaries(self, first_stage: BaselineFirstStage):
+    def get_alpha_boundaries(self):
 
         self.min_alpha: dict[int, float] = {}
         self.max_alpha: dict[int, float] = {}
-        for data in first_stage.power_performance_table:
+        for data in self.power_performance_table:
             alpha = data["power_performance"].select(cs.contains("alpha"))
             self.min_alpha[data["H"]] = alpha.select(pl.min_horizontal(pl.all()).alias("min"))["min"].min()
             self.max_alpha[data["H"]] = alpha.select(pl.max_horizontal(pl.all()).alias("max"))["max"].max()    
@@ -160,13 +162,13 @@ class BaselineSecondStage(BaseLineInput):
                 None: self.market_price["avg"].quantile(0.5 - self.quantile)}
         
             
-    def process_timeseries(self, first_stage: BaselineFirstStage):
+    def process_timeseries(self):
         ### Discharge_flow ##############################################################################################
         discharge_volume: pl.DataFrame = generate_clean_timeseries(
-            data=first_stage.discharge_flow_measurement,
+            data=self.discharge_flow_measurement,
             col_name="discharge_volume", 
-            min_datetime=first_stage.min_datetime,
-            max_datetime=first_stage.max_datetime,
+            min_datetime=self.min_datetime,
+            max_datetime=self.max_datetime,
             timestep=self.real_timestep , 
             agg_type="sum"
         )
