@@ -21,8 +21,8 @@ YEARS = [2020, 2021, 2022, 2023]
 TURBINE_FACTORS = {0.75, 0.90, 1.0}
 SIMULATION_SETTING = {
     "1": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
-    "2": {"quantile": 15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
-    "3": {"quantile": 15, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
+    "2": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
+    "3": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
     "4": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": False},
 }
 output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
@@ -69,7 +69,8 @@ if __name__=="__main__":
                 baseline_second_stage = BaselineSecondStage(
                     input_instance=baseline_input, 
                     first_stage=baseline_first_stage, 
-                    timestep=timedelta(days=2), 
+                    timestep=timedelta(days=5), 
+                    time_limit=20,
                     **sim_setting
                 )
                 baseline_second_stage.solve_model()

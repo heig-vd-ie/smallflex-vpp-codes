@@ -363,11 +363,16 @@ class BaselineSecondStage(BaseLineInput):
             self.generate_state_index()
             self.generate_model_instance()
             solution = self.solver.solve(self.model_instance, tee=self.log_solver_info)
-            if solution["Solver"][0]["Status"] != "ok":
+            if solution["Solver"][0]["Status"] == "ok":
+                self.extract_result()
+            elif solution["Solver"][0]["Status"] == "aborted":
+                print(f"Lower bound {solution["Problem"][0]["Lower bound"]} Lower bound {solution["Problem"][0]["Upper bound"]}")
+                self.extract_result()
+            else:
+                print(solution["Solver"][0]["Status"])
                 self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
                 break
-            else:
-                self.extract_result()
+                
         self.finalizes_results_processing()
 
 
