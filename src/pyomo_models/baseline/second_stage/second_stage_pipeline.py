@@ -34,7 +34,7 @@ class BaselineSecondStage(BaseLineInput):
     def __init__(
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, 
         buffer: float = 0.2, big_m: float = 1e6, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
-        quantile: float = 0.65, pos_quantile_price: float = 0.35, spilled_factor: float = 1e2, 
+        quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True,
         global_price: bool = False
         ):
 
@@ -47,6 +47,7 @@ class BaselineSecondStage(BaseLineInput):
         self.quantile = 0.5 + quantile
         self.spilled_factor = spilled_factor
         self.global_price = global_price
+        self.with_penalty = with_penalty
         self.data: dict = {}
         self.retrieve_input(input_instance)
         self.index: dict[str, pl.DataFrame] = first_stage.index
@@ -90,7 +91,7 @@ class BaselineSecondStage(BaseLineInput):
         self.model = baseline_parameters(self.model)
         self.model = baseline_variables(self.model)
         
-        self.model = baseline_objective(self.model)
+        self.model = baseline_objective(self.model, with_penalty= self.with_penalty)
         self.model = basin_volume_constraints(self.model)
         self.model = powered_volume_constraints(self.model)
         self.model = flow_constraints(self.model)
