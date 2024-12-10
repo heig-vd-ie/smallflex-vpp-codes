@@ -18,12 +18,12 @@ from pyomo_models.baseline.second_stage.second_stage_pipeline import BaselineSec
 
 YEARS = [2020, 2021, 2022, 2023]
 
-TURBINE_FACTORS = {0.75, 0.90, 1.0}
+TURBINE_FACTORS = {0.7, 0.8, 0.9}
 SIMULATION_SETTING = {
-    "1": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
+    # "1": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
     "2": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
-    "3": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
-    "4": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": False},
+    # "3": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
+    # "4": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": False},
 }
 output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
 
@@ -87,6 +87,6 @@ if __name__=="__main__":
                 
                 fig.write_html(f"{plot_folder}/second_stage_{name}.html")
             
-            sim_results["summary"] = pl.DataFrame(sim_summary, schema=["name", "income"])
+            sim_results["summary"] = pl.DataFrame(sim_summary, schema=["name", "income"], orient="row")
             
             dict_to_duckdb(data=sim_results, file_path= f"{test_folder}/optimization_results.duckdb")

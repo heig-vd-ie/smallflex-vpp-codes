@@ -369,7 +369,7 @@ class BaselineSecondStage(BaseLineInput):
                 print(f"Lower bound {solution["Problem"][0]["Lower bound"]} Lower bound {solution["Problem"][0]["Upper bound"]}")
                 self.extract_result()
             else:
-                print(solution["Solver"][0]["Status"])
+                print(self.)
                 self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
                 break
                 
