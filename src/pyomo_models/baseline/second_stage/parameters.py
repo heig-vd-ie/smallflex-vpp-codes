@@ -15,7 +15,7 @@ def baseline_parameters(model):
     model.max_alpha = pyo.Param(model.H, default=0) # MW/(m^3/s)
     model.powered_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
     model.remaining_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
-    model.buffer = pyo.Param(default=0.2) # MW/(m^3/s)
+    model.volume_buffer = pyo.Param(model.H) # MW/(m^3/s)
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
     model.spilled_factor = pyo.Param(model.B, default=0.01) # m^3

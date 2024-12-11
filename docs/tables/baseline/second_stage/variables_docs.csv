@@ -1,12 +1,14 @@
 ﻿Name,Description,Type,Units
 ":math:`V_\text{BAS}^{t,~b}`",Basins actual water volume,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{SPIL}^{t,~b}`",Spilled water volumes when basins are full,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-":math:`S_\text{BAS}^{t,~b,~s_b}`","The state of a basin derived from its volume:  :math:`S_\text{BAS}^{t, b, s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
-":math:`F_\text{BAS}^{t,~h,~f}`",The state of hydo power plant flow for discrete turbine (and pump),:math:`\mathbb{B}`,
-,,,
-":math:`P_\text{TUR}^{t,~h}`",Electrical power produced by a turbine,:math:`\mathbb{R}^{+}`,:math:`\mathrm{MW}`
-":math:`Q_\text{TUR}^{t,~h}`",Amount of water that flows through a turbine,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`P_\text{PUM}^{t,~h}`",Electrical power produced by a pump,:math:`\mathbb{R}^{+}`,:math:`\mathrm{MW}`
-":math:`Q_\text{PUM}^{t,~h}`",Amount of water that flows through a pump,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`Q_\text{TUR, S}^{t,~h,~s_h}`",Amount of water that flows through a turbine for each hydro powerplant state,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`Q_\text{PUM, S}^{t,~h,~s_h}`",Amount of water that flows through a pump for each hydro powerplant state,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`V_\text{BAS, END}^{b}`",,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+":math:`dV_\text{+}^{t,~b}`",,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+":math:`dV_\text{-}^{t,~b}`",,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+":math:`P^{t,~h}`",Electrical power produced by a hydropower plant,:math:`\mathbb{R}^{+}`,:math:`\mathrm{MW}`
+":math:`Q^{t,~h}`",Amount of water that flows through a hydropower plant,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`S_\text{BAS}^{t,~b,~s_b}`","Binary variable that indicates the basin's volume state derived from its volume:  :math:`S_\text{BAS}^{t, b, s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
+":math:`F_\text{BAS}^{t,~h,~f}`",Binary variable that indicates the hydo power plant's flow state (for turbine and pump),:math:`\mathbb{B}`,
+":math:`P_\text{CAL}^{t,~h}`",Electrical power produced by a pump,:math:`\mathbb{R}^{+}`,:math:`\mathrm{MW}`
+":math:`Q_\text{CAL}^{t,~h}`",Amount of water that flows through a pump,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`P_\text{S}^{t,~h,~s_h}`",Amount of water that flows through a turbine for each hydro powerplant state,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`Q_\text{S}^{t,~h,~s_h}`",Amount of water that flows through a pump for each hydro powerplant state,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`

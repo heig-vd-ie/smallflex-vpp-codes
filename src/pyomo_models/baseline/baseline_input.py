@@ -24,7 +24,7 @@ class BaseLineInput():
     def __init__(
         self, input_schema_file_name: str, real_timestep: timedelta, year: int, market_country: str = "CH", 
         market: str = "DA", hydro_power_mask: Optional[pl.Expr] = None, max_alpha_error: float = 1.3, 
-        volume_factor: float = 1e-3, solver_name: str = 'gurobi'):
+        volume_factor: float = 1e-6, solver_name: str = 'gurobi'):
         
         self.real_timestep = real_timestep
         self.min_datetime = datetime(year, 1, 1, tzinfo=timezone.utc)

@@ -6,9 +6,8 @@ def powered_volume_constraints(model):
     def max_powered_volume_constraint(model, h):
         if model.powered_volume_enabled:
             pos_volume = model.remaining_volume[h] if model.remaining_volume[h] > 0 else 0
-            powered_volume_abs = model.powered_volume[h] if model.powered_volume[h] > 0 else - model.powered_volume[h]
             return (
-                model.diff_volume_pos[h] <= powered_volume_abs * model.buffer + pos_volume/2
+                model.diff_volume_pos[h] <= model.volume_buffer[h] + pos_volume/2
             )
         else:
             return pyo.Constraint.Skip
@@ -17,9 +16,8 @@ def powered_volume_constraints(model):
     def min_powered_volume_constraint(model, h):
         if model.powered_volume_enabled:
             neg_volume = - model.remaining_volume[h] if model.remaining_volume[h] < 0 else 0
-            powered_volume_abs = model.powered_volume[h] if model.powered_volume[h] > 0 else - model.powered_volume[h]
             return (
-                model.diff_volume_neg[h] <= powered_volume_abs * model.buffer + neg_volume/2
+                model.diff_volume_neg[h] <= model.volume_buffer[h] + neg_volume/2
             )
         else:
             return pyo.Constraint.Skip

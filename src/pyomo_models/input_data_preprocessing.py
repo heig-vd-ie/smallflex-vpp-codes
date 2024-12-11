@@ -196,8 +196,8 @@ def generate_hydro_power_state(
 def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = "T") -> pl.DataFrame:
     
     offset = data.height%divisors
-    # if offset != 0:
-    #     offset: int = divisors - data.height%divisors
+    if offset != 0:
+        offset: int = divisors - data.height%divisors
     return(
         data.with_columns(
             ((c(col_name) + offset)//divisors).alias("sim_nb")
