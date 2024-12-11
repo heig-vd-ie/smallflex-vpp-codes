@@ -38,46 +38,49 @@ def power_constraints(model):
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
 
-    @model.Constraint(model.T, model.HF) # type: ignore
-    def power_by_state_constraint(model, t, h, f):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def power_by_state_constraint(model, t, h, s_h, s_q):
+        b = model.B_H[h].first()
+        s_b = model.SB_H[h, s_h].first()
         return (
-            model.calculated_power[t, h, f] ==
-            sum(
-                model.basin_state[t, b, s_b] * 
-                (model.min_power[h_1, s_h, f] - model.d_power[h_1, s_h, f] * model.min_basin_volume[b, s_b]) +
-                model.d_power[h_1, s_h, f] * model.basin_volume_by_state[t, b, s_b] 
-                for h_1, b, s_b, s_h in model.S_BH if h_1 == h
-            )
+            model.calculated_power[t, h, s_h, s_q] ==
+            model.basin_state[t, b, s_b] * 
+            (model.min_power[h, s_h, s_q] - model.d_power[h, s_h, s_q] * model.min_basin_volume[b, s_b]) +
+            model.d_power[h, s_h, s_q] * model.basin_volume_by_state[t, b, s_b] 
         ) 
 
-    @model.Constraint(model.T, model.HF) # type: ignore
-    def power_state_max_inactive_constraint(model, t, h, f):
-        return model.power_by_state[t, h, f] <= model.big_m * model.flow_state[t, h, f]
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def power_state_max_inactive_constraint(model, t, h, s_h, s_q):
+        return model.power_by_state[t, h, s_h, s_q] <= model.big_m * model.flow_state[t, h, s_h, s_q]
     
-    @model.Constraint(model.T, model.HF) # type: ignore
-    def power_state_min_inactive_constraint(model, t, h, f):
-        return model.power_by_state[t, h, f] >= - model.big_m * model.flow_state[t, h, f]
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def power_state_min_inactive_constraint(model, t, h, s_h, s_q):
+        return model.power_by_state[t, h, s_h, s_q] >= - model.big_m * model.flow_state[t, h, s_h, s_q]
     
-    @model.Constraint(model.T, model.HF) # type: ignore
-    def power_state_max_active_constraint(model, t, h, f):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def power_state_max_active_constraint(model, t, h, s_h, s_q):
         return(
-            model.power_by_state[t, h, f] >= 
-            model.calculated_power[t, h, f] -
-            model.big_m * (1 - model.flow_state[t, h, f])
+            model.power_by_state[t, h, s_h, s_q] >= 
+            model.calculated_power[t, h, s_h, s_q] -
+            model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
         )
     
-    @model.Constraint(model.T, model.HF) # type: ignore
-    def power_state_min_active_constraint(model, t, h, f):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def power_state_min_active_constraint(model, t, h, s_h, s_q):
         return(
-            model.power_by_state[t, h, f] <= 
-            model.calculated_power[t, h, f] +
-            model.big_m* (1 - model.flow_state[t, h, f])
+            model.power_by_state[t, h, s_h, s_q] <= 
+            model.calculated_power[t, h, s_h, s_q] +
+            model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
         )
         
     @model.Constraint(model.T, model.H) # type: ignore
     def power_constraint(model, t, h):
         return(
-            model.power[t, h] == sum(model.power_by_state[t, h, f] for f in model.F[h])
+            model.power[t, h] == 
+            sum(
+                sum(
+                    model.power_by_state[t, h, s_h, s_q] 
+                    for s_q in model.S_Q[h, s_h])
+            for s_h in model.S_H[h])
         )
-
     return model

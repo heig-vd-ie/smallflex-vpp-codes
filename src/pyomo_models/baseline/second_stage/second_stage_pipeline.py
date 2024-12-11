@@ -287,8 +287,9 @@ class BaselineSecondStage(BaseLineInput):
         self.data["T"] = {None: self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["T"].to_list()}
         self.data["S_B"] = pl_to_dict(self.index["state"].unique("S", keep="first").group_by("B", maintain_order=True).agg("S"))
         self.data["S_H"] = pl_to_dict(hydropower_state.unique("S", keep="first").group_by("H", maintain_order=True).agg("S"))
-        self.data["F"] = pl_to_dict(hydropower_state.group_by("H", maintain_order=True).agg("F"))
-        self.data["S_BH"] = {None: list(map(tuple, hydropower_state.unique("S", keep="first")["S_BH"].to_list()))}
+        self.data["S_Q"] = pl_to_dict_with_tuple(hydropower_state.group_by(["HS"], maintain_order=True).agg("S_Q"))
+        self.data["B_H"] = pl_to_dict(hydropower_state.group_by("H").agg(c("B").unique()))
+        self.data["SB_H"] = pl_to_dict_with_tuple(hydropower_state.group_by("HS").agg(c("S").unique()))
         self.data["start_basin_volume"] = pl_to_dict(
             self.start_basin_volume.filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
         self.data["remaining_volume"] = pl_to_dict(self.remaining_volume.filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]])
@@ -309,10 +310,10 @@ class BaselineSecondStage(BaseLineInput):
         self.data["powered_volume"] = pl_to_dict(self.powered_volume.filter(c("sim_nb") == self.sim_nb)[["H", "powered_volume"]])
         self.data["volume_buffer"] = pl_to_dict(self.volume_buffer.filter(c("sim_nb") == self.sim_nb)[["H", "volume_buffer"]])
 
-        self.data["min_flow"] = pl_to_dict_with_tuple(hydropower_state[["HSF", "flow"]])  
-        self.data["min_power"] = pl_to_dict_with_tuple(hydropower_state[["HSF", "electrical_power"]])  
-        self.data["d_flow"] = pl_to_dict_with_tuple(hydropower_state[["HSF", "d_flow"]])  
-        self.data["d_power"] = pl_to_dict_with_tuple(hydropower_state[["HSF", "d_electrical_power"]])  
+        self.data["min_flow"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "flow"]])  
+        self.data["min_power"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "electrical_power"]])  
+        self.data["d_flow"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "d_flow"]])  
+        self.data["d_power"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "d_electrical_power"]])  
         
         self.model_instance: pyo.Model = self.model.create_instance({None: self.data})
 

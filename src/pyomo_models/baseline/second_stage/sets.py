@@ -42,13 +42,12 @@ def baseline_sets(model):
     model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
     
     model.S_Q = pyo.Set(model.HS)
-    model.HF = pyo.Set(dimen=3, initialize=lambda model: [(i, j, f) for (i, j) in model.JI for f in model.F[i, j]])
+    model.HQS = pyo.Set(
+        dimen=3, initialize=lambda model: [(h, s_h, s_q) for (h, s_h) in model.HS for s_q in model.S_Q[h, s_h]])
     
-    model.HSF = pyo.Set(
-        dimen=3, 
-        initialize=lambda model: [(h, s_h, f) for h in model.H for s_h, f in product(model.S_H[h], model.F[h])]
-    )
     # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
-    model.S_BH = pyo.Set(dimen=4) 
+    model.B_H = pyo.Set(model.H)
+    model.SB_H = pyo.Set(model.HS)
+    # model.S_BH = pyo.Set(dimen=4) 
     
     return model

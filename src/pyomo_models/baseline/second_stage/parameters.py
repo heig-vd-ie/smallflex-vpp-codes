@@ -26,9 +26,9 @@ def baseline_parameters(model):
     
     model.water_factor = pyo.Param(model.B, model.H, default=0) # m^3
 
-    model.min_flow = pyo.Param(model.HSF, default=0) #m^3/s 
-    model.d_flow = pyo.Param(model.HSF, default=0) #m^3/s
-    model.min_power = pyo.Param(model.HSF, default=0)  #MW/(m^3/s)
-    model.d_power = pyo.Param(model.HSF, default=0)  #MW/(m^3/s)
+    model.min_flow = pyo.Param(model.HQS, default=0) #m^3/s 
+    model.d_flow = pyo.Param(model.HQS, default=0) #m^3/s
+    model.min_power = pyo.Param(model.HQS, default=0)  #MW/(m^3/s)
+    model.d_power = pyo.Param(model.HQS, default=0)  #MW/(m^3/s)
     
     return model

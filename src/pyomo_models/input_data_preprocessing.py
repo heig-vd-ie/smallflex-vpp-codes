@@ -247,7 +247,7 @@ def generate_second_stage_state(
         state_index = pl.concat([state_index, data], how="diagonal")
         start_state = state_index["S"].max() + 1 # type: ignore
         
-    state_index = state_index.with_row_index(name="F")    
+    state_index = state_index.with_row_index(name="S_Q")    
     missing_basin: pl.DataFrame = index["water_basin"]\
         .filter(~c("B").is_in(state_index["B"]))\
         .select(
@@ -263,6 +263,6 @@ def generate_second_stage_state(
         pl.concat_list("H", "B", "S", "S").alias("S_BH"),
         pl.concat_list("B", "S").alias("BS"),
         pl.concat_list("H", "S").alias("HS"),
-        pl.concat_list("H", "S", "F").alias("HSF")
+        pl.concat_list("H", "S", "S_Q").alias("HQS")
     )
     return index
