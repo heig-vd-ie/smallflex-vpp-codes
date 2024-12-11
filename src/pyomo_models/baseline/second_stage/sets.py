@@ -1,4 +1,4 @@
-"""
+r"""
 The sets :math:`T`, :math:`S_H` and :math:`S_B` are arranged in a specific order such that indexing a variable with 
 the first or last element of a set (i.e :math:`t^{0}` and :math:`t^{\\text{END}} \in T`) corresponds respectively to 
 the lowest/first or highest/final element of that variable.
@@ -23,6 +23,8 @@ water level in downstream basins does not affect the behavior of turbined or pum
 
 :math:`S_{BH} \in \{b, h\, s_b, s_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}` 
 
+
+
 """
 
 import pyomo.environ as pyo
@@ -35,11 +37,12 @@ def baseline_sets(model):
     # index gathering the state per basin and the hydro powerplants
     model.S_B = pyo.Set(model.B)
     model.S_H = pyo.Set(model.H)
-    model.F = pyo.Set(model.H)
     # index gathering the state of every basin and hydro powerplants
     model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
     model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
-    model.HF = pyo.Set(dimen=2, initialize=lambda model: [(h, f) for h in model.H for f in model.F[h]])
+    
+    model.S_Q = pyo.Set(model.HS)
+    model.HF = pyo.Set(dimen=3, initialize=lambda model: [(i, j, f) for (i, j) in model.JI for f in model.F[i, j]])
     
     model.HSF = pyo.Set(
         dimen=3, 

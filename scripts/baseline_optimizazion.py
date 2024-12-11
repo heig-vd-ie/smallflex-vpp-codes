@@ -22,7 +22,7 @@ TURBINE_FACTORS = {0.7, 0.8, 0.9}
 SIMULATION_SETTING = {
     "1": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
     "2": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
-    "3": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
+    "3": {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
     # "4": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": False},
 }
 output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))

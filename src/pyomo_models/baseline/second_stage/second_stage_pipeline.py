@@ -1,6 +1,7 @@
 import warnings
 from typing import Optional
 from datetime import datetime, timedelta, timezone
+from annotated_types import T
 from patito import col
 import polars as pl
 from polars import col as c
@@ -394,9 +395,10 @@ class BaselineSecondStage(BaseLineInput):
                 self.log_mip_gap(solution)
                 self.extract_result()
             else:
-                self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
-                self.calculated_feasibility()
-                break
+                solved = self.solve_changing_powered_volume_constraint()
+                if not solved:
+                    break
+                
         logging.getLogger('pyomo.core').setLevel(logging.WARNING)        
         self.finalizes_results_processing()
 
@@ -404,7 +406,7 @@ class BaselineSecondStage(BaseLineInput):
         start_basin_volume = self.start_basin_volume.filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]]
         remaining_volume = self.remaining_volume.filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]]
         powered_volume = self.powered_volume.filter(c("sim_nb") == self.sim_nb)[["H", "powered_volume"]]
-        volume_buffer = self.powered_volume.filter(c("sim_nb") == self.sim_nb)[["H", "volume_buffer"]]
+        volume_buffer = self.volume_buffer.filter(c("sim_nb") == self.sim_nb)[["H", "volume_buffer"]]
         basin_power_mapping =pl.from_dicts(self.power_performance_table).drop("power_performance").with_columns(
             pl.all().cast(pl.UInt32)
         )
@@ -416,14 +418,48 @@ class BaselineSecondStage(BaseLineInput):
             .join(volume_buffer, on="H", how="inner")\
             .join(self.index["water_basin"][["B", "volume_max", "volume_min"]], on="B", how="inner")\
             .with_columns(
-                (c("start_basin_volume") - c("powered_volume") + c("volume_buffer") +
-                pl.when(c("remaining_volume") > 0).then(c("remaining_volume")).otherwise(0)
-                ).alias("pos_boundary"),
-                (c("start_basin_volume") - c("powered_volume") - c("volume_buffer") +
+                (c("start_basin_volume") - c("powered_volume") + c("volume_buffer") -
                 pl.when(c("remaining_volume") < 0).then(c("remaining_volume")).otherwise(0)
+                ).alias("pos_boundary"),
+                (c("start_basin_volume") - c("powered_volume") - c("volume_buffer") -
+                pl.when(c("remaining_volume") > 0).then(c("remaining_volume")).otherwise(0)
                 ).alias("neg_boundary"),
             ).to_dicts()[0]
         )
+        
+    def solve_changing_powered_volume_constraint(self) -> bool:
+        if self.powered_volume_enabled == True:
+            self.powered_volume_enabled = False
+            self.generate_model_instance()   
+            solution = self.solver.solve(self.model_instance, tee=self.log_solver_info)
+            if solution["Solver"][0]["Status"] == "ok":
+                self.extract_result()
+            elif solution["Solver"][0]["Status"] == "aborted":
+                self.log_mip_gap(solution)
+                self.extract_result()
+            else:
+                self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
+                self.calculated_feasibility()
+                log.warning(f"Second stage optimization problem is infeasible for sim_nb: {self.sim_nb}")
+                return False
+        else:
+            self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
+            self.calculated_feasibility()
+            log.warning(f"Second stage optimization problem is infeasible for sim_nb: {self.sim_nb}")
+            return False
+        self.powered_volume_enabled = True
+        return True
+
+    def log_unbounded(self):
+        self.log_book = pl.concat([
+            self.log_book,
+            pl.DataFrame(
+                {
+                    "sim_nb": [self.sim_nb],
+                    "unbounded": [True]
+                }
+            )
+        ], how="diagonal_relaxed")
         
     def log_mip_gap(self, solution):
         self.log_book = pl.concat([
