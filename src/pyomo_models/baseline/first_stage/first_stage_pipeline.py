@@ -11,7 +11,7 @@ from data_federation.input_model import SmallflexInputSchema
 
 from utility.pyomo_preprocessing import extract_optimization_results, pivot_result_table, remove_suffix
 from pyomo_models.input_data_preprocessing import (
-    generate_baseline_index, generate_clean_timeseries, generate_water_flow_factor, generate_basin_volume_table,
+    generate_datetime_index, generate_clean_timeseries, generate_water_flow_factor, generate_basin_volume_table,
     clean_hydro_power_performance_table, generate_hydro_power_state
 )
 from utility.general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
@@ -48,26 +48,16 @@ class BaselineFirstStage(BaseLineInput):
         
         
     def generate_index(self):
-        self.index : dict[str, pl.DataFrame]= generate_baseline_index(
-            small_flex_input_schema=self.small_flex_input_schema,
-            year=self.year,
-            timestep=self.timestep, 
-            real_timestep=self.real_timestep,
-            hydro_power_mask=self.hydro_power_mask,
-            volume_factor=self.volume_factor
+        self.index["datetime"] = generate_datetime_index(
+            min_datetime=self.min_datetime, max_datetime=self.max_datetime, model_timestep=self.timestep, 
+            real_timestep=self.real_timestep
+        )
+        self.index["state"]  = generate_hydro_power_state(
+            power_performance_table=self.power_performance_table, 
+            index=self.index, 
+            error_percent=self.error_percent
         )
         
-        self.water_flow_factor: pl.DataFrame = generate_water_flow_factor(index=self.index)
-        basin_volume_table: dict[int, Optional[pl.DataFrame]] = generate_basin_volume_table(
-        small_flex_input_schema=self.small_flex_input_schema, index=self.index, volume_factor=self.volume_factor)
-
-        self.power_performance_table: list[dict]  = clean_hydro_power_performance_table(
-            small_flex_input_schema=self.small_flex_input_schema, index=self.index, 
-            basin_volume_table=basin_volume_table)
-
-        self.index: dict[str, pl.DataFrame]  = generate_hydro_power_state(
-            power_performance_table=self.power_performance_table, index=self.index, error_percent=self.error_percent
-            )
     
     def process_timeseries(self):
         ### Discharge_flow ##############################################################################################

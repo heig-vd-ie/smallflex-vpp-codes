@@ -15,29 +15,7 @@ from utility.general_function import pl_to_dict, generate_log
 
 log = generate_log(name=__name__)
 
-def generate_baseline_index(
-    small_flex_input_schema: SmallflexInputSchema, year: int, 
-    real_timestep: timedelta, volume_factor: float,  timestep: Optional[timedelta] = None, 
-    hydro_power_mask: Optional[pl.Expr]= None
-    ):
-    
-    min_datetime: datetime = datetime(year, 1, 1, tzinfo=timezone.utc)
-    max_datetime: datetime = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
-    if hydro_power_mask is None:
-            hydro_power_mask= pl.lit(True)  
-    index: dict[str, pl.DataFrame] = {}
-    index["datetime"] = generate_datetime_index(
-            min_datetime=min_datetime, max_datetime=max_datetime, model_timestep=timestep, 
-            real_timestep=real_timestep
-        )
-    index["hydro_power_plant"] = small_flex_input_schema.hydro_power_plant\
-            .filter(hydro_power_mask).with_row_index(name="H")
-    index["water_basin"] = small_flex_input_schema.water_basin\
-            .filter(c("power_plant_fk").is_in(index["hydro_power_plant"]["uuid"]))\
-            .with_columns(
-                c("volume_max", "volume_min", "start_volume")*volume_factor
-            ).with_row_index(name="B")
-    return index
+
 
 def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
 
@@ -153,7 +131,7 @@ def clean_hydro_power_performance_table(
             
 def generate_hydro_power_state(
     power_performance_table: list[dict], index: dict[str, pl.DataFrame], error_percent: float
-    ) -> dict[str, pl.DataFrame]: 
+    ) -> pl.DataFrame: 
     
     state_index: pl.DataFrame = pl.DataFrame()
     for data in power_performance_table: 
@@ -184,14 +162,14 @@ def generate_hydro_power_state(
             (c("volume_max").fill_null(0.0) - c("volume_min").fill_null(0.0)).alias("diff"),
         ).alias("volume")
     )
-    state_index = pl.concat([state_index, missing_basin], how="diagonal_relaxed")
-    index["state"] = state_index.with_row_index(name="S").with_columns(
-        pl.concat_list("H", "B", "S", "S").alias("S_BH"),
-        pl.concat_list("B", "S").alias("BS"),
-        pl.concat_list("H", "S").alias("HS")
-    )
+    state_index = pl.concat([state_index, missing_basin], how="diagonal_relaxed")\
+        .with_row_index(name="S").with_columns(
+            pl.concat_list("H", "B", "S", "S").alias("S_BH"),
+            pl.concat_list("B", "S").alias("BS"),
+            pl.concat_list("H", "S").alias("HS")
+        )
         
-    return index
+    return state_index
 
 def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = "T") -> pl.DataFrame:
     
