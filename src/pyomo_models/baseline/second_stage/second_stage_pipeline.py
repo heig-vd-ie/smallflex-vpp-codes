@@ -1,8 +1,4 @@
-import warnings
-from typing import Optional
-from datetime import datetime, timedelta, timezone
-from annotated_types import T
-from patito import col
+from datetime import timedelta
 import polars as pl
 from polars import col as c
 from polars import selectors as cs
@@ -28,7 +24,7 @@ from pyomo_models.baseline.second_stage.constraints.basin_volume import basin_vo
 from pyomo_models.baseline.second_stage.constraints.powered_volume import powered_volume_constraints
 from pyomo_models.baseline.second_stage.constraints.flow import flow_constraints
 from pyomo_models.baseline.second_stage.constraints.power import power_constraints
-from pyomo.util.infeasible import log_infeasible_constraints, find_infeasible_constraints
+
 
 log = generate_log(name=__name__)
 
@@ -108,6 +104,7 @@ class BaselineSecondStage(BaseLineInput):
         
     def retrieve_input(self, input_instance):
         for name, value in input_instance.__dict__.items():
+            if name != "small_flex_input_schema":
                 setattr(self, name, value)
     
     def calculate_powered_volume(self):
