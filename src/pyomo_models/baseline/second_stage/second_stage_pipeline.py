@@ -34,7 +34,7 @@ log = generate_log(name=__name__)
 
 class BaselineSecondStage(BaseLineInput):
     def __init__(
-        self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, 
+        self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, model_nb: int = 1,
         buffer: float = 0.2, big_m: float = 1e6, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
         quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
         global_price: bool = False, time_limit:float =  120
@@ -43,6 +43,7 @@ class BaselineSecondStage(BaseLineInput):
         self.big_m: float = big_m
         self.sim_nb = 0
         self.sim_tot = 0
+        self.model_nb = model_nb
         self.error_threshold = error_threshold
         self.buffer: float = buffer
         self.powered_volume_enabled = powered_volume_enabled
@@ -285,11 +286,26 @@ class BaselineSecondStage(BaseLineInput):
         hydropower_state: pl.DataFrame = self.index["state"].drop_nulls("H")
     
         self.data["T"] = {None: self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["T"].to_list()}
-        self.data["S_B"] = pl_to_dict(self.index["state"].unique("S", keep="first").group_by("B", maintain_order=True).agg("S"))
-        self.data["S_H"] = pl_to_dict(hydropower_state.unique("S", keep="first").group_by("H", maintain_order=True).agg("S"))
-        self.data["S_Q"] = pl_to_dict_with_tuple(hydropower_state.group_by(["HS"], maintain_order=True).agg("S_Q"))
+        self.data["S_B"] = pl_to_dict(
+            self.index["state"].unique("S", keep="first")
+            .group_by("B", maintain_order=True).agg("S")
+            .with_columns(c("S").list.sort())
+        )
+        self.data["S_H"] = pl_to_dict(
+            hydropower_state.unique("S", keep="first")
+            .group_by("H", maintain_order=True)
+            .agg("S")
+            .with_columns(c("S").list.sort())
+            )
+        self.data["S_Q"] = pl_to_dict_with_tuple(
+            hydropower_state
+            .group_by(["HS"], maintain_order=True).agg("S_Q")
+            .with_columns(c("S_Q").list.sort())
+            )
+        
         self.data["B_H"] = pl_to_dict(hydropower_state.group_by("H").agg(c("B").unique()))
         self.data["SB_H"] = pl_to_dict_with_tuple(hydropower_state.group_by("HS").agg(c("S").unique()))
+        
         self.data["start_basin_volume"] = pl_to_dict(
             self.start_basin_volume.filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
         self.data["remaining_volume"] = pl_to_dict(self.remaining_volume.filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]])
@@ -385,7 +401,11 @@ class BaselineSecondStage(BaseLineInput):
 
     def solve_model(self):
         logging.getLogger('pyomo.core').setLevel(logging.ERROR)
-        for sim_nb in tqdm.tqdm(range(self.sim_tot + 1), desc="Solving second stage optimization problem"):
+        for sim_nb in tqdm.tqdm(
+            range(self.sim_tot + 1), 
+            desc=f"Solving second stage optimization model number {self.model_nb}",
+            position=self.model_nb
+        ):
             self.sim_nb = sim_nb
             self.generate_state_index()
             self.generate_model_instance()

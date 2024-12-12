@@ -2,6 +2,8 @@ import os
 import json
 from datetime import timedelta
 import polars as pl
+from typing import Union
+from multiprocessing import Pool
 
 from polars  import col as c
 import shutil
@@ -19,26 +21,48 @@ from pyomo_models.baseline.second_stage.second_stage_pipeline import BaselineSec
 YEARS = [2020, 2021, 2022, 2023]
 
 TURBINE_FACTORS = {0.7, 0.8, 0.9}
-SIMULATION_SETTING = {
-    "1": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
-    "2": {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
-    "3": {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
-    # "4": {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": False},
-}
+SIMULATION_SETTING = [
+    {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
+    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
+    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
+]
+REAL_TIMESTEP = timedelta(hours=1)
+FIRST_STAGE_TIMESTEP = timedelta(days=1)
+SECOND_STAGE_TIME_SIM = timedelta(days=4)
+TIME_LIMIT = 20 # in seconds
+VOLUME_FACTOR = 1e-6
+
 output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
 
 log = generate_log(name=__name__)
+
+def solve_second_stage_model(
+    second_stage: BaselineSecondStage, plot_name: str
+    ) -> tuple[BaselineSecondStage, float]:
+    
+    second_stage.solve_model()
+    income: float = round(second_stage.simulation_results["income"].sum()/1e6, 3)
+    fig = plot_second_stage_result(
+        simulation_results=second_stage.simulation_results, time_divider=7*24
+    )
+                
+    fig.write_html(plot_name)
+    return second_stage, income
 
 if __name__=="__main__":
     baseline_folder = output_file_names["baseline"]
     if os.path.exists(baseline_folder):
         shutil.rmtree(baseline_folder)
     for year in YEARS:
-        year_folder = f"{baseline_folder}/year_{year}"
+        plot_folder = f"{baseline_folder}/plots_year_{year}"
+        
+        income_result_list: list[dict] = []
+        log_book_final: pl.DataFrame = pl.DataFrame()
         for turbine_factor in TURBINE_FACTORS:
-            test_folder = f"{year_folder}/turbine_factor_{turbine_factor}"
-            plot_folder = f"{test_folder}/plots"
-            log_book_final: pl.DataFrame = pl.DataFrame()
+    
+            income_result: dict = {} 
+            income_result["turbine_factor"] = turbine_factor
+            
             build_non_existing_dirs(plot_folder)
             
             sim_results: dict[str, pl.DataFrame] = dict()
@@ -46,63 +70,63 @@ if __name__=="__main__":
 
             baseline_input: BaseLineInput = BaseLineInput(
                 input_schema_file_name=output_file_names["duckdb_input"],
-                real_timestep=timedelta(hours=1),
+                real_timestep=REAL_TIMESTEP,
                 year=year,
                 hydro_power_mask = c("name").is_in(["Aegina hydro"]),
-                volume_factor=1e-6
+                volume_factor=VOLUME_FACTOR
             )
             
-            baseline_first_stage: BaselineFirstStage = BaselineFirstStage(
-                baseline_input, timestep=timedelta(days=1), turbine_factor=turbine_factor
+            first_stage: BaselineFirstStage = BaselineFirstStage(
+                input_instance=baseline_input, 
+                timestep=timedelta(days=1), 
+                turbine_factor=turbine_factor
             )
             
-            baseline_first_stage.solve_model() 
+            first_stage.solve_model() 
             
-            sim_results["first_stage"] = baseline_first_stage.simulation_results
-            
-            sim_summary.append(["first_stage", baseline_first_stage.simulation_results["income"].sum()])
-            value = round(baseline_first_stage.simulation_results["income"].sum()/1e6, 3)
-            print(f"{year} year, {turbine_factor} turbine_factor and first_stage : {value}")
-            
+            sim_results["first_stage"] = first_stage.simulation_results
+            income_result["first_stage"] = round(first_stage.simulation_results["income"].sum()/1e6, 3)
+
             fig = plot_first_stage_result(
-                    simulation_results=baseline_first_stage.simulation_results, time_divider=7
+                    simulation_results=first_stage.simulation_results, time_divider=7
                 )
                 
-            fig.write_html(f"{plot_folder}/first_stage.html")
-                
+            fig.write_html(f"{plot_folder}/{turbine_factor}_turbine_factor_first_stage.html")
             
-            for name, sim_setting in SIMULATION_SETTING.items():
-                baseline_second_stage: BaselineSecondStage = BaselineSecondStage(
+            optimization_inputs: list[list[Union[BaselineSecondStage, str]]] = []
+            income_results: list[dict] = []
+            
+            for model_nb, sim_setting in enumerate(SIMULATION_SETTING):
+                second_stage: BaselineSecondStage = BaselineSecondStage(
                     input_instance=baseline_input, 
-                    first_stage=baseline_first_stage, 
+                    first_stage=first_stage, 
                     timestep=timedelta(days=4), 
-                    time_limit=20,
+                    time_limit=TIME_LIMIT,
+                    model_nb=model_nb,
                     **sim_setting
                 )
-                baseline_second_stage.solve_model()
-
-                sim_results[f"second_stage_{name}"] = baseline_second_stage.simulation_results
-                sim_summary.append([name, baseline_second_stage.simulation_results["income"].sum()])
+                fig_path = f"{plot_folder}/{turbine_factor}_turbine_factor_model_{model_nb}.html"
+                optimization_inputs.append([second_stage, fig_path])
                 
-                value = round(baseline_second_stage.simulation_results["income"].sum()/1e6, 3)
-                print(f"Results for {year} year, {turbine_factor} turbine_factor and second stage {name}\n")
-                print(f"Total income: {value}")    
-                log_book = baseline_second_stage.log_book
+            with Pool(processes=len(optimization_inputs)) as pool:
+                results = pool.starmap(solve_second_stage_model, optimization_inputs)
+            for result in results:
+                second_stage, income = result
+                name = f"second_stage_{second_stage.model_nb}"
+                sim_results[f"{turbine_factor}_turbine_factor_model_{name}"] = second_stage.simulation_results
+                income_result[f"model_{name}"] = income
+                log_book = second_stage.log_book
                 if not log_book.is_empty():
-                    print(f"Non optimal solutions:\n{log_book.to_pandas().to_string()}")   
-                    
                     log_book_final = pl.concat([
                         log_book_final, 
                         log_book.with_columns(pl.lit(name).alias("sim_name"))
                     ], how="diagonal_relaxed")    
-                
-                fig = plot_second_stage_result(
-                    simulation_results=baseline_second_stage.simulation_results, time_divider=7*24
-                )
-                
-                fig.write_html(f"{plot_folder}/second_stage_{name}.html")
+            income_result_list.append(income_result) 
+        
+        log.info(f"Income results for {year} year:\n{sim_results["income_result"]}")
+        
             
-            sim_results["summary"] = pl.DataFrame(sim_summary, schema=["name", "income"], orient="row")
-            sim_results["log_book"] = log_book_final
-            
-            dict_to_duckdb(data=sim_results, file_path= f"{test_folder}/optimization_results.duckdb")
+        sim_results["income_result"] = pl.from_dicts(income_result_list)
+        sim_results["log_book"] = log_book_final
+        
+        dict_to_duckdb(data=sim_results, file_path= f"{baseline_folder}/{year}_year_results.duckdb")

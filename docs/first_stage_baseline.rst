@@ -5,7 +5,7 @@ Sets
 ----
 
 .. csv-table:: 
-   :file: /tables/sets_docs.csv
+   :file: /tables/first_stage/sets_docs.csv
    :header-rows: 1
    
 .. automodule:: pyomo_models.baseline.first_stage.sets
@@ -18,7 +18,7 @@ Variables
    :no-index:
 
 .. csv-table:: 
-   :file: /tables/variables_docs.csv
+   :file: /tables/first_stage/variables_docs.csv
    :header-rows: 1
 
 Parameters
@@ -28,7 +28,7 @@ Parameters
    :no-index:
 
 .. csv-table:: 
-   :file: /tables/parameters_docs.csv
+   :file: /tables/first_stage/parameters_docs.csv
    :header-rows: 1
 
 Objective

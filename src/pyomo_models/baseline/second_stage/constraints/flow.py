@@ -43,52 +43,54 @@ def flow_constraints(model):
         b = model.B_H[h].first()
         s_b = model.SB_H[h, s_h].first()
         return (
-            sum(model.flow_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h]) <= 1
-            # model.basin_state[t, b, s_b]
+            sum(model.flow_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h]) <= model.basin_state[t, b, s_b]
         )
 
-    @model.Constraint(model.T, model.HQS) # type: ignore
-    def flow_by_state_constraint(model, t, h, s_h, s_q):
+    @model.Constraint(model.T, model.H) # type: ignore
+    def discrete_flow_constraint(model, t, h):
         b = model.B_H[h].first()
-        s_b = model.SB_H[h, s_h].first()
         return (
-            model.calculated_flow[t, h, s_h, s_q] ==
-            model.basin_state[t, b, s_b] * 
-            (model.min_flow[h, s_h, s_q] - model.d_flow[h, s_h, s_q] * model.min_basin_volume[b, s_b]) +
-            model.d_flow[h, s_h, s_q] * model.basin_volume_by_state[t, b, s_b] 
+            model.flow[t, h] ==
+            sum(
+                sum(
+                    model.flow_state[t, h, s_h, s_q] * 
+                    (model.min_flow[h, s_h, s_q] - model.d_flow[h, s_h, s_q] * model.min_basin_volume[b, model.SB_H[h, s_h].first()]) +
+                    model.d_flow[h, s_h, s_q] * model.basin_volume_by_state[t, h, s_h, s_q] 
+                for s_q in model.S_Q[h, s_h])
+            for s_h in model.S_H[h])
         ) 
 
-    @model.Constraint(model.T, model.HQS) # type: ignore
-    def flow_state_max_inactive_constraint(model, t, h, s_h, s_q):
-        return model.flow_by_state[t, h, s_h, s_q] <= model.big_m * model.flow_state[t, h, s_h, s_q]
+    # @model.Constraint(model.T, model.HQS) # type: ignore
+    # def flow_state_max_inactive_constraint(model, t, h, s_h, s_q):
+    #     return model.flow_by_state[t, h, s_h, s_q] <= model.big_m * model.flow_state[t, h, s_h, s_q]
     
-    @model.Constraint(model.T, model.HQS) # type: ignore
-    def flow_state_min_inactive_constraint(model, t, h, s_h, s_q):
-        return model.flow_by_state[t, h, s_h, s_q] >= - model.big_m * model.flow_state[t, h, s_h, s_q]
+    # @model.Constraint(model.T, model.HQS) # type: ignore
+    # def flow_state_min_inactive_constraint(model, t, h, s_h, s_q):
+    #     return model.flow_by_state[t, h, s_h, s_q] >= - model.big_m * model.flow_state[t, h, s_h, s_q]
     
-    @model.Constraint(model.T, model.HQS) # type: ignore
-    def flow_state_max_active_constraint(model, t, h, s_h, s_q):
-        return(
-            model.flow_by_state[t, h, s_h, s_q] >= 
-            model.calculated_flow[t, h, s_h, s_q] -
-            model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
-        )
+    # @model.Constraint(model.T, model.HQS) # type: ignore
+    # def flow_state_max_active_constraint(model, t, h, s_h, s_q):
+    #     return(
+    #         model.flow_by_state[t, h, s_h, s_q] >= 
+    #         model.calculated_flow[t, h, s_h, s_q] -
+    #         model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
+    #     )
     
-    @model.Constraint(model.T, model.HQS) # type: ignore
-    def flow_state_min_active_constraint(model, t, h, s_h, s_q):
-        return(
-            model.flow_by_state[t, h, s_h, s_q] <= 
-            model.calculated_flow[t, h, s_h, s_q] +
-            model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
-        )
+    # @model.Constraint(model.T, model.HQS) # type: ignore
+    # def flow_state_min_active_constraint(model, t, h, s_h, s_q):
+    #     return(
+    #         model.flow_by_state[t, h, s_h, s_q] <= 
+    #         model.calculated_flow[t, h, s_h, s_q] +
+    #         model.big_m * (1 - model.flow_state[t, h, s_h, s_q])
+    #     )
         
-    @model.Constraint(model.T, model.H) # type: ignore
-    def flow_constraint(model, t, h):
-        return(
-            model.flow[t, h] == 
-            sum(
-                sum(model.flow_by_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h])
-            for s_h in model.S_H[h])
-        )
+    # @model.Constraint(model.T, model.H) # type: ignore
+    # def flow_constraint(model, t, h):
+    #     return(
+    #         model.flow[t, h] == 
+    #         sum(
+    #             sum(model.flow_by_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h])
+    #         for s_h in model.S_H[h])
+    #     )
     
     return model

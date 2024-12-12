@@ -4,5 +4,6 @@
 :math:`B`,1,,Water basins
 :math:`S_B`,2,:math:`B`,State of each basins
 :math:`S_H`,2,:math:`H`,State of each hydro powerplants (related to upstream basin state)
-:math:`F`,2,:math:`H`,State of each hydro powerplant  water flow
-:math:`S_{BH}`,4,:math:`\{ H; ~B; ~S_H \;~S_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"
+:math:`S_Q`,3,:math:`S_H`,State of each hydro powerplant  water flow
+:math:`B_{H}`,2,:math:`H`,Index to make the correspondence between hydro powerplants ant their upper stream bassin
+:math:`SB_{H}`,3,:math:`S_H`,Index to make the correspondence between basins' and hydro powerplants' states

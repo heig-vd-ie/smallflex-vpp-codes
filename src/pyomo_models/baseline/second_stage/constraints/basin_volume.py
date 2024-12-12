@@ -120,36 +120,40 @@ def basin_volume_constraints(model):
     ## Basin volume state constraints used to determine the state of each basin #######################################
     ###################################################################################################################
 
-    @model.Constraint(model.T, model.BS) # type: ignore
-    def basin_state_max_active_constraint(model, t, b, s_b):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def basin_state_max_active_constraint(model, t, h, s_h, s_q):
+        b = model.B_H[h].first()
         return (
-            model.basin_volume_by_state[t, b, s_b] <= 
-            model.max_basin_volume[b, model.S_B[b].last()] * model.basin_state[t, b, s_b]
+            model.basin_volume_by_state[t,  h, s_h, s_q] <= 
+            model.max_basin_volume[b, model.S_B[b].last()] * model.flow_state[t, h, s_h, s_q]
         )
         
-    @model.Constraint(model.T, model.BS) # type: ignore
-    def basin_state_max_inactive_constraint(model, t, b, s_b):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def basin_state_max_inactive_constraint(model, t,  h, s_h, s_q):
+        b = model.B_H[h].first()
         return (
-            model.basin_volume_by_state[t, b, s_b] >= 
+            model.basin_volume_by_state[t, h, s_h, s_q] >= 
             model.basin_volume[t, b] -
-            model.max_basin_volume[b, model.S_B[b].last()] * (1 - model.basin_state[t, b, s_b])
+            model.max_basin_volume[b, model.S_B[b].last()] * (1 - model.flow_state[t, h, s_h, s_q])
         )
     
-    @model.Constraint(model.T, model.BS) # type: ignore
-    def basin_state_min_active_constraint(model, t, b, s_b):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def basin_state_min_active_constraint(model, t, h, s_h, s_q):
+        b = model.B_H[h].first()
         return (
-            model.basin_volume_by_state[t, b, s_b] >= 
-            model.min_basin_volume[b, model.S_B[b].first()] * model.basin_state[t, b, s_b]
+            model.basin_volume_by_state[t, h, s_h, s_q] >= 
+            model.min_basin_volume[b, model.S_B[b].first()] * model.flow_state[t, h, s_h, s_q]
         )
         
 
         
-    @model.Constraint(model.T, model.BS) # type: ignore
-    def basin_state_min_inactive_constraint(model, t, b, s_b):
+    @model.Constraint(model.T, model.HQS) # type: ignore
+    def basin_state_min_inactive_constraint(model, t, h, s_h, s_q):
+        b = model.B_H[h].first()
         return (
-            model.basin_volume_by_state[t, b, s_b] <= 
+            model.basin_volume_by_state[t, h, s_h, s_q] <= 
             model.basin_volume[t, b] - 
-            model.min_basin_volume[b, model.S_B[b].first()] * (1 - model.basin_state[t, b, s_b])
+            model.min_basin_volume[b, model.S_B[b].first()] * (1 - model.flow_state[t, h, s_h, s_q])
         )
         
     return model

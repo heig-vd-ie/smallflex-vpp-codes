@@ -225,7 +225,7 @@ def generate_second_stage_state(
         data: pl.DataFrame = filter_data_with_next(
             data=performance_table["power_performance"], col="volume", boundaries=boundaries)
         y_cols = data.select(cs.starts_with(name) for name in ["flow", "electrical"]).columns
-        state_name_list = set(map(lambda x : x.split("_")[-1], y_cols))
+        state_name_list = list(set(map(lambda x : x.split("_")[-1], y_cols)))
         
         data = define_state(data=data, x_col="volume", y_cols=y_cols, error_threshold=error_threshold)\
             .with_row_index(offset=start_state, name="S")\
@@ -234,14 +234,9 @@ def generate_second_stage_state(
                     pl.lit(performance_table["B"]).alias("B")
             ).with_columns(
                 pl.struct(cs.ends_with(col_name)).name.map_fields(lambda x: "_".join(x.split("_")[:-1])).alias(col_name)
-                for col_name in list(state_name_list)
-            ).with_columns(
-                pl.struct(
-                    pl.lit(0).alias(col_name) 
-                    for col_name in ["flow","d_flow", "electrical_power", "d_electrical_power" ]
-                ).alias("off")  
+                for col_name in state_name_list
             ).unpivot(
-                on=list(state_name_list) + ["off"], index= ["volume", "S", "H", "B"], value_name="data", variable_name="state"
+                on=state_name_list, index= ["volume", "S", "H", "B"], value_name="data", variable_name="state"
             ).unnest("data").drop("state")
             
         state_index = pl.concat([state_index, data], how="diagonal")
