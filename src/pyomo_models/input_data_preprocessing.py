@@ -244,4 +244,4 @@ def duckdb_to_dict(file_path: str) -> dict[str, pl.DataFrame]:
     small_flex_input_schema: SmallflexInputSchema = SmallflexInputSchema()\
         .duckdb_to_schema(file_path=file_path)
     
-    return small_flex_input_schema.__dict__
+    return dict([(name, pl.DataFrame(table))for name, table in small_flex_input_schema.__dict__.items()])

@@ -4,7 +4,6 @@ import polars as pl
 from polars import col as c
 import pyomo.environ as pyo
 
-from data_federation.input_model import SmallflexInputSchema
 from pyomo_models.input_data_preprocessing import (
     generate_water_flow_factor, generate_basin_volume_table, clean_hydro_power_performance_table, duckdb_to_dict
 )
@@ -54,7 +53,7 @@ class BaseLineInput():
         self.index["hydro_power_plant"] = schema_dict["hydro_power_plant"]\
             .filter(self.hydro_power_mask).with_row_index(name="H")
             
-        self.index["water_basin"] = schema_dict[".water_basin"]\
+        self.index["water_basin"] = schema_dict["water_basin"]\
                 .filter(c("power_plant_fk").is_in(self.index["hydro_power_plant"]["uuid"]))\
                 .with_columns(
                     c("volume_max", "volume_min", "start_volume")*self.volume_factor
