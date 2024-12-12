@@ -3,7 +3,7 @@ import json
 from datetime import timedelta
 import polars as pl
 from typing import Union
-from multiprocessing import Pool
+from multiprocess import Pool
 
 from polars  import col as c
 import shutil
