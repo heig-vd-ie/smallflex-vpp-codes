@@ -7,11 +7,11 @@ import tqdm
 import logging
 
 from pyomo_models.input_data_preprocessing import (
-    generate_clean_timeseries, split_timestamps_per_sim, generate_second_stage_state
+    split_timestamps_per_sim, generate_second_stage_state
 )
 from utility.pyomo_preprocessing import (
     join_pyomo_variables, generate_datetime_index, extract_optimization_results, pivot_result_table,
-    check_infeasible_constraints
+    check_infeasible_constraints, generate_clean_timeseries
 )
 from utility.general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from pyomo_models.baseline.baseline_input import BaseLineInput

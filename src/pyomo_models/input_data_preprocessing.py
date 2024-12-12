@@ -2,12 +2,12 @@
 import polars as pl
 from polars import col as c
 from polars import selectors as cs
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta
 
 from data_federation.input_model import SmallflexInputSchema
 from typing_extensions import Optional
 from utility.pyomo_preprocessing import (
-    generate_datetime_index, generate_segments, generate_clean_timeseries, arange_float, filter_data_with_next,
+    arange_float, filter_data_with_next,
     linear_interpolation_for_bound, arange_float, linear_interpolation_using_cols,generate_state_index_using_errors, 
     filter_by_index, get_min_avg_max_diff, define_state)
 from utility.general_function import pl_to_dict, generate_log
@@ -35,7 +35,7 @@ def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
     return water_flow_factor
 
 def generate_basin_volume_table(
-    small_flex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], volume_factor: float, 
+    index: dict[str, pl.DataFrame], basin_height_volume_table: pl.DataFrame, volume_factor: float, 
     d_height: float = 1,
     
     )-> dict[int, Optional[pl.DataFrame]]:
@@ -45,7 +45,7 @@ def generate_basin_volume_table(
 
     for water_basin_index in index["water_basin"].to_dicts():
 
-        basin_height_volume_table: pl.DataFrame = small_flex_input_schema.basin_height_volume_table\
+        basin_height_volume_table = basin_height_volume_table\
                 .filter(c("water_basin_fk") == water_basin_index["uuid"])\
                 .with_columns(
                     (c("volume") * volume_factor).alias("volume")
@@ -70,7 +70,7 @@ def generate_basin_volume_table(
     return volume_table
 
 def clean_hydro_power_performance_table(
-    small_flex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], 
+    schema_dict: dict[str, pl.DataFrame], index: dict[str, pl.DataFrame], 
     basin_volume_table: dict[int, Optional[pl.DataFrame]]
     ) -> list[dict]:
 
@@ -80,7 +80,7 @@ def clean_hydro_power_performance_table(
         downstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["downstream_basin_fk"]).to_dicts()[0]
         upstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["upstream_basin_fk"]).to_dicts()[0]
 
-        power_plant_state: pl.DataFrame = small_flex_input_schema.power_plant_state\
+        power_plant_state: pl.DataFrame = schema_dict["power_plant_state"]\
             .filter(c("power_plant_fk") == power_plant_data["uuid"])
 
         volume_table = basin_volume_table[upstream_basin["B"]]
@@ -89,7 +89,7 @@ def clean_hydro_power_performance_table(
         
         state_dict = {}
         
-        turbine_fk = small_flex_input_schema.resource\
+        turbine_fk = schema_dict["resource"]\
             .filter(c("uuid").is_in(power_plant_data["resource_fk_list"]))\
             .filter(c("type") == "hydro_turbine")["uuid"].to_list()
 
@@ -100,7 +100,7 @@ def clean_hydro_power_performance_table(
         for name, state in state_list:
             state_dict[power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]] = name
             
-        power_performance: pl.DataFrame = small_flex_input_schema.hydro_power_performance_table\
+        power_performance: pl.DataFrame = schema_dict["hydro_power_performance_table"]\
             .with_columns(
                 (c("head") + downstream_basin["height_max"]).alias("height"),
             )
@@ -239,3 +239,9 @@ def generate_second_stage_state(
         pl.concat_list("H", "S", "S_Q").alias("HQS")
     )
     return index
+
+def duckdb_to_dict(file_path: str) -> dict[str, pl.DataFrame]:
+    small_flex_input_schema: SmallflexInputSchema = SmallflexInputSchema()\
+        .duckdb_to_schema(file_path=file_path)
+    
+    return small_flex_input_schema.__dict__

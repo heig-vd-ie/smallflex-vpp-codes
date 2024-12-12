@@ -3,11 +3,10 @@ from datetime import datetime, timedelta, timezone
 import polars as pl
 from polars import col as c
 import pyomo.environ as pyo
-import tqdm
 
 from data_federation.input_model import SmallflexInputSchema
 from pyomo_models.input_data_preprocessing import (
-    generate_water_flow_factor, generate_basin_volume_table, clean_hydro_power_performance_table,
+    generate_water_flow_factor, generate_basin_volume_table, clean_hydro_power_performance_table, duckdb_to_dict
 )
 
 class BaseLineInput():
@@ -39,24 +38,23 @@ class BaseLineInput():
         self.build_input_data(input_schema_file_name)
         
     def build_input_data(self, input_schema_file_name):
-        small_flex_input_schema: SmallflexInputSchema = SmallflexInputSchema()\
-            .duckdb_to_schema(file_path=input_schema_file_name)
+        schema_dict = duckdb_to_dict(file_path=input_schema_file_name)
         
-        self.discharge_flow_measurement = small_flex_input_schema.discharge_flow_measurement\
+        self.discharge_flow_measurement = schema_dict["discharge_flow_measurement"]\
             .filter(c("river") == "Griessee")\
             .with_columns(
                 (c("value") * self.real_timestep.total_seconds() * self.volume_factor).alias("discharge_volume"),
                 pl.lit(0).alias("B")
             )
             
-        self.market_price_measurement =small_flex_input_schema.market_price_measurement\
+        self.market_price_measurement =schema_dict["market_price_measurement"]\
             .filter(c("country") == self.market_country)\
             .filter(c("market") == self.market)
         
-        self.index["hydro_power_plant"] = small_flex_input_schema.hydro_power_plant\
+        self.index["hydro_power_plant"] = schema_dict["hydro_power_plant"]\
             .filter(self.hydro_power_mask).with_row_index(name="H")
             
-        self.index["water_basin"] = small_flex_input_schema.water_basin\
+        self.index["water_basin"] = schema_dict[".water_basin"]\
                 .filter(c("power_plant_fk").is_in(self.index["hydro_power_plant"]["uuid"]))\
                 .with_columns(
                     c("volume_max", "volume_min", "start_volume")*self.volume_factor
@@ -64,10 +62,13 @@ class BaseLineInput():
                 
         self.water_flow_factor = generate_water_flow_factor(index=self.index)
         basin_volume_table: dict[int, Optional[pl.DataFrame]] = generate_basin_volume_table(
-        small_flex_input_schema=small_flex_input_schema, index=self.index, volume_factor=self.volume_factor)
+            index=self.index, 
+            basin_height_volume_table=schema_dict["basin_height_volume_table"], 
+            volume_factor=self.volume_factor)
 
         self.power_performance_table = clean_hydro_power_performance_table(
-            small_flex_input_schema=small_flex_input_schema, index=self.index, 
+            index=self.index,
+            schema_dict=schema_dict, 
             basin_volume_table=basin_volume_table)
 
         
