@@ -2,8 +2,21 @@ import multiprocessing
 from time import sleep
 import polars as pl
 import tqdm
+import pyomo.environ as pyo
 
 def test_sub_process(df: pl.DataFrame, job_id, queue):
+    
+    model = pyo.AbstractModel()
+
+    model.T = pyo.Set()
+    model.I = pyo.Set()
+    model.J = pyo.Set(model.I)
+    
+    @model.Constraint(model.I) # type: ignore
+    def test(model, i):
+        return model.z[i] == sum(model.x[i, j] for j in model.J[i])
+    
+    solver = pyo.SolverFactory('gurobi')
     df_filtered = df.filter(pl.col("a") > job_id)
     for i in tqdm.tqdm(range(0, 10), position=job_id):
         sleep(0.1) 

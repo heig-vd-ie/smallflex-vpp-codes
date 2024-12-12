@@ -35,15 +35,19 @@ def baseline_sets(model):
     model.H = pyo.Set()
     model.B = pyo.Set()
     # index gathering the state per basin and the hydro powerplants
+
+    # index gathering the state of every basin and hydro powerplants
+    model.BS = pyo.Set(dimen=2)
+    model.HS = pyo.Set(dimen=2)
+    model.HQS = pyo.Set(dimen=3)
+    # model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
+    # model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
+    # model.HQS = pyo.Set(
+        # dimen=3, initialize=lambda model: [(h, s_h, s_q) for (h, s_h) in model.HS for s_q in model.S_Q[h, s_h]])
+    
     model.S_B = pyo.Set(model.B)
     model.S_H = pyo.Set(model.H)
-    # index gathering the state of every basin and hydro powerplants
-    model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
-    model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
-    
     model.S_Q = pyo.Set(model.HS)
-    model.HQS = pyo.Set(
-        dimen=3, initialize=lambda model: [(h, s_h, s_q) for (h, s_h) in model.HS for s_q in model.S_Q[h, s_h]])
     
     # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
     model.B_H = pyo.Set(model.H)

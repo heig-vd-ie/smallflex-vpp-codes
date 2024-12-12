@@ -22,8 +22,8 @@ from pyomo_models.baseline.second_stage.variables import baseline_variables
 from pyomo_models.baseline.second_stage.objective import baseline_objective
 from pyomo_models.baseline.second_stage.constraints.basin_volume import basin_volume_constraints
 from pyomo_models.baseline.second_stage.constraints.powered_volume import powered_volume_constraints
-from pyomo_models.baseline.second_stage.constraints.flow import flow_constraints
-from pyomo_models.baseline.second_stage.constraints.power import power_constraints
+from pyomo_models.baseline.second_stage.constraints.discrete_hydro import discrete_hydro_constraints
+
 
 
 log = generate_log(name=__name__)
@@ -91,33 +91,15 @@ class BaselineSecondStage(BaseLineInput):
             )
     
     def generate_model(self):
-        self.model: pyo.AbstractModel = pyo.AbstractModel()
-        self.model.T = pyo.Set()
-        self.model.H = pyo.Set()
-        self.model.B = pyo.Set()
-        # index gathering the state per basin and the hydro powerplants
-        self.model.S_B = pyo.Set(self.model.B)
-        self.model.S_H = pyo.Set(self.model.H)
-        # index gathering the state of every basin and hydro powerplants
-        self.model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
-        self.model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
-        
-        self.model.S_Q = pyo.Set(self.model.HS)
-        self.model.HQS = pyo.Set(
-            dimen=3, initialize=lambda model: [(h, s_h, s_q) for (h, s_h) in model.HS for s_q in model.S_Q[h, s_h]])
-    
-    # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
-        self.model.B_H = pyo.Set(self.model.H)
-        self.model.SB_H = pyo.Set(self.model.HS)
-        # self.model = baseline_sets(self.model)
+        self.model: pyo.AbstractModel = pyo.AbstractModel()   
+        self.model = baseline_sets(self.model)
         self.model = baseline_parameters(self.model)
         self.model = baseline_variables(self.model)
         
-        self.model = baseline_objective(self.model, with_penalty= self.with_penalty)
+        self.model = baseline_objective(self.model)
         self.model = basin_volume_constraints(self.model)
         self.model = powered_volume_constraints(self.model)
-        self.model = flow_constraints(self.model)
-        self.model = power_constraints(self.model)  
+        self.model = discrete_hydro_constraints(self.model)
         
     def retrieve_input(self, input_instance):
         for name, value in input_instance.__dict__.items():
@@ -305,6 +287,9 @@ class BaselineSecondStage(BaseLineInput):
             .group_by("B", maintain_order=True).agg("S")
             .with_columns(c("S").list.sort())
         )
+        self.data["BS"] = {None: list(map(tuple,self.index["state"]["BS"].to_list()))}
+        self.data["HS"] = {None: list(map(tuple,hydropower_state["HS"].to_list()))}
+        self.data["HQS"] = {None: list(map(tuple,hydropower_state["HQS"].to_list()))}
         self.data["S_H"] = pl_to_dict(
             hydropower_state.unique("S", keep="first")
             .group_by("H", maintain_order=True)

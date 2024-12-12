@@ -27,7 +27,7 @@ SIMULATION_SETTING = [
     {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
 ]
 REAL_TIMESTEP = timedelta(hours=1)
-FIRST_STAGE_TIMESTEP = timedelta(days=1)
+FIRST_STAGE_TIMESTEP = timedelta(days=2)
 SECOND_STAGE_TIME_SIM = timedelta(days=4)
 TIME_LIMIT = 20 # in seconds
 VOLUME_FACTOR = 1e-6
@@ -73,13 +73,14 @@ if __name__=="__main__":
                 input_schema_file_name=output_file_names["duckdb_input"],
                 real_timestep=REAL_TIMESTEP,
                 year=year,
+                max_alpha_error=2,
                 hydro_power_mask = c("name").is_in(["Aegina hydro"]),
                 volume_factor=VOLUME_FACTOR
             )
             
             first_stage: BaselineFirstStage = BaselineFirstStage(
                 input_instance=baseline_input, 
-                timestep=timedelta(days=1), 
+                timestep=FIRST_STAGE_TIMESTEP, 
                 turbine_factor=turbine_factor
             )
             
