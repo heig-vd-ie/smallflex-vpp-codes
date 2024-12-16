@@ -31,12 +31,11 @@ log = generate_log(name=__name__)
 class BaselineSecondStage(BaseLineInput):
     def __init__(
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, model_nb: int = 1,
-        buffer: float = 0.2, big_m: float = 1e6, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
+        buffer: float = 0.2, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
         quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
         global_price: bool = False, time_limit:float =  120
         ):
         self.retrieve_input(input_instance)
-        self.big_m: float = big_m
         self.sim_nb = 0
         self.sim_tot = 0
         self.model_nb = model_nb
@@ -126,12 +125,12 @@ class BaselineSecondStage(BaseLineInput):
         
     def get_alpha_boundaries(self):
 
-        self.min_alpha: dict[int, float] = {}
-        self.max_alpha: dict[int, float] = {}
+        self.alpha_pos: dict[int, float] = {}
+        self.alpha_neg: dict[int, float] = {}
         for data in self.power_performance_table:
             alpha = data["power_performance"].select(cs.contains("alpha"))
-            self.min_alpha[data["H"]] = alpha.select(pl.min_horizontal(pl.all()).alias("min"))["min"].min()
-            self.max_alpha[data["H"]] = alpha.select(pl.max_horizontal(pl.all()).alias("max"))["max"].max()    
+            self.alpha_pos[data["H"]] = alpha.select(pl.min_horizontal(pl.all()).alias("min"))["min"].min()
+            self.alpha_neg[data["H"]] = alpha.select(pl.max_horizontal(pl.all()).alias("max"))["max"].max()    
             
     def generate_index(self):
         
@@ -153,9 +152,8 @@ class BaselineSecondStage(BaseLineInput):
         self.data["B"] = {None: self.index["water_basin"]["B"].to_list()}
         self.data["buffer"] = {None: self.buffer}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "turbined_factor"])
-        self.data["big_m"] = {None: self.big_m}
-        self.data["min_alpha"] = self.min_alpha
-        self.data["max_alpha"] = self.max_alpha
+        self.data["alpha_pos"] = self.alpha_pos
+        self.data["alpha_neg"] = self.alpha_neg
         self.data["volume_factor"] = {None: self.volume_factor}
         self.data["spilled_factor"] = dict(map(lambda x: (x["B"], self.spilled_factor), self.power_performance_table))
         if self.global_price:

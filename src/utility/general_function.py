@@ -192,3 +192,20 @@ def dict_to_duckdb(data: dict[str, pl.DataFrame], file_path: str):
             for table_name, table_pl in tqdm.tqdm(data.items(), desc="Save dictionary into duckdb file", ncols=150):
                 query = f"CREATE TABLE {table_name} AS SELECT * FROM table_pl"
                 con.execute(query)
+                
+                
+def duckdb_to_schema(file_path: str) -> dict:
+        schema_dict: dict[str, pl.DataFrame] = {} # type: ignore
+
+        with duckdb.connect(database=file_path) as con:
+            con.execute("SET TimeZone='UTC'")
+            query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+            pbar = tqdm.tqdm(
+                con.execute(query).fetchall(), ncols=150, 
+                desc="Read and validate tables from {} file".format(os.path.basename(file_path))
+                )
+            for table_name in pbar:
+                query: str = f"SELECT * FROM {table_name[0]}"
+                schema_dict[table_name[0]] = con.execute(query).pl()
+                    
+        return schema_dict

@@ -1,68 +1,95 @@
-"""
+r"""
 Water basin volume evolution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
-    :label: basin-volume-evolution
+    :label: basin-volume-evolution-2
     :nowrap:
         
-    \\begin{align}
-        V_\\text{BAS}^{t,~b} =
-        \\begin{cases} 
-            V_\\text{BAS, START}^{b} & \\text{if } t = t_0 \\\\
-            V_\\text{BAS}^{t - 1,~b} + V_\\text{DIS}^{t - 1,~b} - V_\\text{SPIL}^{t - 1,~b} + 
-            nb_\\text{SEC} \cdot nb_\\text{HOUR}^{t-1} \cdot 
-            \sum_{h \in H} \left( 
-                F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t-1,~h} + 
-                F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t-1,~h} 
-            \\right) \quad & \\text{if } t \\neq t_0
-        \end{cases} \qquad \\forall \{t\in T, b \in B \}
-    \\end{align}
-
+    \begin{align}
+        V_\text{BAS}^{t,~b} =
+        \begin{cases} 
+            V_\text{BAS, START}^{b} & \text{if } t = t_0 \\
+            V_\text{BAS}^{t - 1,~b} + V_\text{DIS}^{t - 1,~b} - V_\text{SPIL}^{t - 1,~b} + 
+            nb_\text{SEC} \cdot nb_\text{HOUR} \cdot 
+            \sum_{h \in H} F_\text{TUR}^{b,~h} \cdot Q^{t-1,~h} 
+            \quad & \text{if } t \neq t_0
+        \end{cases} \qquad \forall \{t\in T, b \in B \}
+    \end{align} 
+    
 .. math::
-    :label: basin-end-volume    
+    :label: end-basin-volume-evolution-2
+    :nowrap:
+        
+    \begin{align}
+        V_\text{BAS, END}^{b} = V_\text{BAS}^{t_{end},~b} + V_\text{DIS}^{t_{end},~b}  - V_\text{SPIL}^{t_{end},~b} + 
+        nb_\text{SEC} \cdot nb_\text{HOUR} \cdot \sum_{h \in H} F_\text{TUR}^{b,~h} \cdot Q^{t_{end},~h}
+    \qquad \forall \{b \in B \}
+    \end{align} 
+    
+.. math::
+    :label: max-end-basin-volume-2
     :nowrap:
     
-    \\begin{align}
-    V_\\text{BAS, START}^{b} = V_\\text{BAS}^{t_{end},~b} + V_\\text{DIS}^{t_{end},~b}  - V_\\text{SPIL}^{t_{end},~b} + 
-    nb_\\text{SEC} \cdot nb_\\text{HOUR}^{t_{end}} \cdot
-        \sum_{h \in H} \left(
-            F_\\text{TUR}^{b,~h} \cdot Q_\\text{TUR}^{t_{end},~h} +
-            F_\\text{PUM}^{b,~h} \cdot Q_\\text{PUM}^{t_{end},~h}
-        \\right) \qquad \\forall \{b \in B \}
-    \\end{align} 
+    \begin{align}
+    V_\text{BAS, END}^{b} &\leq V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}} 
+    \qquad \forall \{b \in B \}
+    \end{align}
+
+.. math::
+    :label: min-end-basin-volume-2
+    :nowrap:
+    
+    \begin{align}
+    V_\text{BAS, END}^{b} &\geq V_\text{BAS, MIN}^{b,~S_B^\text{0}\{b\}} 
+    \qquad \forall \{b \in B \}
+    \end{align}
+
 
     
 Water basin state
 ~~~~~~~~~~~~~~~~~~
 
 .. math::
-    :label: basin-max-state
+    :label: max-basin-state-2
     :nowrap:
     
-    \\begin{align}
-    V_\\text{BAS}^{t,~b} \leq V_\\text{BAS, MAX}^{b,~s_b} +  V_\\text{BAS, MAX}^{b,~S_B^\\text{END}\{b\}} 
-    \cdot \left(1 -S_\\text{BAS}^{t,~b,~s_b} \\right)
-    \qquad \\forall \{t\in T~\\vert~b \in B~\\vert~ s_b \in S_B\{b\} \}
+    \begin{align}
+    V_\text{BAS}^{t,~b} &\leq V_\text{BAS, MAX}^{b,~s_b} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}} 
+    \cdot \left(1 -S_\text{BAS}^{t,~b,~s_b} \right)
+    \qquad \forall \{t\in T~\vert~b \in B~\vert~ s_b \in S_B\{b\} \}
+    \end{align}
     
-    \\end{align} 
+.. math::
+    :label: min-basin-state-2
+    :nowrap:
+    
+    \begin{align}
+    V_\text{BAS}^{t,~b} &\geq V_\text{BAS, MIN}^{b,~s_b} \cdot S_\text{BAS}^{t,~b,~s_b}
+    \qquad \forall \{t\in T~\vert~b \in B \}
+    \end{align}
+
 
 .. math::
-    :label: basin-min-state
+    :label: basin-state-2
     :nowrap:
     
-    \\begin{align}
-    V_\\text{BAS}^{t,~b} \geq V_\\text{BAS, MIN}^{b,~s_b} \cdot S_\\text{BAS}^{t,~b,~s_b}
-    \qquad \\forall \{t\in T~\\vert~b \in B \}
-    \\end{align}
+    \begin{align}
+    \sum_{s \in S_B\{b\}} S_\text{BAS}^{t,~b,~s} = 1 \qquad \forall \{t\in T~\vert~b \in B \}
+    \end{align} 
+
 .. math::
-    :label: basin-total-state
+    :label: basin-volume-per-state-2
     :nowrap:
     
-    \\begin{align}
-    \sum_{s \in S_B\{b\}} S_\\text{BAS}^{t,~b,~s} = 1 \qquad \\forall \{t\in T~\\vert~b \in B \}
-    \\end{align} 
+    \begin{align}
+    V_\text{BAS, S}^{t,~h,~s_h,~s_q} = V_\text{BAS}^{t,~b_h} \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q} 
+    \qquad \forall \{t\in T~ \vert ~h \in H ~ \vert ~ s_h \in S_H\{h\} ~ \vert ~ s_q \in S_Q\{h,~ s_h\}\}
+    \end{align} 
     
+For constriants :eq:`basin-volume-per-state-2`, the set :math:`B_H` is employed to link basin volumes with hydropower 
+plants. This constraint involves the multiplication of a continuous variable with a binary variable. Consequently, 
+a Big-M decomposition is required to linearize it.
 """
 import pyomo.environ as pyo
 

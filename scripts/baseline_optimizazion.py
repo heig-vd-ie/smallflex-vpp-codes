@@ -27,7 +27,7 @@ SIMULATION_SETTING = [
     {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
 ]
 REAL_TIMESTEP = timedelta(hours=1)
-FIRST_STAGE_TIMESTEP = timedelta(days=2)
+FIRST_STAGE_TIMESTEP = timedelta(days=1)
 SECOND_STAGE_TIME_SIM = timedelta(days=4)
 TIME_LIMIT = 20 # in seconds
 VOLUME_FACTOR = 1e-6
@@ -37,15 +37,10 @@ output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
 log = generate_log(name=__name__)
 
 def solve_second_stage_model(
-    second_stage: BaselineSecondStage, plot_name: str, queue
+    second_stage: BaselineSecondStage, queue
     ):
     
     second_stage.solve_model()
-    
-    fig = plot_second_stage_result(
-        simulation_results=second_stage.simulation_results, time_divider=7*24
-    )
-    fig.write_html(plot_name)
     queue.put(second_stage)
 
 
@@ -111,36 +106,41 @@ if __name__=="__main__":
                     model_nb=model_nb,
                     **sim_setting
                 )
-                fig_path = f"{plot_folder}/{turbine_factor}_turbine_factor_model_{model_nb}.html"
+                
                 proc = m_process.Process(
-                    target=solve_second_stage_model, args=(second_stage, fig_path, queue)
+                    target=solve_second_stage_model, args=(second_stage, queue)
                 )
                 proc.start()
                 processes.append(proc)
                 
-                
-                optimization_inputs.append([second_stage, fig_path])
             for p in processes:
                 p.join()    
             
             for name in range(len(processes)):
                 second_stage = queue.get()
-                    
+                turbine_factor_str = str(turbine_factor).replace(".", "_")
+                fig_path = f"{plot_folder}/{turbine_factor_str}_turbine_factor_model_{model_nb}.html"    
 
-                sim_results[f"{turbine_factor}_turbine_factor_model_{name}"] = second_stage.simulation_results
-                # income_result[f"model_{name}"] = income
-                log_book = second_stage.log_book
-                if not log_book.is_empty():
-                    log_book_final = pl.concat([
-                        log_book_final, 
-                        log_book.with_columns(pl.lit(name).alias("sim_name"))
-                    ], how="diagonal_relaxed")    
-            # income_result_list.append(income_result) 
+                sim_results[f"{turbine_factor_str}_turbine_factor_model_{name}"] = second_stage.simulation_results
+                income_result[f"model_{name}"] = round(second_stage.simulation_results["income"].sum()/1e6, 3)
+                fig = plot_second_stage_result(
+                    simulation_results=second_stage.simulation_results, time_divider=7*24
+                )
+                fig.write_html(fig_path)
+                
+                log_book_final = pl.concat([
+                    log_book_final, 
+                    second_stage.log_book.with_columns(pl.lit(name).alias("sim_name"))
+                ], how="diagonal_relaxed")    
+                
+                income_result_list.append(income_result) 
         
         log.info(f"Income results for {year} year:\n{sim_results["income_result"]}")
         
             
         sim_results["income_result"] = pl.from_dicts(income_result_list)
-        sim_results["log_book"] = log_book_final
+        if not log_book_final.is_empty():
+
+            sim_results["log_book"] = log_book_final
         
         dict_to_duckdb(data=sim_results, file_path= f"{baseline_folder}/{year}_year_results.duckdb")

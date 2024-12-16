@@ -2,13 +2,10 @@
 ":math:`V_\text{BAS}^{t,~b}`",Basins actual water volume,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{SPIL}^{t,~b}`",Spilled water volumes when basins are full,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{BAS, END}^{b}`",Basins end volume,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-":math:`dV_\text{+}^{t,~h}`",Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-":math:`dV_\text{-}^{t,~h}`",Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+:math:`dV_\text{+}^{h}`,Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+:math:`dV_\text{-}^{h}`,Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
 ":math:`P^{t,~h}`",Electrical power produced (or consumed) by a hydropower plant,:math:`\mathbb{R}`,:math:`\mathrm{MW}`
 ":math:`Q^{t,~h}`",Amount of water that flows through a hydropower plant,:math:`\mathbb{R}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`S_\text{BAS}^{t,~b,~s_b}`","Binary variable that indicates the basin's volume state derived from its volume:  :math:`S_\text{BAS}^{t, b, s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
+":math:`S_\text{BAS}^{t,~b,~s_b}`","Binary variable that indicates the basin's volume state derived from its volume:  :math:`S_\text{BAS}^{t,~b,~s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t,~b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
 ":math:`S_\text{FLOW}^{t,~h,~s_h,~s_q}`",Binary variable that indicates the hydo power plant's flow state (for turbine and pump),:math:`\mathbb{B}`,
-":math:`P_\text{CAL}^{t,~h,~s_h,~s_q}`",Calculated electrical power produced (or consumed) by a hydropower plant for each flow state,:math:`\mathbb{R}`,:math:`\mathrm{MW}`
-":math:`Q_\text{CAL}^{t,~h,~s_h,~s_q}`",Calculated  water that flows through a hydropower plant for each flow state,:math:`\mathbb{R}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`P_\text{S}^{t,~h,~s_h,~s_q}`","Real electrical power produced (or consumed) by a hydropower plant for each flow state: :math:`P_\text{S}^{t,~h,~s_h,~s_q} = \begin{cases} P_\text{CAL}^{t,~h,~s_h,~s_q} \text{ if } S_\text{FLOW}^{t,~h,~s_h,~s_q} = 1 \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{R}`,:math:`\mathrm{MW}`
-":math:`Q_\text{S}^{t,~h,~s_h,~s_q}`","Real amount of water that flows through a pump for each hydro powerplant state: :math:`Q_\text{S}^{t,~h,~s_h,~s_q} = \begin{cases} Q_\text{CAL}^{t,~h,~s_h,~s_q} \text{ if } S_\text{FLOW}^{t,~h,~s_h,~s_q} = 1  0 \text{ otherwise} \end{cases}`",:math:`\mathbb{R}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`V_\text{BAS, S}^{t,~h,~s_h,~s_q}`","Basin volume seen by hydropowerplant states : :math:`V_\text{BAS, S}^{t,~h,~s_h,~s_q}  = \begin{cases} V_\text{BAS}^{t,~b_h} \text{ if } S_\text{FLOW}^{t,~h,~s_h,~s_q} = 1 \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{R}`,:math:`\mathrm{MW}`

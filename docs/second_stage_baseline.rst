@@ -8,13 +8,13 @@ Sets
    :file: /tables/baseline/second_stage/sets_docs.csv
    :header-rows: 1
    
-.. automodule:: pyomo_models.baseline.first_stage.sets
+.. automodule:: pyomo_models.baseline.second_stage.sets
    :no-index:
 
 Variables
 ----------
 
-.. automodule:: pyomo_models.baseline.first_stage.variables
+.. automodule:: pyomo_models.baseline.second_stage.variables
    :no-index:
 
 .. csv-table:: 
@@ -24,7 +24,7 @@ Variables
 Parameters
 ----------
 
-.. automodule:: pyomo_models.baseline.first_stage.parameters
+.. automodule:: pyomo_models.baseline.second_stage.parameters
    :no-index:
 
 .. csv-table:: 
@@ -34,18 +34,18 @@ Parameters
 Objective
 ----------
 
-.. automodule:: pyomo_models.baseline.first_stage.objective
+.. automodule:: pyomo_models.baseline.second_stage.objective
    :no-index:
 
 Constraints
 ------------
 
 
-.. automodule:: pyomo_models.baseline.first_stage.constraints.basin_volume
+.. automodule:: pyomo_models.baseline.second_stage.constraints.basin_volume
    :no-index:
 
-.. automodule:: pyomo_models.baseline.first_stage.constraints.turbine
+.. automodule:: pyomo_models.baseline.second_stage.constraints.powered_volume
    :no-index:
 
-.. automodule:: pyomo_models.baseline.first_stage.constraints.pump
+.. automodule:: pyomo_models.baseline.second_stage.constraints.discrete_hydro
    :no-index:

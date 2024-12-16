@@ -1,27 +1,29 @@
 r"""
 The sets :math:`T`, :math:`S_H` and :math:`S_B` are arranged in a specific order such that indexing a variable with 
-the first or last element of a set (i.e :math:`t^{0}` and :math:`t^{\\text{END}} \in T`) corresponds respectively to 
+the first or last element of a set (i.e :math:`t^{0}` and :math:`t^{\text{END}} \in T`) corresponds respectively to 
 the lowest/first or highest/final element of that variable.
 
 :math:`S_H` and :math:`S_B` include subset to specify the corresponding hydro powerplants and basins that the 
 state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect 
 all states associated with a basin :math:`b` we can use the notation :math:`S_B\{b\}`
 
-:math:`S_B =\\begin{cases} 1: \left[1, 2, 3\\right] \\\\ 2: \left[4, 5\\right]  \\\\ 3: \left[6\\right] \\end{cases}`
+:math:`B \in \{1, ~2, ~3\}`
+
+:math:`S_B =\begin{cases} 1: \left[1, ~2, ~3\right] \\ 2: \left[4, ~5\right]  \\ 3: \left[ 6 \right] \end{cases}`
 
 In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets, 
 such as :math:`S\_B`. To handle this limitation, we need to create new sets (i.e. :math:`BS`) which will explicitly 
 represent the deployment of these subsets. These new sets will be structured to map the relationships required for 
 indexing variables and parameters in the model effectively.
 
-:math:`SB \in \{b, s_b\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
+:math:`SB \in \{B, S_B\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
 
 
-The set :math:`S\_BH` defines the connections between each basin, its corresponding state, and the hydro powerplants. 
-This link is established solely between a hydro powerplant and its associated upstream basin. It is assumed that the 
-water level in downstream basins does not affect the behavior of turbined or pumped energy.
+The set :math:`B_H` and :math:`SB_H` defines the connections between each basin, its corresponding state,
+and the hydro powerplants. This link is established solely between a hydro powerplant and its associated upstream basin. 
+It is assumed that the water level in downstream basins does not affect the behavior of turbined or pumped energy.
 
-:math:`S_{BH} \in \{b, h\, s_b, s_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}` 
+:math:`B_H =\begin{cases} 1: 2 \\ 2: 1\end{cases}`
 
 
 

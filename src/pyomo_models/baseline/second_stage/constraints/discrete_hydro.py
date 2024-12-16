@@ -1,35 +1,39 @@
-"""
-Water pumped
-~~~~~~~~~~~~~~~
+r"""
+Discrete hydro powerplants
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
-    :label: pumped-flow-state
+    :label: flow-state-2
     :nowrap:
     
-    \\begin{align}
-    Q_\\text{PUM, S}^{t,~h,~s_h} \leq Q_\\text{PUM, MAX}^{h,~s_h} \cdot S_\\text{BAS}^{t,~b,~s_b}
-    \qquad \\forall \{t\in T~\\vert~b,~h,~s_h ~s_h \in S_{BH} \}
-    \\end{align}
-.. math::
-    :label: pumped-flow
-    :nowrap:
+    \begin{align}
+    S_\text{BAS}^{t,B_H\{h\},~SB_H\{h,~s_h\}} \geq \sum_{s_q \in S_Q\{h,~s_h\}} S_\text{FLOW}^{t,~h,~s_h,~s_q} 
+    \qquad \forall \{t\in T~\vert~h,\in H~\vert~s_h \in S_H\{h\} \}
+    \end{align}
     
-    \\begin{align}
-    Q_\\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\\text{PUM, S}^{t,~h,~s} 
-    \qquad \\forall \{t\in T~\\vert~h \in H~\}
-    \\end{align}
     
 .. math::
-    :label: pumped-power
+    :label: powered-flow-2
     :nowrap:
     
-    \\begin{align}
-    P_\\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} \\alpha_\\text{PUM, AVG}^{h,~s} \cdot  Q_\\text{PUM, S}^{t,~h,~s}
-    \qquad \\forall \{t\in T~\\vert~h \in H\}
-    \\end{align}
+    \begin{align}
+    Q^{t,~h} = \sum_{s_h \in S_H\{h\}} \sum_{s_q \in S_Q\{h,~s_h\}} 
+        \Big[ \left(Q_\text{MIN}^{h,~s_h,~s_q} - dQ^{h,~s_h,~s_q} \cdot  V_\text{BAS, MIN}^{B_H\{h\},~SB_H\{h,~s_h\}} \right) 
+        \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q} + dQ^{h,~s_h,~s_q} \cdot V_\text{BAS, S}^{t,~h,~s_h,~s_q} \Big]
+    \qquad \forall \{t\in T~\vert~h \in H~\}
+    \end{align}
+    
+.. math::
+    :label: powered-power-2
+    :nowrap:
+    
+    \begin{align}
+    P^{t,~h} = \sum_{s_h \in S_H\{h\}} \sum_{s_q \in S_Q\{h,~s_h\}} 
+        \Big[\left(P_\text{MIN}^{h,~s_h,~s_q} - dP^{h,~s_h,~s_q} \cdot  V_\text{BAS, MIN}^{B_H\{h\},~SB_H\{h,~s_h\}} \right) 
+        \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q} + dP^{h,~s_h,~s_q} \cdot V_\text{BAS, S}^{t,~h,~s_h,~s_q} \Big]
+    \qquad \forall \{t\in T~\vert~h \in H~\}
+    \end{align}
 
-The constraint :eq:`pumped-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
-basin set :math:`B` and the hydro powerplant set :math:`H`.
 """
 import pyomo.environ as pyo
 

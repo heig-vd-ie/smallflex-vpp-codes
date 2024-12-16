@@ -15,12 +15,6 @@ def baseline_variables(model):
     model.basin_state = pyo.Var(model.T, model.BS, within=pyo.Binary)
     model.flow_state = pyo.Var(model.T, model.HQS, within=pyo.Binary)
     
-    # model.calculated_flow = pyo.Var(model.T, model.HQS, within=pyo.Reals) # m^3
-    # model.calculated_power = pyo.Var(model.T, model.HQS, within=pyo.Reals) # m^3
-
-    # model.flow_by_state = pyo.Var(model.T, model.HQS, within=pyo.Reals) # m^3
-    # model.power_by_state = pyo.Var(model.T, model.HQS, within=pyo.Reals) # m^3
-    
     model.basin_volume_by_state = pyo.Var(model.T, model.HQS, within=pyo.NonNegativeReals) # m^3
 
     return model
