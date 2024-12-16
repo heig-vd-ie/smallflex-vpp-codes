@@ -20,11 +20,13 @@ from pyomo_models.baseline.second_stage.second_stage_pipeline import BaselineSec
 
 YEARS = [2020, 2021, 2022, 2023]
 
-TURBINE_FACTORS = {0.7, 0.8, 0.9}
+TURBINE_FACTORS = {0.75, 0.85, 0.95}
 SIMULATION_SETTING = [
-    {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True, "with_penalty": True},
-    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "with_penalty": True},
-    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "with_penalty": True},
+    {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True},
+    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True},
+    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False},
+    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "global_price": True},
+    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "global_price": True},
 ]
 REAL_TIMESTEP = timedelta(hours=1)
 FIRST_STAGE_TIMESTEP = timedelta(days=1)
