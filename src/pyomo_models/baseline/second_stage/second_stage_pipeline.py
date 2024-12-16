@@ -401,7 +401,8 @@ class BaselineSecondStage(BaseLineInput):
         for sim_nb in tqdm.tqdm(
             range(self.sim_tot + 1), 
             desc=f"Solving second stage optimization model number {self.model_nb}",
-            position=self.model_nb
+            position=self.model_nb,
+            ncols=150
         ):
             self.sim_nb = sim_nb
             self.generate_state_index()

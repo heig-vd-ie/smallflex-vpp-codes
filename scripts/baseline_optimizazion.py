@@ -76,12 +76,12 @@ if __name__=="__main__":
             )
             
             first_stage: BaselineFirstStage = BaselineFirstStage(
-                input_instance=baseline_input, 
-                timestep=FIRST_STAGE_TIMESTEP, 
+                input_instance=baseline_input,
+                timestep=FIRST_STAGE_TIMESTEP,
                 turbine_factor=turbine_factor
             )
             
-            first_stage.solve_model() 
+            first_stage.solve_model()
             
             sim_results["first_stage"] = first_stage.simulation_results
             income_result["first_stage"] = round(first_stage.simulation_results["income"].sum()/1e6, 3)

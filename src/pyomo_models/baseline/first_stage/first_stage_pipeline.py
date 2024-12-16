@@ -221,7 +221,7 @@ class BaselineFirstStage(BaseLineInput):
         self.model_instance: pyo.Model = self.model.create_instance({None: data})
 
     def solve_model(self):
-        with tqdm.tqdm(total=1, desc="Solving first stage optimization problem") as pbar:
+        with tqdm.tqdm(total=1, desc="Solving first stage optimization problem", ncols=150) as pbar:
             self.create_model_instance()
             _ = self.solver.solve(self.model_instance)
             pbar.update()
