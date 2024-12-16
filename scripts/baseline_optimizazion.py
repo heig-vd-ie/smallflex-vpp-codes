@@ -3,7 +3,7 @@ import json
 from datetime import timedelta
 import polars as pl
 from typing import Union
-import multiprocessing
+from multiprocessing import get_context
 
 from polars  import col as c
 import shutil
@@ -39,12 +39,14 @@ output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
 log = generate_log(name=__name__)
 
 def solve_second_stage_model(
-    second_stage: BaselineSecondStage, queue
+    second_stage: BaselineSecondStage, model_id
     ):
+    try:
+        second_stage.solve_model()
+    except Exception as e:
+        raise e
+    return second_stage
     
-    second_stage.solve_model()
-    queue.put(second_stage)
-
 
 if __name__=="__main__":
     baseline_folder = output_file_names["baseline"]
@@ -56,7 +58,7 @@ if __name__=="__main__":
         income_result_list: list[dict] = []
         log_book_final: pl.DataFrame = pl.DataFrame()
         for turbine_factor in TURBINE_FACTORS:
-            
+            turbine_factor_str = str(turbine_factor).replace(".", "_")
             
             income_result: dict = {} 
             income_result["turbine_factor"] = turbine_factor
@@ -96,9 +98,9 @@ if __name__=="__main__":
             income_results: list[dict] = []
             
             processes = []
-            m_process = multiprocessing.get_context("spawn")
-            queue = m_process.Queue()
-            
+            # m_process = multiprocessing.get_context("spawn")
+            # queue = m_process.Queue()
+            inputs_list = []
             for model_nb, sim_setting in enumerate(SIMULATION_SETTING):
                 second_stage: BaselineSecondStage = BaselineSecondStage(
                     input_instance=baseline_input, 
@@ -108,23 +110,31 @@ if __name__=="__main__":
                     model_nb=model_nb,
                     **sim_setting
                 )
-                
-                proc = m_process.Process(
-                    target=solve_second_stage_model, args=(second_stage, queue)
-                )
-                proc.start()
-                processes.append(proc)
-                
-            for p in processes:
-                p.join()    
+                inputs_list.append([second_stage, model_nb])
             
-            for name in range(len(processes)):
-                second_stage = queue.get()
-                turbine_factor_str = str(turbine_factor).replace(".", "_")
+            with get_context("spawn").Pool(processes=len(inputs_list)) as pool:
+                results = pool.starmap(solve_second_stage_model, inputs_list)
+            
+                
+            #     proc = m_process.Process(
+            #         target=solve_second_stage_model, args=(second_stage, queue)
+            #     )
+            #     proc.start()
+            #     processes.append(proc)
+                
+            # for p in processes:
+            #     log.info("test")
+            #     p.join()
+            # log.info("test_2")
+            
+            for model_id, second_stage in enumerate(results):
+                log.info("test")
+                
                 fig_path = f"{plot_folder}/{turbine_factor_str}_turbine_factor_model_{model_nb}.html"    
-
-                sim_results[f"{turbine_factor_str}_turbine_factor_model_{name}"] = second_stage.simulation_results
-                income_result[f"model_{name}"] = round(second_stage.simulation_results["income"].sum()/1e6, 3)
+                second_stage.finalizes_results_processing()
+                
+                sim_results[f"{turbine_factor_str}_turbine_factor_model_{model_id}"] = second_stage.simulation_results
+                income_result[f"model_{model_id}"] = round(second_stage.simulation_results["income"].sum()/1e6, 3)
                 fig = plot_second_stage_result(
                     simulation_results=second_stage.simulation_results, time_divider=7*24
                 )
@@ -132,7 +142,7 @@ if __name__=="__main__":
                 
                 log_book_final = pl.concat([
                     log_book_final, 
-                    second_stage.log_book.with_columns(pl.lit(name).alias("sim_name"))
+                    second_stage.log_book.with_columns(pl.lit(model_id).alias("sim_name"))
                 ], how="diagonal_relaxed")    
                 
                 income_result_list.append(income_result) 

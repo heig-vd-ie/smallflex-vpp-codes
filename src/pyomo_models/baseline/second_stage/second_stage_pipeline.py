@@ -419,7 +419,7 @@ class BaselineSecondStage(BaseLineInput):
                     break
                 
         logging.getLogger('pyomo.core').setLevel(logging.WARNING)        
-        self.finalizes_results_processing()
+        
 
     def calculated_feasibility(self):
         start_basin_volume = self.start_basin_volume.filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]]
