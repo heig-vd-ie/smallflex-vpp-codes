@@ -1,0 +1,514 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Second Stage &mdash; SmallFlex  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/sphinx_rtd_size.css?v=8f58cd29" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=21864d6c" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"chtml": {"displayAlign": "left"}, "tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "tags": "ams", "tagSide": "right", "tagIndent": "0em", "useLabelIds": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="1. First Stage" href="first_stage_baseline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            SmallFlex
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="baseline.html">Baseline</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="first_stage_baseline.html">1. First Stage</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">2. Second Stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sets">2.1. Sets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#variables">2.2. Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameters">2.3. Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#objective">2.4. Objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#constraints">2.5. Constraints</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#water-basin-volume-evolution">2.5.1 Water basin volume evolution</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#water-basin-state">2.5.2 Water basin state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#powered-water-volume">2.5.3 Powered water volume</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#discrete-hydro-powerplants">2.5.4 Discrete hydro powerplants</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">SmallFlex</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="baseline.html">Baseline</a></li>
+      <li class="breadcrumb-item active">2. Second Stage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/second_stage_baseline.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="second-stage">
+<h1>2. Second Stage<a class="headerlink" href="#second-stage" title="Link to this heading"></a></h1>
+<section id="sets">
+<h2>2.1. Sets<a class="headerlink" href="#sets" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Dimension</p></th>
+<th class="head"><p>Sub index</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(T\)</span></p></td>
+<td><p>1</p></td>
+<td></td>
+<td><p>time</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(H\)</span></p></td>
+<td><p>1</p></td>
+<td></td>
+<td><p>Hydro powerplants</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(B\)</span></p></td>
+<td><p>1</p></td>
+<td></td>
+<td><p>Water basins</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S_B\)</span></p></td>
+<td><p>2</p></td>
+<td><p><span class="math notranslate nohighlight">\(B\)</span></p></td>
+<td><p>State of each basins</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S_H\)</span></p></td>
+<td><p>2</p></td>
+<td><p><span class="math notranslate nohighlight">\(H\)</span></p></td>
+<td><p>State of each hydro powerplants (related to upstream basin state)</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S_Q\)</span></p></td>
+<td><p>3</p></td>
+<td><p><span class="math notranslate nohighlight">\(S_H\)</span></p></td>
+<td><p>State of each hydro powerplant  water flow</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(B_{H}\)</span></p></td>
+<td><p>2</p></td>
+<td><p><span class="math notranslate nohighlight">\(H\)</span></p></td>
+<td><p>Index to make the correspondence between hydro powerplants ant their upper stream bassin</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(SB_{H}\)</span></p></td>
+<td><p>3</p></td>
+<td><p><span class="math notranslate nohighlight">\(S_H\)</span></p></td>
+<td><p>Index to make the correspondence between basins’ and hydro powerplants’ states</p></td>
+</tr>
+</tbody>
+</table>
+<p>The sets <span class="math notranslate nohighlight">\(T\)</span>, <span class="math notranslate nohighlight">\(S_H\)</span> and <span class="math notranslate nohighlight">\(S_B\)</span> are arranged in a specific order such that indexing a variable with
+the first or last element of a set (i.e <span class="math notranslate nohighlight">\(t^{0}\)</span> and <span class="math notranslate nohighlight">\(t^{\text{END}} \in T\)</span>) corresponds respectively to
+the lowest/first or highest/final element of that variable.</p>
+<p><span class="math notranslate nohighlight">\(S_H\)</span> and <span class="math notranslate nohighlight">\(S_B\)</span> include subset to specify the corresponding hydro powerplants and basins that the
+state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect
+all states associated with a basin <span class="math notranslate nohighlight">\(b\)</span> we can use the notation <span class="math notranslate nohighlight">\(S_B\{b\}\)</span></p>
+<p><span class="math notranslate nohighlight">\(B \in \{1, ~2, ~3\}\)</span></p>
+<p><span class="math notranslate nohighlight">\(S_B =\begin{cases} 1: \left[1, ~2, ~3\right] \\ 2: \left[4, ~5\right]  \\ 3: \left[ 6 \right] \end{cases}\)</span></p>
+<p>In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets,
+such as <span class="math notranslate nohighlight">\(S\_B\)</span>. To handle this limitation, we need to create new sets (i.e. <span class="math notranslate nohighlight">\(BS\)</span>) which will explicitly
+represent the deployment of these subsets. These new sets will be structured to map the relationships required for
+indexing variables and parameters in the model effectively.</p>
+<p><span class="math notranslate nohighlight">\(SB \in \{B, S_B\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}\)</span></p>
+<p>The set <span class="math notranslate nohighlight">\(B_H\)</span> and <span class="math notranslate nohighlight">\(SB_H\)</span> defines the connections between each basin, its corresponding state,
+and the hydro powerplants. This link is established solely between a hydro powerplant and its associated upstream basin.
+It is assumed that the water level in downstream basins does not affect the behavior of turbined or pumped energy.</p>
+<p><span class="math notranslate nohighlight">\(B_H =\begin{cases} 1: 2 \\ 2: 1\end{cases}\)</span></p>
+</section>
+<section id="variables">
+<h2>2.2. Variables<a class="headerlink" href="#variables" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Units</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS}^{t,~b}\)</span></p></td>
+<td><p>Basins actual water volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{SPIL}^{t,~b}\)</span></p></td>
+<td><p>Spilled water volumes when basins are full</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, END}^{b}\)</span></p></td>
+<td><p>Basins end volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(dV_\text{+}^{h}\)</span></p></td>
+<td><p>Positive difference bertween powered water volume sepoints and calculated</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(dV_\text{-}^{h}\)</span></p></td>
+<td><p>Positive difference bertween powered water volume sepoints and calculated</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(P^{t,~h}\)</span></p></td>
+<td><p>Electrical power produced (or consumed) by a hydropower plant</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{MW}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q^{t,~h}\)</span></p></td>
+<td><p>Amount of water that flows through a hydropower plant</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(S_\text{BAS}^{t,~b,~s_b}\)</span></p></td>
+<td><p>Binary variable that indicates the basin’s volume state derived from its volume:  <span class="math notranslate nohighlight">\(S_\text{BAS}^{t,~b,~s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t,~b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{B}\)</span></p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(S_\text{FLOW}^{t,~h,~s_h,~s_q}\)</span></p></td>
+<td><p>Binary variable that indicates the hydo power plant’s flow state (for turbine and pump)</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{B}\)</span></p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, S}^{t,~h,~s_h,~s_q}\)</span></p></td>
+<td><p>Basin volume seen by hydropowerplant states : <span class="math notranslate nohighlight">\(V_\text{BAS, S}^{t,~h,~s_h,~s_q}  = \begin{cases} V_\text{BAS}^{t,~b_h} \text{ if } S_\text{FLOW}^{t,~h,~s_h,~s_q} = 1 \\ 0 \text{ otherwise} \end{cases}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{MW}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="parameters">
+<h2>2.3. Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Units</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(c_\text{DA}^{t}\)</span></p></td>
+<td><p>Day-ahead energy market price</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{EUR}/\mathrm{MW}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(nb_\text{SEC}\)</span></p></td>
+<td><p>Number of seconds in one hour</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p>3600</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(nb_\text{HOUR}\)</span></p></td>
+<td><p>Number of hours for each time-step</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(c_\text{UN}^{+}\)</span></p></td>
+<td><p>Penality price applied to positive difference volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{EUR}/\mathrm{MW}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(c_\text{UN}^{-}\)</span></p></td>
+<td><p>Penality price applied to negative difference volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{EUR}/\mathrm{MW}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\alpha^{+}\)</span></p></td>
+<td><p>Power factor applied to positive difference volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{MW}/ \mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\alpha^{-}\)</span></p></td>
+<td><p>Power factor applied to negative difference volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{MW}/ \mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{POW}^{h}\)</span></p></td>
+<td><p>Powered water volume sepoints for each hydropower plant</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(dV_\text{LAST}^{h}\)</span></p></td>
+<td><p>Remaining volume unpowered from last simulation</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BUF}^{h}\)</span></p></td>
+<td><p>Max volume buffer between power volume setpoint and calculated</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(F_\text{SPIL}^{b}\)</span></p></td>
+<td><p>Penality factor for water volume splilled : <span class="math notranslate nohighlight">\(F_\text{SPIL}^{b}  = \begin{cases} 1e^2 \text{ if  hydo power plant upstream basin} \\ 1e^{-2} \text{ otherwise} \end{cases}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{EUR}/ \mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, START}^{b}\)</span></p></td>
+<td><p>Basins stating water volume</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p>0</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MAX}^{b,~s_b}\)</span></p></td>
+<td><p>Basins water volume upper boundary for each state</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p>0</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, MIN}^{b,~s_b}\)</span></p></td>
+<td><p>Basins water volume lower boundary for each state</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p>0</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(V_\text{BAS, DIS}^{t,~b}\)</span></p></td>
+<td><p>Water volume entering a basin due to runoff and snowmelt</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}^{+}\)</span></p></td>
+<td><p>0</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(F_\text{TUR}^{b,~h}\)</span></p></td>
+<td><p>Factor to specify whether the turbined water of a plant is added into a basin or removed</p></td>
+<td><p><span class="math notranslate nohighlight">\(\{-1; ~0; ~1\}\)</span></p></td>
+<td><p>0</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(Q_\text{MIN}^{h,~s_h,~s_q}\)</span></p></td>
+<td><p>Min water flows that can be turbined (or pumed) for each state</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q_\text{MAX}^{h,~s_h,~s_q}\)</span></p></td>
+<td><p>Max water flows that can be  turbined (or pumed)  for each state</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(dQ^{h,~s_h,~s_q}\)</span></p></td>
+<td><p>Water flow ramps derived from basin volumes for each state.</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(P_\text{MIN}^{h,~s_h,~s_q}\)</span></p></td>
+<td><p>Min power that can produced (or consumed) for each state</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{m}^{3}/\mathrm{s}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(dP^{h,~s_h,~s_q}\)</span></p></td>
+<td><p>Power ramps derived from basin volumes for each state.</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbb{R}\)</span></p></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="objective">
+<h2>2.4. Objective<a class="headerlink" href="#objective" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight" id="equation-second-objective">
+\begin{align}
+\max  \sum_{t \in T} \left( c_\text{DA}^{t} \cdot  \sum_{h \in H} P^{t,~h} \right) \cdot nb_\text{HOUR} + PEN_\text{POW} - PEN_\text{SPILL}
+\end{align}</div><p>where:</p>
+<div class="math notranslate nohighlight" id="equation-power-penality">
+\begin{align}
+PEN_\text{POW} = \sum_{h \in H} \left(
+    dV_\text{+}^{h} \cdot \alpha^{+} \cdot c_\text{UN}^{+} -
+    dV_\text{-}^{h} \cdot \alpha^{-} \cdot c_\text{UN}^{-} \right) \
+    / nb_\text{SEC}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-spillage-penality">
+\begin{align}
+PEN_\text{SPILL} = \sum_{b \in B} \left(F_\text{SPIL}^{b} \cdot \sum_{t \in T} V_\text{SPIL}^{t,~b} \right) / nb_\text{SEC}
+\end{align}</div></section>
+<section id="constraints">
+<h2>2.5. Constraints<a class="headerlink" href="#constraints" title="Link to this heading"></a></h2>
+<section id="water-basin-volume-evolution">
+<h3>2.5.1 Water basin volume evolution<a class="headerlink" href="#water-basin-volume-evolution" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight" id="equation-basin-volume-evolution-2">
+\begin{align}
+    V_\text{BAS}^{t,~b} =
+    \begin{cases}
+        V_\text{BAS, START}^{b} &amp; \text{if } t = t_0 \\
+        V_\text{BAS}^{t - 1,~b} + V_\text{DIS}^{t - 1,~b} - V_\text{SPIL}^{t - 1,~b} +
+        nb_\text{SEC} \cdot nb_\text{HOUR} \cdot
+        \sum_{h \in H} F_\text{TUR}^{b,~h} \cdot Q^{t-1,~h}
+        \quad &amp; \text{if } t \neq t_0
+    \end{cases} \qquad \forall \{t\in T, b \in B \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-end-basin-volume-evolution-2">
+\begin{align}
+    V_\text{BAS, END}^{b} = V_\text{BAS}^{t_{end},~b} + V_\text{DIS}^{t_{end},~b}  - V_\text{SPIL}^{t_{end},~b} +
+    nb_\text{SEC} \cdot nb_\text{HOUR} \cdot \sum_{h \in H} F_\text{TUR}^{b,~h} \cdot Q^{t_{end},~h}
+\qquad \forall \{b \in B \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-max-end-basin-volume-2">
+\begin{align}
+V_\text{BAS, END}^{b} &amp;\leq V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}}
+\qquad \forall \{b \in B \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-min-end-basin-volume-2">
+\begin{align}
+V_\text{BAS, END}^{b} &amp;\geq V_\text{BAS, MIN}^{b,~S_B^\text{0}\{b\}}
+\qquad \forall \{b \in B \}
+\end{align}</div></section>
+<section id="water-basin-state">
+<h3>2.5.2 Water basin state<a class="headerlink" href="#water-basin-state" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight" id="equation-max-basin-state-2">
+\begin{align}
+V_\text{BAS}^{t,~b} &amp;\leq V_\text{BAS, MAX}^{b,~s_b} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}}
+\cdot \left(1 -S_\text{BAS}^{t,~b,~s_b} \right)
+\qquad \forall \{t\in T~\vert~b \in B~\vert~ s_b \in S_B\{b\} \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-min-basin-state-2">
+\begin{align}
+V_\text{BAS}^{t,~b} &amp;\geq V_\text{BAS, MIN}^{b,~s_b} \cdot S_\text{BAS}^{t,~b,~s_b}
+\qquad \forall \{t\in T~\vert~b \in B \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-basin-state-2">
+\begin{align}
+\sum_{s \in S_B\{b\}} S_\text{BAS}^{t,~b,~s} = 1 \qquad \forall \{t\in T~\vert~b \in B \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-basin-volume-per-state-2">
+\begin{align}
+V_\text{BAS, S}^{t,~h,~s_h,~s_q} = V_\text{BAS}^{t,~b_h} \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q}
+\qquad \forall \{t\in T~ \vert ~h \in H ~ \vert ~ s_h \in S_H\{h\} ~ \vert ~ s_q \in S_Q\{h,~ s_h\}\}
+\end{align}</div><p>For constraints <a class="reference internal" href="#equation-basin-volume-per-state-2">(11)</a>, the set <span class="math notranslate nohighlight">\(B_H\)</span> is employed to link basin volumes with hydropower
+plants. This constraint involves the multiplication of a continuous variable with a binary variable. Consequently,
+a Big-M decomposition is required to linearize it.</p>
+</section>
+<section id="powered-water-volume">
+<h3>2.5.3 Powered water volume<a class="headerlink" href="#powered-water-volume" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight" id="equation-diff-volume">
+\begin{align}
+    dV_\text{+}^{h} - dV_\text{-}^{h} = V_\text{POW}^{h} + dV_\text{LAST}^{h} -
+    nb_\text{SEC} \cdot nb_\text{HOUR}  \cdot \sum_{t \in T} Q^{t,~h} \qquad \forall \{h\in H\}
+
+\end{align}</div><div class="math notranslate nohighlight" id="equation-max-pos-diff-volume">
+\begin{align}
+    dV_\text{+}^{h} \leq \begin{cases}
+        V_\text{BUF}^{h} + dV_\text{LAST}^{h} / 2 \qquad &amp;\text{if } dV_\text{LAST}^{h} \geq 0 \\
+        V_\text{BUF}^{h} &amp; \text{otherwise }
+    \end{cases} \qquad \forall \{h\in H\}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-min-pos-diff-volume">
+\begin{align}
+    dV_\text{-}^{h} \leq \begin{cases}
+        V_\text{BUF}^{h} - dV_\text{LAST}^{h} / 2 \qquad &amp;\text{if } dV_\text{LAST}^{h} \leq 0 \\
+        V_\text{BUF}^{h} &amp; \text{otherwise }
+    \end{cases} \qquad \forall \{h\in H\}
+\end{align}</div></section>
+<section id="discrete-hydro-powerplants">
+<h3>2.5.4 Discrete hydro powerplants<a class="headerlink" href="#discrete-hydro-powerplants" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight" id="equation-flow-state-2">
+\begin{align}
+S_\text{BAS}^{t,B_H\{h\},~SB_H\{h,~s_h\}} \geq \sum_{s_q \in S_Q\{h,~s_h\}} S_\text{FLOW}^{t,~h,~s_h,~s_q}
+\qquad \forall \{t\in T~\vert~h,\in H~\vert~s_h \in S_H\{h\} \}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-powered-flow-2">
+\begin{align}
+Q^{t,~h} = \sum_{s_h \in S_H\{h\}} \sum_{s_q \in S_Q\{h,~s_h\}}
+    \Big[ \left(Q_\text{MIN}^{h,~s_h,~s_q} - dQ^{h,~s_h,~s_q} \cdot  V_\text{BAS, MIN}^{B_H\{h\},~SB_H\{h,~s_h\}} \right)
+    \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q} + dQ^{h,~s_h,~s_q} \cdot V_\text{BAS, S}^{t,~h,~s_h,~s_q} \Big]
+\qquad \forall \{t\in T~\vert~h \in H~\}
+\end{align}</div><div class="math notranslate nohighlight" id="equation-powered-power-2">
+\begin{align}
+P^{t,~h} = \sum_{s_h \in S_H\{h\}} \sum_{s_q \in S_Q\{h,~s_h\}}
+    \Big[\left(P_\text{MIN}^{h,~s_h,~s_q} - dP^{h,~s_h,~s_q} \cdot  V_\text{BAS, MIN}^{B_H\{h\},~SB_H\{h,~s_h\}} \right)
+    \cdot S_\text{FLOW}^{t,~h,~s_h,~s_q} + dP^{h,~s_h,~s_q} \cdot V_\text{BAS, S}^{t,~h,~s_h,~s_q} \Big]
+\qquad \forall \{t\in T~\vert~h \in H~\}
+\end{align}</div></section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="first_stage_baseline.html" class="btn btn-neutral float-left" title="1. First Stage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Luca Tomasini.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
