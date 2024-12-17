@@ -1,8 +1,8 @@
-Second Stage
+2. Second Stage
 =================================
 
-Sets
-----
+2.1. Sets
+----------
 
 .. csv-table:: 
    :file: /tables/baseline/second_stage/sets_docs.csv
@@ -11,8 +11,8 @@ Sets
 .. automodule:: pyomo_models.baseline.second_stage.sets
    :no-index:
 
-Variables
-----------
+2.2. Variables
+----------------
 
 .. automodule:: pyomo_models.baseline.second_stage.variables
    :no-index:
@@ -21,8 +21,8 @@ Variables
    :file: /tables/baseline/second_stage/variables_docs.csv
    :header-rows: 1
 
-Parameters
-----------
+2.3. Parameters
+----------------
 
 .. automodule:: pyomo_models.baseline.second_stage.parameters
    :no-index:
@@ -31,14 +31,14 @@ Parameters
    :file: /tables/baseline/second_stage/parameters_docs.csv
    :header-rows: 1
 
-Objective
-----------
+2.4. Objective
+----------------
 
 .. automodule:: pyomo_models.baseline.second_stage.objective
    :no-index:
 
-Constraints
-------------
+2.5. Constraints
+------------------
 
 
 .. automodule:: pyomo_models.baseline.second_stage.constraints.basin_volume

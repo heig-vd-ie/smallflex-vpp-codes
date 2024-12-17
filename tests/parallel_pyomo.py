@@ -47,12 +47,14 @@ def main():
     
     for p in processes:
         p.join()
+        
     for _ in processes:
         result = queue.get()
         print(result)
         results.append(result)
-    print(results)
+
 
 if __name__ == "__main__":
     setup()
     main()
+    

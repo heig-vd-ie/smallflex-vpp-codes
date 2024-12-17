@@ -205,7 +205,9 @@ def generate_second_stage_state(
         y_cols = data.select(cs.starts_with(name) for name in ["flow", "electrical"]).columns
         state_name_list = list(set(map(lambda x : x.split("_")[-1], y_cols)))
         
-        data = define_state(data=data, x_col="volume", y_cols=y_cols, error_threshold=error_threshold)\
+        data = define_state(data=data, x_col="volume", y_cols=y_cols, error_threshold=error_threshold)
+        
+        data = data\
             .with_row_index(offset=start_state, name="S")\
             .with_columns(
                     pl.lit(performance_table["H"]).alias("H"),

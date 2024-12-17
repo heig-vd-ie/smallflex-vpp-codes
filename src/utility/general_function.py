@@ -123,21 +123,6 @@ def camel_to_snake(s):
 def snake_to_camel(snake_str):
     return "".join(x.capitalize() for x in snake_str.lower().split("_"))
 
-def duckdb_to_dict(file_path: str) -> dict[str, pl.DataFrame]:
-    data: dict[str, pl.DataFrame] = {}
-    pbar = tqdm.tqdm(
-        total=1, ncols=150, 
-        desc="Read tables from {} file".format(os.path.basename(file_path))
-    )
-    with pbar:
-        with duckdb.connect(database=file_path) as con:
-            query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-            for table_name in con.execute(query).fetchall():
-                query: str = f"SELECT * FROM {table_name[0]}"
-                data[table_name[0]] = con.execute(query).pl()
-        pbar.update()
-    return data
-
 
 def convert_list_to_string(list_data)-> str:
     return ", ".join(map(str, list_data))
@@ -209,3 +194,18 @@ def duckdb_to_schema(file_path: str) -> dict:
                 schema_dict[table_name[0]] = con.execute(query).pl()
                     
         return schema_dict
+    
+def duckdb_to_dict(file_path: str) -> dict[str, pl.DataFrame]:
+    data: dict[str, pl.DataFrame] = {}
+    pbar = tqdm.tqdm(
+        total=1, ncols=150, 
+        desc="Read tables from {} file".format(os.path.basename(file_path))
+    )
+    with pbar:
+        with duckdb.connect(database=file_path) as con:
+            query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+            for table_name in con.execute(query).fetchall():
+                query: str = f"SELECT * FROM {table_name[0]}"
+                data[table_name[0]] = con.execute(query).pl()
+        pbar.update()
+    return data

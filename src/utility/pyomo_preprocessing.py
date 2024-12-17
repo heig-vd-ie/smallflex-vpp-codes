@@ -113,13 +113,13 @@ def define_state(data: pl.DataFrame, x_col: str, y_cols: Union[str, list[str]], 
         
     data = data[[x_col] + y_cols].with_row_index(name="index")
     while True:
-        row_idx: list = generate_segments(data=data, x_col="volume", y_cols=y_cols, n_segments=nb)
+        row_idx: list = generate_segments(data=data, x_col=x_col, y_cols=y_cols, n_segments=nb)
         new_data: pl.DataFrame = data.with_columns(
             pl.when(c("index").is_in(row_idx))
             .then(c(col)).otherwise(pl.lit(None))
             for col in y_cols)
         
-        new_data = linear_interpolation_using_cols(new_data, x_col="volume", y_col=y_cols )
+        new_data = linear_interpolation_using_cols(new_data, x_col=x_col, y_col=y_cols )
         
         error: float = ((new_data[y_cols] - data[y_cols])/ data[y_cols])\
             .select(

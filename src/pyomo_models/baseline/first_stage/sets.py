@@ -1,13 +1,13 @@
-"""
+r"""
 The sets :math:`T`, :math:`S_H` and :math:`S_B` are arranged in a specific order such that indexing a variable with 
-the first or last element of a set (i.e :math:`t^{0}` and :math:`t^{\\text{END}} \in T`) corresponds respectively to 
+the first or last element of a set (i.e :math:`t^{0}` and :math:`t^{\text{END}} \in T`) corresponds respectively to 
 the lowest/first or highest/final element of that variable.
 
 :math:`S_H` and :math:`S_B` include subset to specify the corresponding hydro powerplants and basins that the 
 state is associated with, respectively. The sets are constructed as demonstrated in the following example. To collect 
 all states associated with a basin :math:`b` we can use the notation :math:`S_B\{b\}`
 
-:math:`S_B =\\begin{cases} 1: \left[1, 2, 3\\right] \\\\ 2: \left[4, 5\\right]  \\\\ 3: \left[6\\right] \\end{cases}`
+:math:`S_B =\begin{cases} 1: \left[1, 2, 3\right] \\ 2: \left[4, 5\right]  \\ 3: \left[6\right] \end{cases}`
 
 In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets, 
 such as :math:`S\_B`. To handle this limitation, we need to create new sets (i.e. :math:`BS`) which will explicitly 

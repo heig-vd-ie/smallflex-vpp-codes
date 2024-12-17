@@ -1,44 +1,44 @@
-First Stage
+1. First Stage
 =================================
 
-Sets
-----
+1.1. Sets 
+-------------
 
 .. csv-table:: 
-   :file: /tables/first_stage/sets_docs.csv
+   :file: /tables/baseline/first_stage/sets_docs.csv
    :header-rows: 1
    
 .. automodule:: pyomo_models.baseline.first_stage.sets
    :no-index:
 
-Variables
-----------
+1.2. Variables
+----------------
 
 .. automodule:: pyomo_models.baseline.first_stage.variables
    :no-index:
 
 .. csv-table:: 
-   :file: /tables/first_stage/variables_docs.csv
+   :file: /tables/baseline/first_stage/variables_docs.csv
    :header-rows: 1
 
-Parameters
-----------
+1.3. Parameters
+------------------
 
 .. automodule:: pyomo_models.baseline.first_stage.parameters
    :no-index:
 
 .. csv-table:: 
-   :file: /tables/first_stage/parameters_docs.csv
+   :file: /tables/baseline/first_stage/parameters_docs.csv
    :header-rows: 1
 
-Objective
-----------
+1.4. Objective
+----------------
 
 .. automodule:: pyomo_models.baseline.first_stage.objective
    :no-index:
 
-Constraints
-------------
+1.5. Constraints
+---------------------
 
 
 .. automodule:: pyomo_models.baseline.first_stage.constraints.basin_volume

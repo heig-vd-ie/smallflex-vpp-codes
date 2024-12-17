@@ -59,11 +59,13 @@ jobs:
     
       - name: Build HTML
         run: |
+          export PYTHONPATH=$(pwd)/src
           export PATH="$HOME/.local/bin:$PATH"
           poetry run sphinx-build -b html docs/ docs/_build/html
       
       - name: Run ghp-import
         run: |
+          export PYTHONPATH=$(pwd)/src
           export PATH="$HOME/.local/bin:$PATH"
           poetry run ghp-import -n -p -f docs/_build/html
 

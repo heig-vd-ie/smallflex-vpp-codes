@@ -1,32 +1,32 @@
-"""
-Water turbined
-~~~~~~~~~~~~~~~
+r"""
+1.5.3. Water turbined
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
     :label: turbined-flow-state
     :nowrap:
     
-    \\begin{align}
-    Q_\\text{TUR, S}^{t,~h,~s_h} \leq Q_\\text{TUR, MAX}^{h,~s_h} \cdot S_\\text{BAS}^{t,~b,~s_b}
-    \qquad \\forall \{t\in T~\\vert~b,~h,~s_h ~s_h \in S_{BH} \}
-    \\end{align}
+    \begin{align}
+        Q_\text{TUR, S}^{t,~h,~s_h} \leq Q_\text{TUR, MAX}^{h,~s_h} \cdot S_\text{BAS}^{t,~b,~s_b}
+        \qquad \forall \{t\in T~\vert~b,~h,~s_h ~s_h \in S_{BH} \}
+    \end{align}
 .. math::
     :label: turbined-flow
     :nowrap:
     
-    \\begin{align}
-    Q_\\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\\text{TUR, S}^{t,~h,~s} 
-    \qquad \\forall \{t\in T~\\vert~h \in H~\}
-    \\end{align}
+    \begin{align}
+        Q_\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\text{TUR, S}^{t,~h,~s} 
+        \qquad \forall \{t\in T~\vert~h \in H~\}
+    \end{align}
     
 .. math::
     :label: turbined-power
     :nowrap:
     
-    \\begin{align}
-    P_\\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} \\alpha_\\text{TUR, AVG}^{h,~s} \cdot  Q_\\text{TUR, S}^{t,~h,~s}
-    \qquad \\forall \{t\in T~\\vert~h \in H\}
-    \\end{align}
+    \begin{align}
+        P_\text{TUR}^{t,~h} = \sum_{s \in S_H\{h\}} \alpha_\text{TUR, AVG}^{h,~s} \cdot  Q_\text{TUR, S}^{t,~h,~s}
+        \qquad \forall \{t\in T~\vert~h \in H\}
+    \end{align}
 
 The constraint :eq:`turbined-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
 basin set :math:`B` and the hydro powerplant set :math:`H`.

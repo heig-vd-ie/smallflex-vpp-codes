@@ -1,5 +1,5 @@
 r"""
-Discrete hydro powerplants
+2.5.4 Discrete hydro powerplants
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::

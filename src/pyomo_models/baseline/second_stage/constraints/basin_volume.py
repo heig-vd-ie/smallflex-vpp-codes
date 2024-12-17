@@ -1,6 +1,6 @@
 r"""
-Water basin volume evolution
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2.5.1 Water basin volume evolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
     :label: basin-volume-evolution-2
@@ -47,8 +47,8 @@ Water basin volume evolution
 
 
     
-Water basin state
-~~~~~~~~~~~~~~~~~~
+2.5.2 Water basin state
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
     :label: max-basin-state-2
@@ -87,7 +87,7 @@ Water basin state
     \qquad \forall \{t\in T~ \vert ~h \in H ~ \vert ~ s_h \in S_H\{h\} ~ \vert ~ s_q \in S_Q\{h,~ s_h\}\}
     \end{align} 
     
-For constriants :eq:`basin-volume-per-state-2`, the set :math:`B_H` is employed to link basin volumes with hydropower 
+For constraints :eq:`basin-volume-per-state-2`, the set :math:`B_H` is employed to link basin volumes with hydropower 
 plants. This constraint involves the multiplication of a continuous variable with a binary variable. Consequently, 
 a Big-M decomposition is required to linearize it.
 """

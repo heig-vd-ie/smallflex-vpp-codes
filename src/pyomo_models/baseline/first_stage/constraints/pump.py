@@ -1,32 +1,32 @@
-"""
-Water pumped
-~~~~~~~~~~~~~~~
+r"""
+1.5.4. Water pumped
+~~~~~~~~~~~~~~~~~~~~
 
 .. math::
     :label: pumped-flow-state
     :nowrap:
     
-    \\begin{align}
-    Q_\\text{PUM, S}^{t,~h,~s_h} \leq Q_\\text{PUM, MAX}^{h,~s_h} \cdot S_\\text{BAS}^{t,~b,~s_b}
-    \qquad \\forall \{t\in T~\\vert~b,~h,~s_h ~s_h \in S_{BH} \}
-    \\end{align}
+    \begin{align}
+        Q_\text{PUM, S}^{t,~h,~s_h} \leq Q_\text{PUM, MAX}^{h,~s_h} \cdot S_\text{BAS}^{t,~b,~s_b}
+        \qquad \forall \{t\in T~\vert~b,~h,~s_h ~s_h \in S_{BH} \}
+    \end{align}
 .. math::
     :label: pumped-flow
     :nowrap:
     
-    \\begin{align}
-    Q_\\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\\text{PUM, S}^{t,~h,~s} 
-    \qquad \\forall \{t\in T~\\vert~h \in H~\}
-    \\end{align}
+    \begin{align}
+        Q_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\text{PUM, S}^{t,~h,~s} 
+        \qquad \forall \{t\in T~\vert~h \in H~\}
+    \end{align}
     
 .. math::
     :label: pumped-power
     :nowrap:
     
-    \\begin{align}
-    P_\\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} \\alpha_\\text{PUM, AVG}^{h,~s} \cdot  Q_\\text{PUM, S}^{t,~h,~s}
-    \qquad \\forall \{t\in T~\\vert~h \in H\}
-    \\end{align}
+    \begin{align}
+        P_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} \alpha_\text{PUM, AVG}^{h,~s} \cdot  Q_\text{PUM, S}^{t,~h,~s}
+        \qquad \forall \{t\in T~\vert~h \in H\}
+    \end{align}
 
 The constraint :eq:`pumped-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
 basin set :math:`B` and the hydro powerplant set :math:`H`.
