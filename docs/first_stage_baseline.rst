@@ -40,7 +40,6 @@
 1.5. Constraints
 ---------------------
 
-
 .. automodule:: pyomo_models.baseline.first_stage.constraints.basin_volume
    :no-index:
 
