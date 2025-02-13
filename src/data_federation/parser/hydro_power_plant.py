@@ -2,7 +2,7 @@ import polars as pl
 
 import re
 
-from utility.general_function import  modify_string
+from general_function import  modify_string
 
 def get_hydro_power_plant_data(file_path: str) -> tuple[pl.DataFrame, float]:
     

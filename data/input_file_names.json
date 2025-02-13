@@ -1,6 +1,10 @@
 {
     "market_price_metadata": ".cache/input/alpiq_input_data/metadata.json",
-    "greis_wsl_data": ".cache/input/gries_wsl_input_data",
+    "wsl_historical_data": ".cache/input/gries_wsl_input_data/history",
+    "wsl_forecast_data":".cache/input/gries_wsl_input_data/prev_SF.tgz",
+    "wsl_discharge_flow_forecast":"RRouting_Gen_icon2.rda",
+    "wsl_weather_forecast":"RRouting_Gen_icon2_meteo.rda",
+    "wsl_weather_metadata":".cache/input/gries_wsl_input_data/Keys_rda_files.csv",
     "aegina_pve_data": ".cache/input/pve_input_data/Aegina",
     "merezenbach_pve_data": ".cache/input/pve_input_data/Merezenbach/HPT_Results_Simulation_Zup_1842.7masl_Zdown_1337.7masl.txt",
     "morel_pve_data": ".cache/input/pve_input_data/Morel",

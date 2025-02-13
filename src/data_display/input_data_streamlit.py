@@ -9,11 +9,13 @@ from plotly.subplots import make_subplots
 import streamlit as st
 from datetime import date
 import plotly.graph_objs as go
-from utility.general_function import pl_to_dict
+
 from config import settings
 import plotly.express as px
 from itertools import product
 import tqdm
+
+from general_function import pl_to_dict
 
 from data_display.input_data_plots import (
     plot_market_prices, plot_discharge_flow, plot_power, plot_basin_height, plot_basin_height_volume_table,

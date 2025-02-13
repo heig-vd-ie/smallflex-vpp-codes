@@ -1,15 +1,18 @@
 from itertools import product
 from plotly.subplots import make_subplots
-from datetime import datetime
+from datetime import datetime, timedelta
 import polars as pl
-import plotly as plt
-import plotly.offline
 import plotly.express as px
 import plotly.graph_objs as go
 from polars import col as c
-from data_federation.input_model import SmallflexInputSchema
 import numpy as np
+import tqdm
 
+from numpy_function import relative_error_within_boundaries, error_within_boundaries
+from general_function import build_non_existing_dirs
+
+
+from data_federation.input_model import SmallflexInputSchema
 from utility.pyomo_preprocessing import optimal_segments
 
 COLORS = px.colors.qualitative.Plotly
@@ -141,7 +144,6 @@ def plot_basin_height(data: pl.DataFrame) -> go.Figure:
 
     fig = go.Figure()
 
-
     plot_data: pl.DataFrame = data.sort("timestamp").with_row_index(name="index")
     hovertemplate: str = 'Power: %{y:.1f} MW<br>Date: %{customdata}</b><extra></extra>'
 
@@ -167,7 +169,6 @@ def plot_basin_height(data: pl.DataFrame) -> go.Figure:
             fig['layout'][ax]['ticktext'] = ticks_df["year"] # type: ignore
             fig['layout'][ax]['tickvals'] = ticks_df["index"] # type: ignore
 
-    
     return fig
 
     
@@ -233,3 +234,163 @@ def update_figure_layout(fig: go.Figure, data: pl.DataFrame) -> go.Figure:
             fig['layout'][ax]['tickvals'] = ticks_df["index"] # type: ignore
 
     return fig
+
+
+def plot_forecast(
+    measurement_df: pl.DataFrame, forecast_df: pl.DataFrame, plot_name: str, plot_folder: str, title: str,
+    z_score: int = 1, nb_days: int = 5, min_boundaries: float = 0.15):
+    
+    build_non_existing_dirs(plot_folder)
+    
+    n_rows = forecast_df.height - nb_days -1
+
+    mean_error_np = np.zeros([forecast_df.height - nb_days, nb_days])
+    sum_error_np = np.zeros([forecast_df.height - nb_days, nb_days])
+    nb_error_np = np.zeros([forecast_df.height - nb_days, nb_days])
+
+    fig = make_subplots(
+            rows=n_rows, cols = 1, row_titles=[title]*n_rows,
+        )
+    
+    fig_2 = make_subplots(
+        rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.05, subplot_titles=("Mean error [%]", "Sum error", "Number of error"))
+    data = forecast_df.slice(0, n_rows - 1).to_dicts()
+    for i in tqdm.tqdm(range(n_rows-1), desc=f"Plotting {title} forecast"):
+        forecast_np = np.array(data[i]["forecast"])
+        actual_date = data[i]["timestamp"]
+
+        mean_forecast = np.mean(forecast_np, axis=0)
+        std_forecast = np.std(forecast_np, axis=0)
+        boundary =  np.maximum(mean_forecast * min_boundaries, z_score * std_forecast)
+        z_score_max = mean_forecast + boundary
+        z_score_min = mean_forecast - boundary
+
+        measurement_np = measurement_df\
+            .filter(c("timestamp") > actual_date).slice(0, len(mean_forecast))["value"].to_numpy()
+            
+        relative_error_np = relative_error_within_boundaries(measurement_np, z_score_min, z_score_max)[:24*nb_days].reshape(nb_days, 24)
+        error_np = error_within_boundaries(measurement_np, z_score_min, z_score_max)[:24*nb_days].reshape(nb_days, 24)
+        
+        mean_error_np[i, :] = np.mean(relative_error_np, axis=1)
+        nb_error_np[i, :] = np.sum(relative_error_np > 0, axis=1)
+        sum_error_np[i, :] = np.sum(error_np, axis=1)
+        
+        datetime_list = pl.datetime_range(
+                actual_date + timedelta(hours=1), actual_date + timedelta(days=5) - timedelta(hours=1), timedelta(hours=1), 
+                eager=True
+            ).to_list()
+        
+        for j, scenario in enumerate(data[i]["forecast"]):
+            fig = fig.add_trace(
+                go.Scatter(
+                    x=datetime_list, y=scenario, 
+                    mode='lines', name="Forecast", legendgroup=f"day{i}",  showlegend=j==0,
+                    line=dict(color="grey"),  opacity=.3,
+                ), row=i+ 1, col=1)
+
+        fig = fig.add_trace(
+                go.Scatter(
+                    x=datetime_list, y=mean_forecast, 
+                    mode='lines', name="Forecast average", legendgroup=f"day{i}",
+                    line=dict(color="red"))
+                , row=i+ 1, col=1)
+
+        fig = fig.add_trace(
+                go.Scatter(
+                    x=datetime_list, y=z_score_max, 
+                    mode='lines', name=f"Forecast boundaries", legendgroup=f"day{i}",  showlegend=True,
+                    line=dict(color="red"),  opacity=.5)
+                , row=i+ 1, col=1)
+
+        fig = fig.add_trace(
+                go.Scatter(
+                    x=datetime_list, y=z_score_min, 
+                    mode='lines', name=f"Forecast boundaries", legendgroup=f"day{i}",  showlegend=False,
+                    line=dict(color="red"),  opacity=.5)
+                , row=i + 1, col=1)
+
+        fig = fig.add_trace(
+                go.Scatter(
+                    x=datetime_list, y=measurement_np, 
+                    mode='lines', name="Measurement", legendgroup=f"day{i}",
+                    line=dict(color="blue"))
+                , row=i+ 1, col=1)
+        fig.update_traces(selector=dict(legendgroup=f"day{i}"), legendgrouptitle_text=actual_date.strftime("%Y-%m-%d"))
+
+    for i in range(nb_days):
+        fig_2.add_trace(go.Box(y=mean_error_np[:, i]*100, name= f"day {i+1}", showlegend=False, line=dict(color=COLORS[i])), row=1, col=1)
+        fig_2.add_trace(go.Box(y=sum_error_np[:, i], name= f"day {i+1}", showlegend=False, line=dict(color=COLORS[i])), row=2, col=1)
+        fig_2.add_trace(go.Box(y=nb_error_np[:, i], name= f"day {i+1}", showlegend=False, line=dict(color=COLORS[i])), row=3, col=1)
+
+    fig.update_layout(
+            margin=dict(t=60, l=65, r= 10, b=60), 
+            width=1000,   # Set the width of the figure
+            height=n_rows*300,
+            legend_tracegroupgap=204
+        )
+
+    fig_2.update_layout(
+            margin=dict(t=60, l=65, r= 10, b=60), 
+            width=1000,   # Set the width of the figure
+            height=3*200,
+            title= dict(text =f"{title} forecast error statistics")
+        )
+
+    fig.write_html(f"{plot_folder}/{plot_name}.html")
+    fig_2.write_html(f"{plot_folder}/{plot_name}_statistics.html")
+    
+def plot_historical_scenarios(
+    data: pl.DataFrame, x_axis: str, plot_name: str, plot_folder: str, title: str, z_score: float = 1, values: str="value"):
+    
+    build_non_existing_dirs(plot_folder)
+    
+    loc_list = data["location"].unique().to_list()
+    
+    fig = make_subplots(
+                rows=len(loc_list), cols = 1, shared_xaxes=True, vertical_spacing=0.02, subplot_titles=loc_list,
+                x_title=x_axis
+            )
+    loc_list = data["location"].unique().to_list()
+    for i, location in enumerate(loc_list):
+        data_loc = data.filter(c("location") == location).pivot(index=x_axis, on="year", values=values)
+        for j, col in enumerate(data_loc.columns[1:]):
+            fig.add_trace(
+                go.Scatter(
+                    x=data_loc[x_axis].to_list(), y=data_loc[col].to_list(), mode='lines',
+                    name="Measurement", legendgroup="Measurement",  showlegend=i+j == 0,
+                    line=dict(color="gray"), opacity=0.3)
+            , row=i+ 1, col=1)
+            
+        data_loc = data_loc.with_columns(
+            pl.mean_horizontal(pl.all().exclude(x_axis)).alias("mean"),
+            pl.concat_list(pl.all().exclude(x_axis)).list.eval(pl.element().std()).list.get(0).alias("std")
+        ).with_columns(
+            (c("mean") + z_score*c("std")).alias("upper_bound"),
+            (c("mean") - z_score*c("std")).clip(lower_bound=0.0).alias("lower_bound"),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_loc[x_axis].to_list(), y=data_loc["mean"].to_list(), mode='lines',
+                name="Mean", legendgroup="Mean",  showlegend=i == 0,
+                line=dict(color="red"))
+        , row=i+ 1, col=1)
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_loc[x_axis].to_list(), y=data_loc["upper_bound"].to_list(), mode='lines',
+                name="z_score", legendgroup="z_score",  showlegend=i == 0,
+                line=dict(color="red"), opacity=0.5)
+        , row=i+ 1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=data_loc[x_axis].to_list(), y=data_loc["lower_bound"].to_list(), mode='lines',
+                name="z_score", legendgroup="z_score",  showlegend=False,
+                line=dict(color="red"), opacity=0.5)
+        , row=i+ 1, col=1)
+    fig.update_layout(
+        margin=dict(t=60, l=65, r= 10, b=60), 
+        width=1000,   # Set the width of the figure
+        height=len(loc_list)*300,
+        title= dict(text=title),
+    )
+    fig.write_html(f"{plot_folder}/{plot_name}.html")

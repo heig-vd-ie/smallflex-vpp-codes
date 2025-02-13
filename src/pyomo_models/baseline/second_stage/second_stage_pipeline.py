@@ -13,7 +13,8 @@ from utility.pyomo_preprocessing import (
     join_pyomo_variables, generate_datetime_index, extract_optimization_results, pivot_result_table,
     check_infeasible_constraints, generate_clean_timeseries
 )
-from utility.general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
+from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
+
 from pyomo_models.baseline.baseline_input import BaseLineInput
 from pyomo_models.baseline.first_stage.first_stage_pipeline import BaselineFirstStage
 from pyomo_models.baseline.second_stage.sets import baseline_sets
@@ -33,11 +34,12 @@ class BaselineSecondStage(BaseLineInput):
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, model_nb: int = 1,
         buffer: float = 0.2, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
         quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
-        global_price: bool = False, time_limit:float =  120
+        global_price: bool = False, time_limit:float =  120, is_parallel: bool = False
         ):
         self.retrieve_input(input_instance)
         self.sim_nb = 0
         self.sim_tot = 0
+        self.is_parallel = is_parallel
         self.model_nb = model_nb
         self.error_threshold = error_threshold
         self.buffer: float = buffer
@@ -401,8 +403,9 @@ class BaselineSecondStage(BaseLineInput):
         for sim_nb in tqdm.tqdm(
             range(self.sim_tot + 1), 
             desc=f"Solving second stage optimization model number {self.model_nb}",
-            position=self.model_nb,
-            ncols=150
+            position=self.model_nb if self.is_parallel else 0,
+            ncols=150,
+            leave=True
         ):
             self.sim_nb = sim_nb
             self.generate_state_index()

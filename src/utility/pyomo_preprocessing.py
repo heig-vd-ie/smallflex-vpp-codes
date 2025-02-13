@@ -222,6 +222,16 @@ def join_index(index_list: list[str]) -> pl.Expr:
     return pl.concat_list(index_list).cast(pl.List(pl.Utf8)).list.join(separator="_").alias("_".join(index_list))
 
 def explode_index(index_name) -> pl.Expr:
+    """
+    Splits a string column into multiple columns based on an underscore delimiter and casts the result to a struct.
+
+    Args:
+        index_name (str): The name of the column to be split. The column should contain strings with underscore-separated values.
+
+    Returns:
+        pl.Expr: An expression that splits the specified column into multiple columns, casts them to unsigned 32-bit integers, 
+        and combines them into a struct with field names derived from the original column name.
+    """
     return c(index_name).str.split("_").cast(pl.List(pl.UInt32)).list.to_struct(fields=index_name.split("_"))
 
 def join_pyomo_variables(

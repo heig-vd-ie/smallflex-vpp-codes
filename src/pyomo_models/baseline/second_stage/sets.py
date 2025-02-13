@@ -12,7 +12,7 @@ all states associated with a basin :math:`b` we can use the notation :math:`S_B\
 :math:`S_B =\begin{cases} 1: \left[1, ~2, ~3\right] \\ 2: \left[4, ~5\right]  \\ 3: \left[ 6 \right] \end{cases}`
 
 In a Pyomo model, it is not possible to directly index variables and parameters using sets that contain subsets, 
-such as :math:`S\_B`. To handle this limitation, we need to create new sets (i.e. :math:`BS`) which will explicitly 
+such as :math:`S_B`. To handle this limitation, we need to create new sets (i.e. :math:`BS`) which will explicitly 
 represent the deployment of these subsets. These new sets will be structured to map the relationships required for 
 indexing variables and parameters in the model effectively.
 

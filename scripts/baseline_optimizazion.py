@@ -11,16 +11,20 @@ import shutil
 from datetime import timedelta
 from data_display.baseline_plots import plot_first_stage_result, plot_second_stage_result
 from config import settings
-from utility.general_function import build_non_existing_dirs, generate_log, dict_to_duckdb
+from general_function import build_non_existing_dirs, generate_log, dict_to_duckdb
 
 from pyomo_models.baseline.baseline_input import BaseLineInput
 from pyomo_models.baseline.first_stage.first_stage_pipeline import BaselineFirstStage
 from pyomo_models.baseline.second_stage.second_stage_pipeline import BaselineSecondStage
 
 
+PARALLEL = False
 YEARS = [2020, 2021, 2022, 2023]
 
 TURBINE_FACTORS = {0.75, 0.85, 0.95}
+YEARS = [2020]
+TURBINE_FACTORS = {0.75}
+
 SIMULATION_SETTING = [
     {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True},
     {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True},
@@ -39,7 +43,7 @@ output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES))
 log = generate_log(name=__name__)
 
 def solve_second_stage_model(
-    second_stage: BaselineSecondStage, model_id
+    second_stage: BaselineSecondStage
     ):
     try:
         second_stage.solve_model()
@@ -76,13 +80,11 @@ if __name__=="__main__":
                 hydro_power_mask = c("name").is_in(["Aegina hydro"]),
                 volume_factor=VOLUME_FACTOR
             )
-            
             first_stage: BaselineFirstStage = BaselineFirstStage(
                 input_instance=baseline_input,
                 timestep=FIRST_STAGE_TIMESTEP,
                 turbine_factor=turbine_factor
             )
-            
             first_stage.solve_model()
             
             sim_results["first_stage"] = first_stage.simulation_results
@@ -97,9 +99,6 @@ if __name__=="__main__":
             optimization_inputs: list[list[Union[BaselineSecondStage, str]]] = []
             income_results: list[dict] = []
             
-            processes = []
-            # m_process = multiprocessing.get_context("spawn")
-            # queue = m_process.Queue()
             inputs_list = []
             for model_nb, sim_setting in enumerate(SIMULATION_SETTING):
                 second_stage: BaselineSecondStage = BaselineSecondStage(
@@ -108,32 +107,24 @@ if __name__=="__main__":
                     timestep=timedelta(days=4), 
                     time_limit=TIME_LIMIT,
                     model_nb=model_nb,
+                    is_parallel=PARALLEL,
                     **sim_setting
                 )
-                inputs_list.append([second_stage, model_nb])
-            
-            with get_context("spawn").Pool(processes=len(inputs_list)) as pool:
-                results = pool.starmap(solve_second_stage_model, inputs_list)
-            
+                inputs_list.append([second_stage])
+            if PARALLEL:
+                with get_context("spawn").Pool(processes=len(inputs_list)) as pool:
+                    results = pool.starmap(solve_second_stage_model, inputs_list)
+            else:
+                results = []
+                for model_inputs in inputs_list:
+                    results.append(solve_second_stage_model(*model_inputs))
                 
-            #     proc = m_process.Process(
-            #         target=solve_second_stage_model, args=(second_stage, queue)
-            #     )
-            #     proc.start()
-            #     processes.append(proc)
-                
-            # for p in processes:
-            #     log.info("test")
-            #     p.join()
-            # log.info("test_2")
-            
             for model_id, second_stage in enumerate(results):
-                log.info("test")
                 
                 fig_path = f"{plot_folder}/{turbine_factor_str}_turbine_factor_model_{model_nb}.html"    
                 second_stage.finalizes_results_processing()
                 
-                sim_results[f"{turbine_factor_str}_turbine_factor_model_{model_id}"] = second_stage.simulation_results
+                sim_results[f"turbine_factor_{turbine_factor_str}_model_{model_id}"] = second_stage.simulation_results
                 income_result[f"model_{model_id}"] = round(second_stage.simulation_results["income"].sum()/1e6, 3)
                 fig = plot_second_stage_result(
                     simulation_results=second_stage.simulation_results, time_divider=7*24
@@ -145,14 +136,14 @@ if __name__=="__main__":
                     second_stage.log_book.with_columns(pl.lit(model_id).alias("sim_name"))
                 ], how="diagonal_relaxed")    
                 
-                income_result_list.append(income_result) 
-        
-        log.info(f"Income results for {year} year:\n{sim_results["income_result"]}")
-        
+            income_result_list.append(income_result) 
             
         sim_results["income_result"] = pl.from_dicts(income_result_list)
+        log.info(f"Income results for {year} year:\n{sim_results["income_result"]}")
+        
         if not log_book_final.is_empty():
 
             sim_results["log_book"] = log_book_final
+        print(sim_results)
         
         dict_to_duckdb(data=sim_results, file_path= f"{baseline_folder}/{year}_year_results.duckdb")

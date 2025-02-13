@@ -6,7 +6,7 @@ from typing import ClassVar
 from jinja2 import Environment, FileSystemLoader, Template
 
 import data_federation
-from utility.general_function import snake_to_camel
+from general_function import snake_to_camel
 
 dirname = Path(__file__).parent
 env = Environment(loader=FileSystemLoader(dirname / "templates/"))

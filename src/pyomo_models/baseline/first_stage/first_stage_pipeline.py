@@ -14,7 +14,7 @@ from utility.pyomo_preprocessing import (
 from pyomo_models.input_data_preprocessing import (
     generate_hydro_power_state
 )
-from utility.general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
+from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from pyomo_models.baseline.baseline_input import BaseLineInput
 from pyomo_models.baseline.first_stage.sets import baseline_sets
 from pyomo_models.baseline.first_stage.parameters import baseline_parameters

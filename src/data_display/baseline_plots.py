@@ -9,7 +9,7 @@ from plotly.graph_objects import Figure
 
 from utility.pyomo_preprocessing import extract_optimization_results, linear_interpolation_using_cols
 
-from utility.general_function import build_non_existing_dirs
+from general_function import build_non_existing_dirs
 
 COLORS = px.colors.qualitative.Plotly
 
@@ -182,6 +182,7 @@ def plot_second_stage_powered_volume(
                 ), row=row +fig_idx, col=1
             )
     return fig
+
 def plot_second_stage_result(
     simulation_results: pl.DataFrame,  time_divider: int) -> Figure:
 

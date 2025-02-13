@@ -5,8 +5,8 @@ from polars import col as c
 from data_federation.input_model import SmallflexInputSchema
 from data_federation.parser.hydro_power_plant import get_hydro_power_plant_data
 
-from utility.general_function import generate_uuid
-from utility.polars_operation import generate_uuid_col
+from general_function import generate_uuid
+from polars_function import generate_uuid_col
 
 from itertools import product
 

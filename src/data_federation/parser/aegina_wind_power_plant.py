@@ -4,7 +4,7 @@ from polars import col as c
 
 from data_federation.input_model import SmallflexInputSchema
 
-from utility.general_function import generate_uuid
+from general_function import generate_uuid
 
 
 POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina wind")

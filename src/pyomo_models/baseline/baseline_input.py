@@ -8,6 +8,8 @@ from pyomo_models.input_data_preprocessing import (
     generate_water_flow_factor, generate_basin_volume_table, clean_hydro_power_performance_table, duckdb_to_dict
 )
 
+from general_function import pl_to_dict
+
 class BaseLineInput():
     def __init__(
         self, input_schema_file_name: str, real_timestep: timedelta, year: int, market_country: str = "CH", 
@@ -39,13 +41,6 @@ class BaseLineInput():
     def build_input_data(self, input_schema_file_name):
         schema_dict = duckdb_to_dict(file_path=input_schema_file_name)
         
-        self.discharge_flow_measurement = schema_dict["discharge_flow_measurement"]\
-            .filter(c("river") == "Griessee")\
-            .with_columns(
-                (c("value") * self.real_timestep.total_seconds() * self.volume_factor).alias("discharge_volume"),
-                pl.lit(0).alias("B")
-            )
-            
         self.market_price_measurement =schema_dict["market_price_measurement"]\
             .filter(c("country") == self.market_country)\
             .filter(c("market") == self.market)
@@ -58,7 +53,16 @@ class BaseLineInput():
                 .with_columns(
                     c("volume_max", "volume_min", "start_volume")*self.volume_factor
                 ).with_row_index(name="B")
-                
+        
+        basin_index_mapping = pl_to_dict(self.index["water_basin"][["uuid", "B"]])
+        
+        self.discharge_flow_measurement = schema_dict["discharge_flow_measurement"]\
+            .with_columns(
+                c("basin_fk").replace_strict(basin_index_mapping, default=None).alias("B")
+            ).drop_nulls(subset="basin_fk").with_columns(
+                (c("value") * self.real_timestep.total_seconds() * self.volume_factor).alias("discharge_volume")
+            )
+        
         self.water_flow_factor = generate_water_flow_factor(index=self.index)
         basin_volume_table: dict[int, Optional[pl.DataFrame]] = generate_basin_volume_table(
             index=self.index, 

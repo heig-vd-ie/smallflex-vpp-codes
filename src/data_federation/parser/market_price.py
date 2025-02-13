@@ -4,9 +4,9 @@ import os
 import polars as pl
 from polars import col as c
 import polars.selectors as cs
-
+import tqdm
 from data_federation.input_model import SmallflexInputSchema
-from utility.general_function import dictionary_key_filtering
+from general_function import dictionary_key_filtering
 
 def parse_apg_market_price(
     small_flex_input_schema:SmallflexInputSchema, market_price_metadata: dict) -> SmallflexInputSchema:
@@ -53,7 +53,10 @@ def parse_da_ida_market_price(small_flex_input_schema:SmallflexInputSchema, mark
     return small_flex_input_schema.add_table(market_price_measurement=market_price_measurement)
 
 def get_reg_timestamps(date_str: pl.Expr, time_str: pl.Expr):
-    date: pl.Expr = date_str.cast(pl.Datetime(time_zone="UTC"))
+    try:
+        date: pl.Expr = date_str.str.to_datetime(format="%Y-%m-%d %H:%M:%S", time_zone="UTC")
+    except:
+        date: pl.Expr = date_str.cast(pl.Datetime(time_zone="UTC"))
     time: pl.Expr = (time_str.cast(pl.Int32)*1e3*60*60).cast(pl.Duration(time_unit="ms")) # from ms to min
     return date + time
 
@@ -62,7 +65,7 @@ def parse_reg_frc_market_price(small_flex_input_schema:SmallflexInputSchema, mar
     name = "reg_fcr"
     for entry in list(os.scandir(market_price_metadata[name]["folder"])):
         if entry.name.startswith("RESULT_OVERVIEW"):
-            data: pl.DataFrame = pl.read_excel(entry.path)
+            data: pl.DataFrame = pl.read_excel(entry.path, infer_schema_length=0)
             if data.is_empty():
                 continue
             data = data.with_columns(
@@ -87,7 +90,7 @@ def parse_reg_frr_market_price(small_flex_input_schema:SmallflexInputSchema, mar
     for name in  ["reg_afrr_ene", "reg_afrr_cap", "reg_mfrr_ene", "reg_mfrr_cap"]:
         for entry in list(os.scandir(market_price_metadata[name]["folder"])):
             if entry.name.startswith("RESULT_OVERVIEW"):
-                data: pl.DataFrame = pl.read_excel(entry.path)
+                data: pl.DataFrame = pl.read_excel(entry.path, infer_schema_length=0)
                 if data.is_empty():
                     continue
                 col_mapping = dictionary_key_filtering(market_price_metadata[name]["col_mapping"], data.columns)
@@ -200,11 +203,19 @@ def parse_market_price(
     market_price_metadata: dict = json.load(open(input_file_names["market_price_metadata"]))
     
     kwargs: dict= {"small_flex_input_schema": small_flex_input_schema, "market_price_metadata": market_price_metadata}
-    kwargs["small_flex_input_schema"] = parse_apg_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_da_ida_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_reg_frr_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_reg_frc_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_rte_cap_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_rte_ene_market_price(**kwargs)
-    kwargs["small_flex_input_schema"] = parse_swissgrid_cap_market_price(**kwargs)                                                        
+    with tqdm.tqdm(total=7, desc="Parse market price input data") as pbar:
+        kwargs["small_flex_input_schema"] = parse_apg_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_da_ida_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_reg_frr_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_reg_frc_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_rte_cap_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_rte_ene_market_price(**kwargs)
+        pbar.update()
+        kwargs["small_flex_input_schema"] = parse_swissgrid_cap_market_price(**kwargs)    
+        pbar.update()                                                    
     return kwargs["small_flex_input_schema"]

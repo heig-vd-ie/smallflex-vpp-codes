@@ -5,8 +5,8 @@ from polars import col as c
 from data_federation.input_model import SmallflexInputSchema
 from data_federation.parser.hydro_power_plant import get_hydro_power_plant_data
 
-from utility.general_function import generate_uuid
-from utility.polars_operation import generate_uuid_col
+from general_function import generate_uuid
+from polars_function import generate_uuid_col
 
 from itertools import product
 
@@ -15,7 +15,7 @@ POWER_PLANT_UUID: str = generate_uuid(base_value="Aegina hydro")
 TURBINE_UUID: str = generate_uuid(base_value="Aegina turbine")
 PUMP1_UUID: str = generate_uuid(base_value="Aegina pump 1")
 PUMP2_UUID: str = generate_uuid(base_value="Aegina pump 2")
-UPSTREAM_UUID: str = generate_uuid(base_value="Aegina upstream basin")
+UPSTREAM_UUID: str = generate_uuid(base_value="Griessee")
 DOWNSTREAM_UUID: str = generate_uuid(base_value="Aegina downstream basin")
 RESOURCE_MAPPING: dict[str, str] = {"Pe_GR1": TURBINE_UUID, "Pe_GR2": PUMP1_UUID, "Pe_GR3": PUMP2_UUID}
 
@@ -53,7 +53,7 @@ def parse_aegina_water_resources(small_flex_input_schema: SmallflexInputSchema, 
         
     water_basin: pl.DataFrame = pl.from_dicts([
         {
-            "name": "Aegina upstream basin", "uuid": UPSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
+            "name": "Griessee", "uuid": UPSTREAM_UUID, "power_plant_fk": POWER_PLANT_UUID,
             "volume_max": 1.82432e7, "volume_min": 56.996e3, "height_max": 2386, "height_min": 2350,
             "n_state_min": 5, "start_volume": 14.8e6
         }, {

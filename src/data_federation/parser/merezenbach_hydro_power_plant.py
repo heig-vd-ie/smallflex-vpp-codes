@@ -6,7 +6,7 @@ from data_federation.input_model import SmallflexInputSchema
 from data_federation.parser.hydro_power_plant import get_hydro_power_plant_data
 
 from data_federation.parser.morel_hydro_power_plant import DOWNSTREAM_UUID
-from utility.general_function import generate_uuid
+from general_function import generate_uuid
 
 
 POWER_PLANT_UUID: str = generate_uuid(base_value="Merezenbach")

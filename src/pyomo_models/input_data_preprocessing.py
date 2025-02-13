@@ -8,9 +8,11 @@ from data_federation.input_model import SmallflexInputSchema
 from typing_extensions import Optional
 from utility.pyomo_preprocessing import (
     arange_float, filter_data_with_next,
-    linear_interpolation_for_bound, arange_float, linear_interpolation_using_cols,generate_state_index_using_errors, 
+    linear_interpolation_for_bound, arange_float, linear_interpolation_using_cols,
+    generate_state_index_using_errors, 
     filter_by_index, get_min_avg_max_diff, define_state)
-from utility.general_function import pl_to_dict, generate_log
+
+from general_function import pl_to_dict, generate_log
 
 
 log = generate_log(name=__name__)
