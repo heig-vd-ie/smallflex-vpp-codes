@@ -1362,6 +1362,23 @@ files = [
 ]
 
 [[package]]
+name = "mpmath"
+version = "1.3.0"
+description = "Python library for arbitrary-precision floating-point arithmetic"
+optional = false
+python-versions = "*"
+files = [
+    {file = "mpmath-1.3.0-py3-none-any.whl", hash = "sha256:a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c"},
+    {file = "mpmath-1.3.0.tar.gz", hash = "sha256:7a28eb2a9774d00c7bc92411c19a89209d5da7c4c9a9e227be8330a23a25b91f"},
+]
+
+[package.extras]
+develop = ["codecov", "pycodestyle", "pytest (>=4.6)", "pytest-cov", "wheel"]
+docs = ["sphinx"]
+gmpy = ["gmpy2 (>=2.1.0a4)"]
+tests = ["pytest (>=4.6)"]
+
+[[package]]
 name = "multiprocess"
 version = "0.70.17"
 description = "better multiprocessing and multithreading in Python"
@@ -2837,6 +2854,27 @@ files = [
 cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
+name = "quantecon"
+version = "0.8.0"
+description = "Import the main names to top level."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "quantecon-0.8.0-py3-none-any.whl", hash = "sha256:c633af33d8721bbd847198369248cc35b4dfc8688983b14fbfe27d7c8de36db6"},
+    {file = "quantecon-0.8.0.tar.gz", hash = "sha256:f1b68b10974eda3ec386e151c1659a51d5e55d2b72677891f7b5ca019000fe58"},
+]
+
+[package.dependencies]
+numba = ">=0.49.0"
+numpy = ">=1.17.0"
+requests = "*"
+scipy = ">=1.5.0"
+sympy = "*"
+
+[package.extras]
+testing = ["coverage", "flake8", "numba", "numpy", "pandas", "pytest", "scipy", "sympy"]
+
+[[package]]
 name = "referencing"
 version = "0.36.2"
 description = "JSON Referencing + Python"
@@ -3083,6 +3121,59 @@ maintenance = ["conda-lock (==2.5.6)"]
 tests = ["black (>=24.3.0)", "matplotlib (>=3.3.4)", "mypy (>=1.9)", "numpydoc (>=1.2.0)", "pandas (>=1.1.5)", "polars (>=0.20.30)", "pooch (>=1.6.0)", "pyamg (>=4.0.0)", "pyarrow (>=12.0.0)", "pytest (>=7.1.2)", "pytest-cov (>=2.9.0)", "ruff (>=0.5.1)", "scikit-image (>=0.17.2)"]
 
 [[package]]
+name = "scikit-learn-extra"
+version = "0.3.0"
+description = "A set of tools for scikit-learn."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "scikit-learn-extra-0.3.0.tar.gz", hash = "sha256:7912d43384470d77609e53819d0291967f21010e5c3a3847f9026fc02f9c7893"},
+    {file = "scikit_learn_extra-0.3.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:44654b08cd142ddaa044ffc51d84f31ea3caa3f7b53e3d0024303a38150488cb"},
+    {file = "scikit_learn_extra-0.3.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ec82da4c00423b08436d753f319ab9ec136688be2961274d23e73f9221fdbbf9"},
+    {file = "scikit_learn_extra-0.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:a0e4e79a120e6c8d29f504106160be29c3b06581ea4cb56f4b15ba4c73c7e9ec"},
+    {file = "scikit_learn_extra-0.3.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:8a39e141e060a61c951d9a14c72039b40bb5cd7d32a794b0b20470789d751214"},
+    {file = "scikit_learn_extra-0.3.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:91878f079da2d81b989c0bc3019befc7a3228fee29384065d06badc4ca60f4ec"},
+    {file = "scikit_learn_extra-0.3.0-cp311-cp311-win_amd64.whl", hash = "sha256:2cfadf9b6dbae0803db32cf477aff8a4ba5c15244ffd30d6312df2ef7043e16a"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:837c6805f1948bab0172ff85470fbf568cfb56e8b6a371b892c01f80e5064b67"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:cf2cb09d1fa100a9c8ff8eb3561f69af3c73d94191652873521039030519a646"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:8df4782c79cf8c0125523d48e87f00ff8e001004e4ed57743e983f02b10a63cf"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:9ee6812725b706ae53818845718050c439cc3e02031dc81ed72d6a2679c3f694"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:15681200d239bd414ea616506c7be7c97f33abb88ade944e7a225b42b73bbfa8"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-win32.whl", hash = "sha256:589f11733ce0197bd46189f6f9013696b8f43f85fc66935a90a918cb7965ca1b"},
+    {file = "scikit_learn_extra-0.3.0-cp36-cp36m-win_amd64.whl", hash = "sha256:265113d3280c17261f4598b2d4277a17e1398076cc5330c6d1fc1b6664c15ea8"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:911435d6fb5adbf1883f84f84e5d2cf1ab9e8131da5966097e4294175387e4d4"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:f892e0ab363735e0e2322a716a924bd7bdecf8397be109234fdf17a5024d933f"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:5fff5725d5688242b0e61aefdf79961045016ff0e482164c72b8740f64487325"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:53c07c616b6acb775c365a0df0ca360a0c29c5570e344ca66f3f0986dca3fbcd"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:6c34635914cb1d5274891011c364595141fb0b2ecc93c84b8d8cdf086341c225"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-win32.whl", hash = "sha256:2f694a2304c5dc31f981e443106ec68c7fe4ca7b7af8145218166078ef27c2ca"},
+    {file = "scikit_learn_extra-0.3.0-cp37-cp37m-win_amd64.whl", hash = "sha256:4627f65d50efe8a71165d8917467fda9ff40644c336da5c40a5c4b75633e88d4"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:3c619d66951b7fd0b276d20af19ad4e5d3018219d1337c26a4f72643823798fe"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-manylinux1_i686.whl", hash = "sha256:05cf853c4577f87f2b286b1d1adc921e0de1d0cf313702b2f48ad5fea8d81ea2"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:1a64a752c59a12d7f477a7bdae636a188e7c32933d463d006bf0af7731506562"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:b8da5f9c9a184683df085b6bb55264870ed6a9f3f5e0790af1badfe34764da63"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:1110b67d62f8be9edbade232c40eab3a5458e8c1f19e6afb3f2a685dca4f3cf1"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-win32.whl", hash = "sha256:e7f9eef0316d7ad8cccafc639aa1b20b1fe7e79cfe802c338455c561f749d548"},
+    {file = "scikit_learn_extra-0.3.0-cp38-cp38-win_amd64.whl", hash = "sha256:60780faa1b80eddf9e617804cb19d87e22718080da61aefd38d1c01cdc938634"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:b2ee8cb4bcb5ba8e632e8d7e7400eca5eaa8ed05a7905ba2de61618c036afc37"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-manylinux1_i686.whl", hash = "sha256:ebfc1938c2deb1dd10c43394ac40bf4d6b2814428e2a984ec71c054e8dd5e592"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:8041adcad0cc1b7d6c5b8485fb0cfc849e9db84c588425eee8781186581f9dce"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-manylinux2010_i686.whl", hash = "sha256:0986559451a027dabd4bb9781a9621c5bfde10bd477001c1f60718b2f41900b9"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:f79b071577d2895114e40b3df5f189555259852d2d796ba30f17535f9be6ac6f"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-win32.whl", hash = "sha256:c3061f62eab8b1b5ab62f74888121affeeca1abadf2d5b6a817aecad5b984471"},
+    {file = "scikit_learn_extra-0.3.0-cp39-cp39-win_amd64.whl", hash = "sha256:afc6a0dce83487f95dd288368bf09fbd2d23483389840e2369302455404180d6"},
+]
+
+[package.dependencies]
+numpy = ">=1.13.3"
+scikit-learn = ">=0.23.0"
+scipy = ">=0.19.1"
+
+[package.extras]
+docs = ["matplotlib", "numpydoc", "pillow", "sphinx", "sphinx-gallery", "sphinx-rtd-theme"]
+tests = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "scipy"
 version = "1.15.1"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -3138,6 +3229,26 @@ numpy = ">=1.23.5,<2.5"
 dev = ["cython-lint (>=0.12.2)", "doit (>=0.36.0)", "mypy (==1.10.0)", "pycodestyle", "pydevtool", "rich-click", "ruff (>=0.0.292)", "types-psutil", "typing_extensions"]
 doc = ["intersphinx_registry", "jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.16.5)", "jupytext", "matplotlib (>=3.5)", "myst-nb", "numpydoc", "pooch", "pydata-sphinx-theme (>=0.15.2)", "sphinx (>=5.0.0,<8.0.0)", "sphinx-copybutton", "sphinx-design (>=0.4.0)"]
 test = ["Cython", "array-api-strict (>=2.0,<2.1.1)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
+
+[[package]]
+name = "setuptools"
+version = "75.8.0"
+description = "Easily download, build, install, upgrade, and uninstall Python packages"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "setuptools-75.8.0-py3-none-any.whl", hash = "sha256:e3982f444617239225d675215d51f6ba05f845d4eec313da4418fdbb56fb27e3"},
+    {file = "setuptools-75.8.0.tar.gz", hash = "sha256:c5afc8f407c626b8313a86e10311dd3f661c6cd9c09d4bf8c15c0e11f9f2b0e6"},
+]
+
+[package.extras]
+check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)", "ruff (>=0.8.0)"]
+core = ["importlib_metadata (>=6)", "jaraco.collections", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
+cover = ["pytest-cov"]
+doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
+enabler = ["pytest-enabler (>=2.2)"]
+test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.7.2)", "jaraco.test (>=5.5)", "packaging (>=24.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-home (>=0.5)", "pytest-perf", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel (>=0.44.0)"]
+type = ["importlib_metadata (>=7.0.2)", "jaraco.develop (>=7.21)", "mypy (==1.14.*)", "pytest-mypy"]
 
 [[package]]
 name = "shapely"
@@ -3636,6 +3747,23 @@ numpy = ">=1.19"
 test = ["pytest"]
 
 [[package]]
+name = "sympy"
+version = "1.13.3"
+description = "Computer algebra system (CAS) in Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sympy-1.13.3-py3-none-any.whl", hash = "sha256:54612cf55a62755ee71824ce692986f23c88ffa77207b30c1368eda4a7060f73"},
+    {file = "sympy-1.13.3.tar.gz", hash = "sha256:b27fd2c6530e0ab39e275fc9b683895367e51d5da91baa8d3d64db2565fec4d9"},
+]
+
+[package.dependencies]
+mpmath = ">=1.1.0,<1.4"
+
+[package.extras]
+dev = ["hypothesis (>=6.70.0)", "pytest (>=7.1.0)"]
+
+[[package]]
 name = "tenacity"
 version = "9.0.0"
 description = "Retry code until it succeeds"
@@ -3908,4 +4036,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "a8b507392576d20893ed9c17488587c588b1380557c46d5200ec23c72880483b"
+content-hash = "c3f0b10b9a4b02f0b665b747792f8392c903622bae439912f0936a6e08914081"
