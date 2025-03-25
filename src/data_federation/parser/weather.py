@@ -37,8 +37,8 @@ def parse_weather_historical(
         data: pl.DataFrame = pl.from_pandas(pandas2ri.rpy2py(all_df)) 
 
         data = data.with_columns(
-            (pl.from_epoch(c("time")).cast(pl.Datetime(time_zone="UTC")) 
-            - pl.lit(timedelta(hours=1))).alias("timestamp") # UTC -1 hour because the data is in UTC+1 (without DST)
+            pl.from_epoch(c("time")).cast(pl.Datetime(time_zone="UTC")).alias("timestamp")
+            # - pl.lit(timedelta(hours=1))).alias("timestamp") # UTC -1 hour because the data is in UTC+1 (without DST)
         ).drop(cs.ends_with("X0")).drop(["time",  "weekday", "yy", "dd", "mm", "hh"])
 
 
