@@ -10,7 +10,7 @@ import pyomo.environ as pyo
 from typing import Union
 import math
 
-from data_federation.input_model import SmallflexInputSchema
+
 from pyomo.util.infeasible import find_infeasible_constraints
 
 def arange_float(high, low, step):

@@ -4,20 +4,17 @@ from polars import col as c
 from polars import selectors as cs
 from datetime import timedelta
 
-from data_federation.input_model import SmallflexInputSchema
 from typing_extensions import Optional
 from utility.pyomo_preprocessing import (
     arange_float, filter_data_with_next,
-    linear_interpolation_for_bound, arange_float, linear_interpolation_using_cols,
-    generate_state_index_using_errors, 
+    linear_interpolation_for_bound, linear_interpolation_using_cols,
+    generate_state_index_using_errors,
     filter_by_index, get_min_avg_max_diff, define_state)
 
 from general_function import pl_to_dict, generate_log
 
 
 log = generate_log(name=__name__)
-
-
 
 def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
 
@@ -133,7 +130,7 @@ def clean_hydro_power_performance_table(
             
 def generate_hydro_power_state(
     power_performance_table: list[dict], index: dict[str, pl.DataFrame], error_percent: float
-    ) -> pl.DataFrame: 
+    ) -> pl.DataFrame:
     
     state_index: pl.DataFrame = pl.DataFrame()
     for data in power_performance_table: 
@@ -146,10 +143,10 @@ def generate_hydro_power_state(
         state_performance_table = filter_by_index(data=power_performance, index_list=segments)\
         .with_columns(
             c(col).abs().pipe(get_min_avg_max_diff).alias(col) for col in power_performance.columns
-        ).slice(offset=0, length=len(segments)-1) 
+        ).slice(offset=0, length=len(segments)-1)
         
         state_index = pl.concat([
-            state_index , 
+            state_index, 
             state_performance_table.with_columns(
                 pl.lit(data["H"]).alias("H"),
                 pl.lit(data["B"]).alias("B"))
@@ -174,7 +171,7 @@ def generate_hydro_power_state(
     return state_index
 
 def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = "T") -> pl.DataFrame:
-    
+
     offset = data.height%divisors
     if offset != 0:
         offset: int = divisors - data.height%divisors
@@ -243,9 +240,3 @@ def generate_second_stage_state(
         pl.concat_list("H", "S", "S_Q").alias("HQS")
     )
     return index
-
-def duckdb_to_dict(file_path: str) -> dict[str, pl.DataFrame]:
-    small_flex_input_schema: SmallflexInputSchema = SmallflexInputSchema()\
-        .duckdb_to_schema(file_path=file_path)
-    
-    return dict([(name, pl.DataFrame(table))for name, table in small_flex_input_schema.__dict__.items()])
