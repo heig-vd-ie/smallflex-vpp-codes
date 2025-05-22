@@ -11,12 +11,14 @@ from general_function import pl_to_dict, generate_log
 
 log = generate_log(name=__name__)
 
-def process_first_stage_results(model_instance: pyo.Model, water_basin_index: pl.DataFrame, flow_to_vol_factor: float) -> pl.DataFrame:
+def process_first_stage_results(model_instance: pyo.Model, market_price: pl.DataFrame, water_basin_index: pl.DataFrame, flow_to_vol_factor: float) -> pl.DataFrame:
 
     
     volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index[["B", "volume_max"]])
-    market_price = extract_optimization_results(
-            model_instance=model_instance, var_name="market_price"
+    market_price = market_price.select(
+            c("T"),
+            c("timestamp"),
+            cs.ends_with("avg").name.map(lambda x: x.replace("avg", "") + "market_price")
         )
     
     basin_volume = extract_optimization_results(

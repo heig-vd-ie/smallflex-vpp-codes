@@ -34,7 +34,7 @@ SIMULATION_SETTING = [
 
 YEARS = [2020]
 TURBINE_FACTORS = {0.75}
-# SIMULATION_SETTING = [{"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True}]
+SIMULATION_SETTING = [{"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True}]
 
 REAL_TIMESTEP = timedelta(hours=1)
 FIRST_STAGE_TIMESTEP = timedelta(days=1)
@@ -58,7 +58,7 @@ def solve_second_stage_model(
 
 if __name__=="__main__":
     
-    output_file_names: dict[str, str] = json.load(open(settings.OUTPUT_FILE_NAMES)) # type: ignore
+    output_file_names: dict[str, str] = json.load(open(settings.FILE_NAMES)) # type: ignore
     
     baseline_folder = output_file_names["baseline"]
     if os.path.exists(baseline_folder):
@@ -96,16 +96,14 @@ if __name__=="__main__":
             
             sim_results["first_stage"] = first_stage.optimization_results
             
-            print(sim_results["first_stage"])
-            
             
             income_result["first_stage"] = round(first_stage.optimization_results["income"].sum()/1e6, 3)
 
-            # fig = plot_first_stage_result(
-            #         simulation_results=first_stage.optimization_results, time_divider=7
-            #     )
+            fig = plot_first_stage_result(
+                    simulation_results=first_stage.optimization_results, time_divider=7
+                )
                 
-            # fig.write_html(f"{plot_folder}/{turbine_factor}_turbine_factor_first_stage.html")
+            fig.write_html(f"{plot_folder}/{turbine_factor}_turbine_factor_first_stage.html")
             
             optimization_inputs: list[list[Union[BaselineSecondStage, str]]] = []
             income_results: list[dict] = []

@@ -82,7 +82,6 @@ class BaselineFirstStage(BaseLineInput):
             timestep=self.timestep, 
             agg_type="mean"
         )
-        
 
     def generate_model(self):
         self.model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
@@ -142,6 +141,7 @@ class BaselineFirstStage(BaseLineInput):
             _ = self.solver.solve(self.model_instance)
             pbar.update()
         self.optimization_results = process_first_stage_results(
-            model_instance=self.model_instance, water_basin_index=self.index["water_basin"],
+            model_instance=self.model_instance, market_price=self.market_price,
+            water_basin_index=self.index["water_basin"],
             flow_to_vol_factor= self.real_timestep.total_seconds() * self.volume_factor )
         
