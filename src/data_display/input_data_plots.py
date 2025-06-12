@@ -12,7 +12,7 @@ from numpy_function import relative_error_within_boundaries, error_within_bounda
 from general_function import build_non_existing_dirs
 
 
-from data_federation.input_model import SmallflexInputSchema
+from smallflex_data_schema import SmallflexInputSchema
 from utility.pyomo_preprocessing import optimal_segments
 
 COLORS = px.colors.qualitative.Plotly
