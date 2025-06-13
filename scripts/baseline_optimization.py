@@ -20,21 +20,21 @@ from baseline_model.first_stage.first_stage_pipeline import BaselineFirstStage
 from baseline_model.second_stage.second_stage_pipeline import BaselineSecondStage
 
 
-PARALLEL = True
+PARALLEL = False
 YEARS = [2020, 2021, 2022, 2023]
 TURBINE_FACTORS = {0.75, 0.85, 0.95}
 
 SIMULATION_SETTING = [
     {"quantile": 0, "buffer": 0.2, "powered_volume_enabled": True},
-    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True},
-    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False},
-    {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "global_price": True},
-    {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "global_price": True},
+    # {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True},
+    # {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False},
+    # {"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True, "global_price": True},
+    # {"quantile": 0.25, "buffer": 0.3, "powered_volume_enabled": False, "global_price": True},
 ]
 
 YEARS = [2020]
 TURBINE_FACTORS = {0.75}
-SIMULATION_SETTING = [{"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True}]
+# SIMULATION_SETTING = [{"quantile": 0.15, "buffer": 0.3, "powered_volume_enabled": True}]
 
 REAL_TIMESTEP = timedelta(hours=1)
 FIRST_STAGE_TIMESTEP = timedelta(days=1)

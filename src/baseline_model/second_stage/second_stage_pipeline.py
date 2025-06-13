@@ -73,6 +73,7 @@ class BaselineSecondStage(BaseLineInput):
         
         
         self.solver.options['TimeLimit'] = time_limit
+        self.solver.options['Threads'] = 8 
         
         self.generate_index()
         self.generate_model()
