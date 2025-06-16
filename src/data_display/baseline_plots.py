@@ -67,34 +67,30 @@ def plot_first_stage_market_price(
 def plot_first_stage_powered_volume(
     simulation_results: pl.DataFrame, fig: Figure, row: int, time_divider: int, **kwargs
     ) -> Figure:
-    hydro_name = simulation_results.select(cs.starts_with("hydro")).columns
-    for fig_idx, name in enumerate(hydro_name):
+    hydro_name = simulation_results.select(cs.starts_with("powered_volume")).columns
+    for i, name in enumerate(hydro_name):
 
-        data = simulation_results.select(c("T"), c(name)).unnest(name)\
+        data = simulation_results.select(c("T"), c(name))\
             .group_by(c("T")//time_divider).agg(pl.all().exclude("T").sum()).sort("T")
-        for i, var_name in enumerate(["turbined_volume", "pumped_volume"]):
-            factor = 1e-6 if i == 0 else -1e-6
-            fig.add_trace(
-                go.Bar(
-                    x=data["T"].to_list(), y=(factor*data[var_name]).to_list(), showlegend=True,
-                    marker=dict(color=COLORS[i]), width=1, name= var_name.replace("_", " ") + " " + name.replace("_", " "),
-                    legendgroup=name
-                ), row=row +fig_idx, col=1
-            )
-    fig.update_traces(selector=dict(legendgroup=name), legendgrouptitle_text= name )
+        fig.add_trace(
+            go.Bar(
+                x=data["T"].to_list(), y=(data[name]).to_list(), showlegend=True,
+                marker=dict(color=COLORS[i]), width=1, name=name,
+                legendgroup="powered_volume"
+            ), row=row, col=1
+        )
+        
+    fig.update_traces(selector=dict(legendgroup="powered_volume"), legendgrouptitle_text="Powered volume")
 
     return fig
 
 def plot_first_stage_result(
     simulation_results: pl.DataFrame,  time_divider: int) -> Figure:
 
-        hydro_name = list(map(
-            lambda x: x.replace("_", "") + " volume [Mm3]", 
-            simulation_results.select(cs.starts_with("hydro")).columns))
 
         fig: Figure = make_subplots(
-                rows=2 + len(hydro_name), cols = 1, shared_xaxes=True, vertical_spacing=0.02, x_title="<b>Weeks<b>", 
-                row_titles= ["DA price [EUR/MWh]", "Basin water volume [%]"] + hydro_name)
+                rows=3, cols = 1, shared_xaxes=True, vertical_spacing=0.02, x_title="<b>Weeks<b>", 
+                row_titles= ["DA price [EUR/MWh]", "Basin water volume [%]", "Powered volume [Mm3]"])
 
         kwargs: dict = {
                 "simulation_results": simulation_results, 
@@ -109,11 +105,8 @@ def plot_first_stage_result(
                 margin=dict(t=60, l=65, r= 10, b=60), 
                 width=1200,   # Set the width of the figure
                 height=800,
-                legend=dict(title_text="Legend"),
-                legend_tracegroupgap=50
+                legend_tracegroupgap=170
             )
-        return fig
-    
 def plot_curviness_results(df: pl.DataFrame, x_col: str, y_col_list: list[str]) -> Figure:
 
     fig: Figure = make_subplots(

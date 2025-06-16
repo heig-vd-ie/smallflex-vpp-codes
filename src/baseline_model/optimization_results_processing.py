@@ -11,16 +11,21 @@ from general_function import pl_to_dict, generate_log
 
 log = generate_log(name=__name__)
 
-def process_first_stage_results(model_instance: pyo.Model, market_price: pl.DataFrame, water_basin_index: pl.DataFrame, flow_to_vol_factor: float) -> pl.DataFrame:
+def process_first_stage_results(model_instance: pyo.Model, market_price: pl.DataFrame, index: dict[str, pl.DataFrame], flow_to_vol_factor: float) -> pl.DataFrame:
 
-    
-    volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index[["B", "volume_max"]])
+    model_instance=model_instance
+    market_price= market_price
+    water_basin_index= index["water_basin"]
+    pump_index = index["hydro_power_plant"].filter(c("type")== "pump")["H"].to_list()
+
+
+    volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index["B", "volume_max"])
     market_price = market_price.select(
             c("T"),
             c("timestamp"),
             cs.ends_with("avg").name.map(lambda x: x.replace("avg", "") + "market_price")
         )
-    
+
     basin_volume = extract_optimization_results(
             model_instance=model_instance, var_name="basin_volume"
         ).with_columns(
@@ -35,74 +40,45 @@ def process_first_stage_results(model_instance: pyo.Model, market_price: pl.Data
             model_instance=model_instance, var_name="nb_hours"
     )[["T", "nb_hours"]])
 
-    turbined_volume = extract_optimization_results(
-            model_instance=model_instance, var_name="turbined_flow"
+    powered_volume = extract_optimization_results(
+            model_instance=model_instance, var_name="flow"
         ).with_columns(
             (
-                c("turbined_flow") * flow_to_vol_factor *c("T").replace_strict(nb_hours_mapping, default=None)
-            ).alias("turbined_volume")
+                pl.when(c("H").is_in(pump_index)).then(-c("flow")).otherwise(c("flow")) * flow_to_vol_factor *
+                c("T").replace_strict(nb_hours_mapping, default=None)
+            ).alias("powered_volume")
         )
         
-    turbined_volume = pivot_result_table(
-        df = turbined_volume, on="H", index=["T"], 
-        values="turbined_volume")
+    powered_volume = pivot_result_table(
+        df = powered_volume, on="H", index=["T"], 
+        values="powered_volume")
         
-    pumped_volume = extract_optimization_results(
-            model_instance=model_instance, var_name="pumped_flow"
-        ).with_columns(
-            (
-                c("pumped_flow") * flow_to_vol_factor * c("T").replace_strict(nb_hours_mapping, default=None)
-            ).alias("pumped_volume")
-        )
-        
-    pumped_volume = pivot_result_table(
-        df = pumped_volume, on="H", index=["T"],
-        values="pumped_volume")
 
-    pumped_power = extract_optimization_results(
-            model_instance=model_instance, var_name="pumped_power"
+    hydro_power = extract_optimization_results(
+            model_instance=model_instance, var_name="hydro_power"
         )
 
-    pumped_power = pivot_result_table(
-        df = pumped_power, on="H", index=["T"], 
-        values="pumped_power")
-
-    turbined_power = extract_optimization_results(
-            model_instance=model_instance, var_name="turbined_power"
-        )
-
-    turbined_power = pivot_result_table(
-        df = turbined_power, on="H", index=["T"],
-        values="turbined_power")
+    hydro_power = pivot_result_table(
+        df = hydro_power, on="H", index=["T"], 
+        values="hydro_power")
 
     simulation_results: pl.DataFrame = market_price\
         .join(basin_volume, on = "T", how="inner")\
-        .join(turbined_volume, on = "T", how="inner")\
-        .join(pumped_volume, on = "T", how="inner")\
-        .join(pumped_power, on = "T", how="inner")\
-        .join(turbined_power, on = "T", how="inner")\
+        .join(powered_volume, on = "T", how="inner")\
+        .join(hydro_power, on = "T", how="inner")\
         .with_columns(
-            ((
-                pl.sum_horizontal(cs.starts_with("turbined_power")) -
-                pl.sum_horizontal(cs.starts_with("pumped_power"))
-            ) * c("T").replace_strict(nb_hours_mapping, default=None) * c("market_price")).alias("income")
+            (
+            pl.sum_horizontal(cs.starts_with("powered_volume")) *
+            c("T").replace_strict(nb_hours_mapping, default=None) * c("market_price")
+            ).alias("income")
         )
-        
-    hydro_name = list(map(str, list(model_instance.H))) # type: ignore
-
-    simulation_results = simulation_results.with_columns(
-        pl.struct(cs.ends_with(hydro) & ~cs.starts_with("basin_volume"))
-        .pipe(remove_suffix).alias("hydro_" + hydro) 
-        for hydro in hydro_name
-    ).select(    
-        ~(cs.starts_with("turbined") | cs.starts_with("pumped")) # type: ignore
-    )
+    
     
     return simulation_results
 
 def process_second_stage_results(model_instance: pyo.Model, optimization_results: dict[str, pl.DataFrame], sim_nb: int) -> dict[str, pl.DataFrame]:
     
-        for var_name in ["flow", "power", "basin_volume", "spilled_volume"]:
+        for var_name in ["flow", "hydro_power", "basin_volume", "spilled_volume"]:
             data = extract_optimization_results(
                     model_instance=model_instance, var_name=var_name
                 ).with_columns(

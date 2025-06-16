@@ -15,13 +15,14 @@ def baseline_objective(model):
 
     @model.Objective(sense=pyo.maximize) # type: ignore
     def selling_income(model):
-        return sum(
-            model.market_price[t] * model.nb_hours[t] * 
+        return(
             sum(
-                model.turbined_power[t, h] 
-                - model.pumped_power[t, h] 
-                for h in model.H
-            ) for t in model.T
+            model.market_price[t] * model.nb_hours[t] * 
+            sum(model.hydro_power[t, h] for h in model.H) for t in model.T
         )
-
+        - sum(
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
+            for b in model.B
+        ) / (model.nb_sec * model.volume_factor)
+        )
     return model

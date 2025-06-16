@@ -33,29 +33,29 @@ basin set :math:`B` and the hydro powerplant set :math:`H`.
 """
 
 
-def pump_constraints(model):
+def hydro_power_plant_constraints(model):
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
     @model.Constraint(model.T, model.S_BH) # type: ignore
-    def pumped_flow_by_state_constraint(model, t, h, b, s_h, s_b):
+    def flow_by_state_constraint(model, t, h, b, s_h, s_b):
         return (
-            model.pumped_flow_by_state[t, h, s_h] <= 
-            model.pump_factor * model.max_flow_pumped[h, s_h] * model.basin_state[t, b, s_b]
+            model.flow_by_state[t, h, s_h] <= 
+            model.max_turbined_volume_factor * model.max_flow[h, s_h] * model.basin_state[t, b, s_b]
         ) 
     @model.Constraint(model.T, model.H) # type: ignore
-    def pumped_flow_constraint(model, t, h):
+    def flow_constraint(model, t, h):
         return (
-            model.pumped_flow[t, h] ==
-            sum(model.pumped_flow_by_state[t, h, s_h] for s_h in model.S_h[h])
+            model.flow[t, h] ==
+            sum(model.flow_by_state[t, h, s_h] for s_h in model.S_h[h])
         ) 
     
     @model.Constraint(model.T, model.H) # type: ignore
-    def pumped_power_constraint(model, t, h):
+    def hydro_power_constraint(model, t, h):
         return (
-            model.pumped_power[t, h] ==
+            model.hydro_power[t, h] ==
             sum(
-                model.pumped_flow_by_state[t, h, s_h] *  model.alpha_pumped[h, s_h]
+                model.flow_by_state[t, h, s_h] *  model.alpha[h, s_h]
             for s_h in model.S_h[h])
         )
     return model

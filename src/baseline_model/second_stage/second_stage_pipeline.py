@@ -7,7 +7,7 @@ import tqdm
 import logging
 
 from utility.input_data_preprocessing import (
-    split_timestamps_per_sim, generate_second_stage_state
+    split_timestamps_per_sim, generate_second_stage_hydro_power_state, generate_seconde_stage_basin_state
 )
 from utility.pyomo_preprocessing import (generate_datetime_index, generate_clean_timeseries)
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
@@ -31,8 +31,8 @@ class BaselineSecondStage(BaseLineInput):
     def __init__(
         self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, model_nb: int = 1,
         buffer: float = 0.2, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
-        quantile: float = 0.15, spilled_factor: float = 1e2, with_penalty: bool = True, log_solver_info: bool = False,
-        global_price: bool = False, time_limit:float =  120, is_parallel: bool = False
+        quantile: float = 0.15, with_penalty: bool = True, log_solver_info: bool = False,
+        global_price: bool = False, time_limit:float =  120, is_parallel: bool = False, nb_state: int = 5
         ):
         self.retrieve_input(input_instance)
         self.sim_nb = 0
@@ -43,12 +43,12 @@ class BaselineSecondStage(BaseLineInput):
         self.buffer: float = buffer
         self.powered_volume_enabled = powered_volume_enabled
         self.quantile = quantile
-        self.spilled_factor = spilled_factor
         self.global_price = global_price
         self.with_penalty = with_penalty
         self.log_solver_info = log_solver_info
         self.timestep = timestep
         self.divisors: int = int(self.timestep / self.real_timestep)
+        self.nb_state: int = nb_state
         
         self.index: dict[str, pl.DataFrame] = first_stage.index
         self.first_stage_timestep: timedelta = first_stage.timestep
@@ -56,15 +56,16 @@ class BaselineSecondStage(BaseLineInput):
         self.first_stage_results: pl.DataFrame = first_stage.optimization_results
         self.power_performance_table: list = first_stage.power_performance_table
         
+        
         self.optimization_results: dict[str, pl.DataFrame] = {
             "start_basin_volume": pl.DataFrame(),
             "remaining_volume": pl.DataFrame(),
             "flow": pl.DataFrame(),
-            "power":  pl.DataFrame(),
+            "hydro_power":  pl.DataFrame(),
             "spilled_volume": pl.DataFrame(),
             "basin_volume": pl.DataFrame(),   
         }                   
-                                                        
+        self.basin_volume : pl.DataFrame = pl.DataFrame()                                               
         self.result_power: pl.DataFrame = pl.DataFrame()
         self.result_basin_volume: pl.DataFrame = pl.DataFrame()
         self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
@@ -108,18 +109,18 @@ class BaselineSecondStage(BaseLineInput):
         alpha_pos: dict[int, float] = {}
         alpha_neg: dict[int, float] = {}
         for data in self.power_performance_table:
-            alpha = data["power_performance"].select(cs.contains("alpha"))
-            alpha_pos[data["H"]] = alpha.select(pl.min_horizontal(pl.all()).alias("min"))["min"].min()
-            alpha_neg[data["H"]] = alpha.select(pl.max_horizontal(pl.all()).alias("max"))["max"].max()    
+            alpha = data["power_performance"].with_columns(pl.when(c("flow") < 0).then(-c("alpha")).otherwise(c("alpha")).alias("alpha"))
+            alpha_pos[data["H"]] = alpha["alpha"].min()
+            alpha_neg[data["H"]] = alpha["alpha"].max()
         
         self.data["H"] = {None: self.index["hydro_power_plant"]["H"].to_list()}
         self.data["B"] = {None: self.index["water_basin"]["B"].to_list()}
         self.data["buffer"] = {None: self.buffer}
-        self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "turbined_factor"])
+        self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
         self.data["alpha_pos"] = alpha_pos
         self.data["alpha_neg"] = alpha_neg
         self.data["volume_factor"] = {None: self.volume_factor}
-        self.data["spilled_factor"] = dict(map(lambda x: (x["B"], self.spilled_factor), self.power_performance_table))
+        self.data["spilled_factor"] = pl_to_dict(self.spilled_factor["B", "spilled_factor"])
         if self.global_price:
             self.data["neg_unpowered_price"] = {
                 None: self.market_price["avg"].quantile(0.5 + self.quantile)}
@@ -159,17 +160,15 @@ class BaselineSecondStage(BaseLineInput):
 
         offset = divisors - self.first_stage_results.height%divisors
         self.powered_volume = self.first_stage_results.select(
-                c("T"), 
-                cs.starts_with("hydro")
-                .map_elements(lambda x: x["turbined_volume"]  - x["pumped_volume"], return_dtype=pl.Float64)
-                .name.map(lambda c: c.replace("hydro_", "")),
-            ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
-            .agg(pl.all().exclude("sim_nb", "T").sum())\
-            .unpivot(
-                index="sim_nb", variable_name="H", value_name="powered_volume"
-            ).with_columns(
-                c("H").cast(pl.UInt32).alias("H")
-            )
+            c("T"), 
+            cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
+        ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
+        .agg(pl.all().exclude("sim_nb", "T").sum())\
+        .unpivot(
+            index="sim_nb", variable_name="H", value_name="powered_volume"
+        ).with_columns(
+            c("H").cast(pl.UInt32).alias("H")
+        )
             
     def generate_volume_buffer(self):
         rated_volume_dict = pl_to_dict(
@@ -230,46 +229,49 @@ class BaselineSecondStage(BaseLineInput):
         discharge_volume_tot= pl_to_dict(
             self.discharge_volume.filter(c("sim_nb") == self.sim_nb).group_by("B").agg(c("discharge_volume").sum()))
 
-        self.index = generate_second_stage_state(
-            index=self.index, power_performance_table=self.power_performance_table, 
-            discharge_volume=discharge_volume_tot, start_volume_dict=start_volume_dict,
-            timestep=self.timestep, error_threshold=self.error_threshold, volume_factor=self.volume_factor)
+        self.index["basin_state"], basin_volume = generate_seconde_stage_basin_state(
+            index=self.index, water_flow_factor=self.water_flow_factor, 
+            basin_volume_table=self.basin_volume_table, start_volume_dict=start_volume_dict, 
+            discharge_volume_tot=discharge_volume_tot,
+            timestep=self.timestep, volume_factor=self.volume_factor, nb_state=self.nb_state
+        )
+
+        self.index["hydro_power_state"] = generate_second_stage_hydro_power_state(
+            power_performance_table=self.power_performance_table, basin_volume=basin_volume)
 
 
     def generate_model_instance(self):
-        hydropower_state: pl.DataFrame = self.index["state"].drop_nulls("H")
-    
+        
+
         self.data["T"] = {None: self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["T"].to_list()}
         self.data["S_B"] = pl_to_dict(
-            self.index["state"].unique("S", keep="first")
-            .group_by("B", maintain_order=True).agg("S")
-            .with_columns(c("S").list.sort())
+            self.index["basin_state"]["B", "S_b"]
+            .group_by("B", maintain_order=True).agg("S_b")
+            .with_columns(c("S_b").list.sort())
         )
-        self.data["BS"] = {None: list(map(tuple,self.index["state"]["BS"].to_list()))}
-        self.data["HS"] = {None: list(map(tuple,hydropower_state["HS"].to_list()))}
-        self.data["HQS"] = {None: list(map(tuple,hydropower_state["HQS"].to_list()))}
+
+        self.data["BS"] = {None: list(map(tuple,self.index["basin_state"]["BS"].to_list()))}
+        self.data["HS"] = {None: list(map(tuple,self.index["hydro_power_state"]["HS"].to_list()))}
+        self.data["S_BH"] = {None: list(map(tuple,self.index["hydro_power_state"]["S_BH"].to_list()))}
         self.data["S_H"] = pl_to_dict(
-            hydropower_state.unique("S", keep="first")
+            self.index["hydro_power_state"]
             .group_by("H", maintain_order=True)
-            .agg("S")
-            .with_columns(c("S").list.sort())
+            .agg("S_h")
+            .with_columns(c("S_h").list.sort())
             )
-        self.data["S_Q"] = pl_to_dict_with_tuple(
-            hydropower_state
-            .group_by(["HS"], maintain_order=True).agg("S_Q")
-            .with_columns(c("S_Q").list.sort())
-            )
-        
-        self.data["B_H"] = pl_to_dict(hydropower_state.group_by("H").agg(c("B").unique()))
-        self.data["SB_H"] = pl_to_dict_with_tuple(hydropower_state.group_by("HS").agg(c("S").unique()))
-        
         self.data["start_basin_volume"] = pl_to_dict(
             self.optimization_results["start_basin_volume"].filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
         self.data["remaining_volume"] = pl_to_dict(self.optimization_results["remaining_volume"].filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]])
+
+
+        # self.data["B_H"] = pl_to_dict(hydropower_state.group_by("H").agg(c("B").unique()))
+        # self.data["SB_H"] = pl_to_dict_with_tuple(hydropower_state.group_by("HS").agg(c("S").unique()))
+
+
         self.data["min_basin_volume"] = pl_to_dict_with_tuple(
-                    self.index["state"].select("BS", c("volume").struct.field("min")))
+                    self.index["basin_state"]["BS", "volume_min"])
         self.data["max_basin_volume"] = pl_to_dict_with_tuple(
-            self.index["state"].select("BS", c("volume").struct.field("max")))
+            self.index["basin_state"]["BS", "volume_max"])
         self.data["powered_volume_enabled"] = {None: self.powered_volume_enabled}
 
         self.data["discharge_volume"] = pl_to_dict_with_tuple(self.discharge_volume.filter(c("sim_nb") == self.sim_nb)[["TB", "discharge_volume"]])  
@@ -279,23 +281,21 @@ class BaselineSecondStage(BaseLineInput):
                 None: self.market_price.filter(c("sim_nb") == self.sim_nb)["avg"].quantile(0.5 + self.quantile)}
             self.data["pos_unpowered_price"] = {
                 None: self.market_price.filter(c("sim_nb") == self.sim_nb)["avg"].quantile(0.5 - self.quantile)}
-        
+
         self.data["powered_volume"] = pl_to_dict(self.powered_volume.filter(c("sim_nb") == self.sim_nb)[["H", "powered_volume"]])
         self.data["volume_buffer"] = pl_to_dict(self.volume_buffer.filter(c("sim_nb") == self.sim_nb)[["H", "volume_buffer"]])
 
-        self.data["min_flow"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "flow"]])  
-        self.data["min_power"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "electrical_power"]])  
-        self.data["d_flow"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "d_flow"]])  
-        self.data["d_power"] = pl_to_dict_with_tuple(hydropower_state[["HQS", "d_electrical_power"]])  
-        
+        self.data["max_flow"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "flow"]])  
+        self.data["alpha"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "alpha"]])  
+                
         self.model_instance: pyo.Model = self.model.create_instance({None: self.data})
-        
+        # self.model_instance._sim_nb = self.sim_nb    
 
 
     def solve_model(self):
         logging.getLogger('pyomo.core').setLevel(logging.ERROR)
         for sim_nb in tqdm.tqdm(
-            range(self.sim_tot + 1), 
+            range(self.sim_tot + 1),
             desc=f"Solving second stage optimization model number {self.model_nb}",
             position=self.model_nb if self.is_parallel else 0,
             ncols=150,
@@ -313,6 +313,7 @@ class BaselineSecondStage(BaseLineInput):
                 self.optimization_results = process_second_stage_results(
                     model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
             else:
+                self.solver.solve(self.model_instance, tee=True)
                 # solved = self.solve_changing_powered_volume_constraint()
                 # if not solved:
                 log.error(f"Model not solved for sim number {self.sim_nb}")

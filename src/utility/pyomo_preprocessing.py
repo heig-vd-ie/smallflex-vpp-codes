@@ -73,6 +73,7 @@ def generate_clean_timeseries(
             c(col_name).pipe(limit_column, lower_bound=min_value, upper_bound=max_value).alias(col_name)
         )
     
+    
     cleaned_data = cleaned_data\
         .group_by_dynamic(
             index_column=timestamp_col, start_by="datapoint", every=timestep, closed="left"
@@ -290,8 +291,10 @@ def digitize_col(col: pl.Expr,  data: pl.DataFrame, nb_state: int):
         col.map_elements(lambda x: np.digitize(x, bin), return_dtype=pl.Int64)
     )
 def generate_state_index_using_errors(
-    data: pl.DataFrame, column_list: list[str], error_percent: float
+    data: pl.DataFrame, column_list: Optional[list[str]] = None, error_percent: float = 2
     ) -> list[int]:  
+    if column_list is None:
+        column_list = data.columns
     nb_state: int = int(np.ceil(
         data.select(
             pl.max_horizontal(c(col).pipe(get_nb_states, error_percent=error_percent).alias(col)

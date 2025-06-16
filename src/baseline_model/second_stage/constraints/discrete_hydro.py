@@ -41,44 +41,79 @@ def discrete_hydro_constraints(model):
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
-    model.flow_state_constraint = pyo.Constraint(model.T, model.HS, rule=flow_state_constraint)
-    model.discrete_flow_constraint = pyo.Constraint(model.T, model.H, rule=discrete_flow_constraint)
-    model.discrete_power_constraint = pyo.Constraint(model.T, model.H, rule=discrete_power_constraint)
+    model.max_active_flow_by_state_constraint = pyo.Constraint(model.T, model.HS, rule=max_active_flow_by_state_constraint)
+    model.max_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.S_BH, rule=max_inactive_flow_by_state_constraint)
+    model.min_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.S_BH, rule=min_inactive_flow_by_state_constraint)
+    model.flow_constraint = pyo.Constraint(model.T, model.H, rule=flow_constraint)
+    model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
+
     return model
 
-def flow_state_constraint(model, t, h, s_h):
-    b = model.B_H[h].first()
-    s_b = model.SB_H[h, s_h].first()
+def max_active_flow_by_state_constraint(model, t, h, s_h):
+    return model.flow_by_state[t, h, s_h] <= model.big_m * model.active_hydro[t, h] 
+
+
+def max_inactive_flow_by_state_constraint(model, t, h, b, s_h, s_b):
     return (
-        sum(model.flow_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h]) <= model.basin_state[t, b, s_b]
+        model.flow_by_state[t, h, s_h] >= 
+        model.max_flow[h, s_h] * model.basin_state[t, b, s_b] - model.big_m * (1- model.active_hydro[t, h]) 
     )
 
-def discrete_flow_constraint(model, t, h):
-    b = model.B_H[h].first()
+def min_inactive_flow_by_state_constraint(model, t, h, b, s_h, s_b):
+    return (
+        model.flow_by_state[t, h, s_h] <=  model.max_flow[h, s_h] * model.basin_state[t, b, s_b]
+    )
+    
+def flow_constraint(model, t, h):
     return (
         model.flow[t, h] ==
-        sum(
-            sum(
-                model.flow_state[t, h, s_h, s_q] * 
-                (model.min_flow[h, s_h, s_q] - model.d_flow[h, s_h, s_q] * model.min_basin_volume[b, model.SB_H[h, s_h].first()]) +
-                model.d_flow[h, s_h, s_q] * model.basin_volume_by_state[t, h, s_h, s_q] 
-            for s_q in model.S_Q[h, s_h])
-        for s_h in model.S_H[h])
+        sum(model.flow_by_state[t, h, s_h] for s_h in model.S_H[h])
     ) 
 
-
-def discrete_power_constraint(model, t, h):
-    b = model.B_H[h].first()
+def hydro_power_constraint(model, t, h):
     return (
-        model.power[t, h] ==
+        model.hydro_power[t, h] ==
         sum(
-            sum(
-                model.flow_state[t, h, s_h, s_q] * 
-                (model.min_power[h, s_h, s_q] - model.d_power[h, s_h, s_q] * model.min_basin_volume[b, model.SB_H[h, s_h].first()]) +
-                model.d_power[h, s_h, s_q] * model.basin_volume_by_state[t, h, s_h, s_q] 
-            for s_q in model.S_Q[h, s_h])
+            model.flow_by_state[t, h, s_h] *  model.alpha[h, s_h]
         for s_h in model.S_H[h])
-    ) 
+    )
+
+
+
+
+# def flow_state_constraint(model, t, h, s_h):
+#     b = model.B_H[h].first()
+#     s_b = model.SB_H[h, s_h].first()
+#     return (
+#         sum(model.flow_state[t, h, s_h, s_q] for s_q in model.S_Q[h, s_h]) <= model.basin_state[t, b, s_b]
+#     )
+
+# def discrete_flow_constraint(model, t, h):
+#     b = model.B_H[h].first()
+#     return (
+#         model.flow[t, h] ==
+#         sum(
+#             sum(
+#                 model.flow_state[t, h, s_h, s_q] * 
+#                 (model.min_flow[h, s_h, s_q] - model.d_flow[h, s_h, s_q] * model.min_basin_volume[b, model.SB_H[h, s_h].first()]) +
+#                 model.d_flow[h, s_h, s_q] * model.basin_volume_by_state[t, h, s_h, s_q] 
+#             for s_q in model.S_Q[h, s_h])
+#         for s_h in model.S_H[h])
+#     ) 
+
+
+# def discrete_power_constraint(model, t, h):
+#     b = model.B_H[h].first()
+#     return (
+#         model.power[t, h] ==
+#         sum(
+#             sum(
+#                 model.flow_state[t, h, s_h, s_q] * 
+#                 (model.min_power[h, s_h, s_q] - model.d_power[h, s_h, s_q] * model.min_basin_volume[b, model.SB_H[h, s_h].first()]) +
+#                 model.d_power[h, s_h, s_q] * model.basin_volume_by_state[t, h, s_h, s_q] 
+#             for s_q in model.S_Q[h, s_h])
+#         for s_h in model.S_H[h])
+#     ) 
     # @model.Constraint(model.T, model.HQS) # type: ignore
     # def flow_state_max_inactive_constraint(model, t, h, s_h, s_q):
     #     return model.flow_by_state[t, h, s_h, s_q] <= model.big_m * model.flow_state[t, h, s_h, s_q]

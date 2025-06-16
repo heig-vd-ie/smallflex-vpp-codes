@@ -90,7 +90,8 @@ if __name__=="__main__":
             first_stage: BaselineFirstStage = BaselineFirstStage(
                 input_instance=baseline_input,
                 timestep=FIRST_STAGE_TIMESTEP,
-                turbine_factor=turbine_factor
+                turbine_factor=turbine_factor,
+                nb_state=3
             )
             first_stage.solve_model()
             

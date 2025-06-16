@@ -38,7 +38,7 @@ def baseline_objective(model):
 def selling_income(model):
     return (
         sum(
-            model.nb_hours * sum(model.market_price[t] * model.power[t, h] for t in model.T)
+            model.nb_hours * sum(model.market_price[t] * model.hydro_power[t, h] for t in model.T)
             for h in model.H
         ) 
         + sum(

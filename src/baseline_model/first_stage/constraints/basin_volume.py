@@ -79,11 +79,7 @@ def basin_volume_constraints(model):
             return model.basin_volume[t, b] == (
                 model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] +
                 model.nb_sec * model.volume_factor * model.nb_hours[t - 1] *
-                sum(
-                    model.water_pumped_factor[b, h] * model.pumped_flow[t - 1, h]  +
-                    model.water_turbined_factor[b, h] * model.turbined_flow[t - 1, h]
-                    for h in model.H
-                )
+                sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
             )
             
 
@@ -93,11 +89,7 @@ def basin_volume_constraints(model):
         return model.start_basin_volume[b] == (
             model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b] +
             model.nb_sec * model.volume_factor * model.nb_hours[t_max] *
-            sum(
-                model.water_pumped_factor[b, h] * model.pumped_flow[t_max, h] +
-                model.water_turbined_factor[b, h] * model.turbined_flow[t_max, h]
-                for h in model.H
-            )
+            sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
         )
     ####################################################################################################################
     ### Basin volume boundary constraints used to determine the state of each basin ####################################

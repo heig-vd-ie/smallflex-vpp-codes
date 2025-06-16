@@ -3,7 +3,10 @@ import polars as pl
 from polars import col as c
 from polars import selectors as cs
 from datetime import timedelta
+import numpy as np
 
+
+from smallflex_data_schema import SmallflexInputSchema
 from typing_extensions import Optional
 from utility.pyomo_preprocessing import (
     arange_float, filter_data_with_next,
@@ -30,37 +33,6 @@ log = generate_log(name=__name__)
 
 # The code relies on several helper functions imported from other modules, such as interpolation, filtering, and logging utilities.
 
-def generate_water_flow_factor(index: dict[str, pl.DataFrame]) -> pl.DataFrame:
-    """
-    Generates a water flow factor DataFrame for hydro power plants based on their upstream and downstream basins.
-    This function processes the 'hydro_power_plant' DataFrame from the provided index, unpivots the upstream and downstream basin columns,
-    maps each situation ('upstream_basin_fk' or 'downstream_basin_fk') to corresponding pumped and turbined factors, and joins with the
-    'water_basin' DataFrame to associate basin information. It then concatenates basin and hydro plant identifiers to create a unique key.
-    Args:
-        index (dict[str, pl.DataFrame]): 
-            A dictionary containing at least the following DataFrames:
-                - "hydro_power_plant": DataFrame with columns including 'upstream_basin_fk', 'downstream_basin_fk', and 'H'.
-                - "water_basin": DataFrame with columns including 'uuid' and 'B'.
-    Returns:
-        pl.DataFrame: 
-            A DataFrame with water flow factors, including columns for the situation, mapped pumped/turbined factors, 
-            associated basin information, and a concatenated basin-hydro identifier.
-    """
-
-    water_volume_mapping = {
-        "upstream_basin_fk" : {"pumped_factor": 1, "turbined_factor": -1},
-        "downstream_basin_fk" : {"pumped_factor": -1, "turbined_factor": 1}
-    }
-
-    water_flow_factor = index["hydro_power_plant"]\
-        .unpivot(on=["upstream_basin_fk", "downstream_basin_fk"], index="H", value_name="uuid", variable_name="situation")\
-        .with_columns(
-                c("situation").replace_strict(water_volume_mapping, default=None).alias("water_volume")
-        ).unnest("water_volume").join(index["water_basin"][["uuid", "B"]], on="uuid", how="left").with_columns(
-            pl.concat_list("B", "H").alias("BH")
-        )
-
-    return water_flow_factor
 
 def generate_basin_volume_table(
     index: dict[str, pl.DataFrame], basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float = 1
@@ -112,7 +84,7 @@ def generate_basin_volume_table(
     return volume_table
 
 def clean_hydro_power_performance_table(
-    schema_dict: dict[str, pl.DataFrame], index: dict[str, pl.DataFrame], 
+    smallflex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], 
     basin_volume_table: dict[int, Optional[pl.DataFrame]]
     ) -> list[dict]:
     """
@@ -137,41 +109,23 @@ def clean_hydro_power_performance_table(
     
     power_performance_table: list[dict] = []
     for power_plant_data in index["hydro_power_plant"].to_dicts():
-        downstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["downstream_basin_fk"]).to_dicts()[0]
-        upstream_basin = index["water_basin"].filter(c("uuid") == power_plant_data["upstream_basin_fk"]).to_dicts()[0]
+        
+        
+        volume_table = basin_volume_table[power_plant_data["upstream_B"]]
 
-        power_plant_state: pl.DataFrame = schema_dict["power_plant_state"]\
-            .filter(c("power_plant_fk") == power_plant_data["uuid"])
-
-        volume_table = basin_volume_table[upstream_basin["B"]]
+        upstream_basin = index["water_basin"].filter(c("B") == power_plant_data["upstream_B"]).to_dicts()[0]
+        downstream_basin = index["water_basin"].filter(c("B") == power_plant_data["downstream_B"]).to_dicts()[0]
         if volume_table is None:
             continue
-        
-        state_dict = {}
-        
-        turbine_fk = schema_dict["resource"]\
-            .filter(c("uuid").is_in(power_plant_data["resource_fk_list"]))\
-            .filter(c("type") == "hydro_turbine")["uuid"].to_list()
-
-        state_list = [
-                ("turbined", list(map(lambda uuid: uuid in turbine_fk, power_plant_data["resource_fk_list"]))), 
-                ("pumped", list(map(lambda uuid: uuid not in turbine_fk, power_plant_data["resource_fk_list"])))
-            ]
-        for name, state in state_list:
-            state_dict[power_plant_state.filter(c("resource_state_list") == state)["uuid"][0]] = name
-            
-        power_performance: pl.DataFrame = schema_dict["hydro_power_performance_table"]\
-            .with_columns(
+        power_performance: pl.DataFrame = pl.DataFrame(smallflex_input_schema.hydro_power_performance_table)\
+            .filter(
+                c("power_plant_fk") == power_plant_data["uuid"]
+            ).with_columns(
                 (c("head") + downstream_basin["height_max"]).alias("height"),
             )
+            
+        power_performance = power_performance.join(volume_table, on ="height", how="full", coalesce=True).drop("power_plant_fk")
 
-        power_performance = power_performance.with_columns(
-                c("power_plant_state_fk").replace_strict(state_dict, default=None).alias("state_name")
-            ).drop_nulls("state_name").pivot(
-                values=["flow" , "electrical_power"], on="state_name", index="height"
-            ).join(volume_table, on ="height", how="full", coalesce=True)\
-            .sort("height")
-        
         power_performance = linear_interpolation_using_cols(
             df=power_performance, 
             x_col="height", 
@@ -179,8 +133,7 @@ def clean_hydro_power_performance_table(
             ).filter(c("height").ge(volume_table["height"].min()).and_(c("height").le(volume_table["height"].max())))
 
         power_performance = power_performance.with_columns(
-            (c("electrical_power_" + state[0]) / c("flow_" + state[0])).alias("alpha_" + state[0]) 
-            for state in state_list
+            (c("power")/c("flow")).alias("alpha"),
         )
             
         power_performance_table.append({
@@ -188,67 +141,31 @@ def clean_hydro_power_performance_table(
             })
             
     return  power_performance_table
-            
-def generate_hydro_power_state(
-    power_performance_table: list[dict], index: dict[str, pl.DataFrame], error_percent: float
-    ) -> pl.DataFrame:
-    
-    """
-    Generates a state index DataFrame for hydro power plants based on their power performance data and error thresholds.
-    This function processes a list of power performance tables for multiple hydro power plants, segments their performance
-    states using a specified error percentage, and aggregates the results into a single DataFrame. It also ensures that
-    all water basins from the provided index are represented, adding missing basins with default volume statistics.
-    Args:
-        power_performance_table (list[dict]): 
-            A list of dictionaries, each containing power performance data for a hydro power plant. 
-            Each dictionary must include a "power_performance" key with a Polars DataFrame, and "H" and "B" identifiers.
-        index (dict[str, pl.DataFrame]): 
-            A dictionary of index DataFrames, must include a "water_basin" DataFrame with basin information.
-        error_percent (float): 
-            The error percentage used to segment the power performance data into states.
-    Returns:
-        pl.DataFrame: 
-            A Polars DataFrame containing the state index for all hydro power plants and basins, 
-            with additional columns for state identifiers and volume statistics.
-    """
+
+def generate_hydro_power_state(power_performance_table: list[dict], basin_state: pl.DataFrame) -> pl.DataFrame:
 
     state_index: pl.DataFrame = pl.DataFrame()
     for data in power_performance_table: 
         power_performance: pl.DataFrame = data["power_performance"]
-        y_cols: list[str] = power_performance.select(cs.starts_with("alpha")).columns
-        
-        segments = generate_state_index_using_errors(data=power_performance, column_list=y_cols, error_percent=error_percent)
-        if len(segments) > 10:
-            log.warning(f"{len(segments)} states found in {data["H"]} hydro power plant")
-        state_performance_table = filter_by_index(data=power_performance, index_list=segments)\
-        .with_columns(
-            c(col).abs().pipe(get_min_avg_max_diff).alias(col) for col in power_performance.columns
-        ).slice(offset=0, length=len(segments)-1)
-        
-        state_index = pl.concat([
-            state_index, 
-            state_performance_table.with_columns(
+        new_state_index = power_performance.sort("volume").join(
+            basin_state.filter(c("B") == data["B"])["volume_min", "S_B"], left_on="volume",  right_on="volume_min", how="left")\
+            .fill_null(strategy ="forward")\
+            .group_by("S_B").agg(c("flow", "power", "alpha").mean()).sort("S_B")\
+            .with_columns(
+                pl.when(c("flow") < 0).then(-c("flow")).otherwise(c("flow")).alias("flow"),
+                pl.when(c("flow") < 0).then(-c("alpha")).otherwise(c("alpha")).alias("alpha"),
                 pl.lit(data["H"]).alias("H"),
-                pl.lit(data["B"]).alias("B"))
-            ], how="diagonal")
-        # Add every downstream basin
-    missing_basin: pl.DataFrame = index["water_basin"].filter(~c("B").is_in(state_index["B"])).select(
-        c("B"),
-        pl.struct(
-            c("volume_min").fill_null(0.0).alias("min"), 
-            c("volume_max").fill_null(0.0).alias("max"),
-            (c("volume_max").fill_null(0.0) + c("volume_min").fill_null(0.0)/2).alias("avg"),
-            (c("volume_max").fill_null(0.0) - c("volume_min").fill_null(0.0)).alias("diff"),
-        ).alias("volume")
+                pl.lit(data["B"]).alias("B")
+            )
+        state_index = pl.concat([state_index, new_state_index], how="diagonal_relaxed")
+
+    state_index = state_index.with_row_index(name="S_H").with_columns(
+        pl.concat_list("H", "B", "S_H", "S_B").alias("S_BH"),
+        pl.concat_list("H", "S_H").alias("HS")
     )
-    state_index = pl.concat([state_index, missing_basin], how="diagonal_relaxed")\
-        .with_row_index(name="S").with_columns(
-            pl.concat_list("H", "B", "S", "S").alias("S_BH"),
-            pl.concat_list("B", "S").alias("BS"),
-            pl.concat_list("H", "S").alias("HS")
-        )
-        
+
     return state_index
+            
 
 def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = "T") -> pl.DataFrame:
     """
@@ -276,11 +193,78 @@ def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = 
         )
     )
     
-def generate_second_stage_state(
-    index: dict[str, pl.DataFrame], power_performance_table: list[dict],
-    start_volume_dict: dict, discharge_volume:dict,
-    timestep: timedelta, error_threshold: float, volume_factor: float
-    ) -> dict[str, pl.DataFrame]:
+    
+    
+def generate_seconde_stage_basin_state(
+    index: dict[str, pl.DataFrame], water_flow_factor: pl.DataFrame, 
+    basin_volume_table: dict, start_volume_dict: dict[str, float], 
+    discharge_volume_tot: dict[str, float],
+    timestep: timedelta, volume_factor: float, nb_state: int = 5):
+
+
+    basin_volume = pl.DataFrame()
+    basin_state = pl.DataFrame()
+    initial_nb = 0
+
+    water_flow = index["hydro_power_plant"]["H", "rated_flow"].join(water_flow_factor, on="H", how="left")
+    water_flow = water_flow.with_columns(
+    (c("rated_flow") * c("water_factor")).alias("water_flow")
+    ).group_by("B").agg(
+        c("water_flow").filter(c("water_flow") > 0).sum().alias("water_flow_in"),
+        c("water_flow").filter(c("water_flow") < 0).sum().alias("water_flow_out")
+    ).with_columns(
+        c("water_flow_in", "water_flow_out") * timestep.total_seconds() * volume_factor,
+        c("B").replace_strict(start_volume_dict, default=None).alias("start_volume"),
+        c("B").replace_strict(discharge_volume_tot, default=0.0).alias("discharge_volume")
+    ).sort("B")
+
+    water_flow = water_flow.with_columns(
+        (c("start_volume") + c("water_flow_in") + c("discharge_volume")).alias("max_volume"),
+        (c("start_volume") + c("water_flow_out")).alias("min_volume")
+    ).with_columns(
+        pl.concat_list("min_volume", "max_volume").alias("boundaries")
+    )
+
+    for index_b, data  in basin_volume_table.items():
+
+        if data is None:
+            new_basin_state = index["water_basin"].filter(c("B") == index_b).select(
+                "B", "volume_max", "volume_min", pl.lit(initial_nb).alias("S_b")
+            )
+            
+        else:
+            boundaries = water_flow.filter(c("B") ==  index_b)["boundaries"].to_list()[0]
+            new_basin_volume = filter_data_with_next(
+                data=data, col="volume", boundaries=boundaries)
+
+            new_basin_volume = arange_float(new_basin_volume["height"].max(), new_basin_volume["height"].min(), 0.1)\
+                        .to_frame(name="height")\
+                        .join(new_basin_volume, on="height", how="left")\
+                        .sort("height").interpolate()
+                        
+            new_basin_volume = new_basin_volume.with_row_index(name="S_b").with_columns(
+                (c("S_b") * nb_state) // new_basin_volume.height + initial_nb,
+                pl.lit(index_b).alias("B")
+                
+            )
+            new_basin_state = new_basin_volume.group_by("S_b").agg(
+                c("volume").min().alias("volume_min"),
+                c("volume").max().alias("volume_max"),
+                pl.lit(index_b).alias("B")
+            ).sort("S_b")
+
+            
+        basin_volume = pl.concat([basin_volume, new_basin_volume], how="diagonal_relaxed")
+        basin_state = pl.concat([basin_state, new_basin_state], how="diagonal_relaxed")
+        
+        initial_nb = basin_state["S_b"].max() + 1 # type: ignore
+    basin_state = basin_state.with_columns(pl.concat_list("B", "S_b").alias("BS"))
+    return basin_state, basin_volume
+    
+    
+def generate_second_stage_hydro_power_state(
+    power_performance_table: list[dict], basin_volume: pl.DataFrame
+    ) -> pl.DataFrame:
     """
     Generates and updates the state index for the second stage of a hydro power plant optimization process.
     This function processes power performance tables for each hydro power plant, defines state boundaries based on
@@ -297,57 +281,72 @@ def generate_second_stage_state(
     Returns:
         dict[str, pl.DataFrame]: Updated index dictionary with the new "state" dataframe containing the generated states.
     """
-    
 
-    rated_flow_dict = pl_to_dict(index["hydro_power_plant"][["H", "rated_flow"]])
-    state_index: pl.DataFrame = pl.DataFrame()
-    start_state: int = 0
+    power_performance_table = power_performance_table
+    hydro_state = pl.DataFrame()
     for performance_table in power_performance_table:
         
-        start_volume = start_volume_dict[performance_table["B"]]
-        rated_volume = rated_flow_dict[performance_table["H"]] * timestep.total_seconds() * volume_factor
-        
-        boundaries = (
-            start_volume - rated_volume, start_volume + rated_volume + discharge_volume[performance_table["B"]]
-        )
-        data: pl.DataFrame = filter_data_with_next(
-            data=performance_table["power_performance"], col="volume", boundaries=boundaries)
-        y_cols = data.select(cs.starts_with(name) for name in ["flow", "electrical"]).columns
-        state_name_list = list(set(map(lambda x : x.split("_")[-1], y_cols)))
-        
-        data = define_state(data=data, x_col="volume", y_cols=y_cols, error_threshold=error_threshold)
-        
-        data = data\
-            .with_row_index(offset=start_state, name="S")\
-            .with_columns(
-                    pl.lit(performance_table["H"]).alias("H"),
-                    pl.lit(performance_table["B"]).alias("B")
-            ).with_columns(
-                pl.struct(cs.ends_with(col_name)).name.map_fields(lambda x: "_".join(x.split("_")[:-1])).alias(col_name)
-                for col_name in state_name_list
-            ).unpivot(
-                on=state_name_list, index= ["volume", "S", "H", "B"], value_name="data", variable_name="state"
-            ).unnest("data").drop("state")
-            
-        state_index = pl.concat([state_index, data], how="diagonal")
-        start_state = state_index["S"].max() + 1 # type: ignore
-        
-    state_index = state_index.with_row_index(name="S_Q")    
-    missing_basin: pl.DataFrame = index["water_basin"]\
-        .filter(~c("B").is_in(state_index["B"]))\
-        .select(
-            c("B"),
-            pl.struct(
-                c("volume_min").fill_null(0.0).alias("min"), 
-                c("volume_max").fill_null(0.0).alias("max"),
-            ).alias("volume")
-        ).with_row_index(offset=start_state, name="S")
+        new_hydro_state: pl.DataFrame = basin_volume\
+            .filter(c("B") == performance_table["B"])\
+            .select("height", "S_b")\
+            .join(performance_table["power_performance"], on="height", how="left")
 
-    index["state"] = pl.concat([state_index, missing_basin], how="diagonal_relaxed")\
-        .with_columns(
-        pl.concat_list("H", "B", "S", "S").alias("S_BH"),
-        pl.concat_list("B", "S").alias("BS"),
-        pl.concat_list("H", "S").alias("HS"),
-        pl.concat_list("H", "S", "S_Q").alias("HQS")
+
+        new_hydro_state = new_hydro_state.unique().sort("height").interpolate()\
+            .with_columns(
+                (c("power")/ c("flow")).alias("alpha")
+            ).group_by("S_b").agg(c("flow").mean(), c("alpha").mean()).sort("S_b"). with_columns(
+                c("S_b").cast(pl.Int32).alias("S_b"),
+                pl.lit(performance_table["H"]).alias("H"),
+                pl.lit(performance_table["B"]).alias("B"),
+            )
+
+        hydro_state = pl.concat([hydro_state, new_hydro_state], how="diagonal_relaxed")
+        
+    hydro_state = hydro_state.with_row_index(name="S_h").with_columns(
+        pl.concat_list("H", "B", "S_h", "S_b").alias("S_BH"),
+        pl.concat_list("H", "S_h").alias("HS"),
+        pl.when(c("flow") < 0).then(-c("flow")).otherwise(c("flow")).alias("flow"),
+        pl.when(c("flow") < 0).then(-c("alpha")).otherwise(c("alpha")).alias("alpha"),
     )
-    return index
+    return hydro_state
+
+
+def generate_basin_state_table(basin_volume_table: dict, water_basin: pl.DataFrame, nb_state: int = 5) -> pl.DataFrame:
+    """
+    Generates a table of basin states based on the volume table in the baseline input.
+    
+    Args:
+        baseline_input (BaseLineInput): The baseline input containing basin volume data.
+        nb_state (int): The number of states to generate for each basin.
+        
+    Returns:
+        pl.DataFrame: A DataFrame containing the basin states with their respective min and max volumes.
+    """
+
+    basin_state = pl.DataFrame()
+
+    for index, data in basin_volume_table.items():
+        if data is None:
+            basin_state = pl.concat([
+                basin_state, 
+                water_basin.filter(c("B") == index)["B", "volume_max", "volume_min"]
+                ], how="diagonal_relaxed")
+            continue
+        bin = np.linspace(data.select(c("height").min()).item(), data.select(c("height").max()).item(), nb_state + 1, dtype=np.int64)
+
+        basin_state = pl.concat([
+            basin_state,
+            data.filter(c("height").is_in(bin))\
+            .select(
+                "height",
+                c("volume").alias("volume_min"),
+                c("volume").shift(-1).alias("volume_max"),
+                pl.lit(index).alias("B")
+            ).drop_nulls()
+        ], how="diagonal_relaxed")
+    basin_state = basin_state.with_row_index(name="S_B").with_columns(
+        pl.concat_list("B", "S_B").alias("BS")
+    )
+    
+    return basin_state

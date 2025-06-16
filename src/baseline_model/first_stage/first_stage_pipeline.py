@@ -1,5 +1,6 @@
 
 from datetime import timedelta
+from itertools import tee
 import polars as pl
 from polars import col as c
 from polars import selectors as cs
@@ -9,7 +10,7 @@ import tqdm
 from utility.pyomo_preprocessing import (
     extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
 from utility.input_data_preprocessing import (
-    generate_hydro_power_state
+    generate_hydro_power_state, generate_basin_state_table
 )
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from baseline_model.baseline_input import BaseLineInput
@@ -19,22 +20,20 @@ from baseline_model.first_stage.parameters import baseline_parameters
 from baseline_model.first_stage.variables import baseline_variables
 from baseline_model.first_stage.objective import baseline_objective
 from baseline_model.first_stage.constraints.basin_volume import basin_volume_constraints
-from baseline_model.first_stage.constraints.turbine import turbine_constraints
-from baseline_model.first_stage.constraints.pump import pump_constraints
+from baseline_model.first_stage.constraints.hydro_power_plant import hydro_power_plant_constraints
 
 log = generate_log(name=__name__)
 
 class BaselineFirstStage(BaseLineInput):
     def __init__(
-        self, input_instance: BaseLineInput, timestep: timedelta, pump_factor: float = 1, turbine_factor: float= 0.75,
-        error_percent: float = 2):
+        self, input_instance: BaseLineInput, timestep: timedelta, nb_state: int, max_turbined_volume_factor: float= 0.75,
+        ):
         
         self.retrieve_input(input_instance)
         
-        self.pump_factor: float = pump_factor
-        self.turbine_factor: float = turbine_factor
+        self.max_turbined_volume_factor: float = max_turbined_volume_factor
         self.timestep: timedelta = timestep
-        self.error_percent: float = error_percent
+        self.nb_state: int = nb_state
         
         self.optimization_results : pl.DataFrame
         self.model_instance: pyo.Model
@@ -53,13 +52,11 @@ class BaselineFirstStage(BaseLineInput):
             min_datetime=self.min_datetime, max_datetime=self.max_datetime, model_timestep=self.timestep, 
             real_timestep=self.real_timestep
         )
-        self.index["state"]  = generate_hydro_power_state(
-            power_performance_table=self.power_performance_table,
-            index=self.index,
-            error_percent=self.error_percent
-        )
-        
-    
+        self.index["basin_state"] = generate_basin_state_table(
+            basin_volume_table=self.basin_volume_table, water_basin=self.index["water_basin"] , nb_state=self.nb_state)
+        self.index["hydro_power_state"]  = generate_hydro_power_state(
+            power_performance_table=self.power_performance_table, basin_state=self.index["basin_state"] )
+
     def process_timeseries(self):
         ### Discharge_flow ##############################################################################################
         
@@ -91,39 +88,35 @@ class BaselineFirstStage(BaseLineInput):
         
         self.model = baseline_objective(self.model)
         self.model = basin_volume_constraints(self.model)
-        self.model = turbine_constraints(self.model)
-        self.model = pump_constraints(self.model)
+        self.model = hydro_power_plant_constraints(self.model)
 
     def create_model_instance(self):
-        hydropower_state: pl.DataFrame = self.index["state"].drop_nulls("H")
         data: dict = {}
 
         data["T"] = {None: self.index["datetime"]["T"].to_list()}
         data["H"] = {None: self.index["hydro_power_plant"]["H"].to_list()}
         data["B"] = {None: self.index["water_basin"]["B"].to_list()}
-        data["S_b"] = pl_to_dict(self.index["state"].group_by("B", maintain_order=True).agg("S"))
-        data["S_h"] = pl_to_dict(self.index["state"].drop_nulls("H").group_by("H", maintain_order=True).agg("S"))
-        data["S_BH"] = {None: list(map(tuple, self.index["state"].drop_nulls("H")["S_BH"].to_list()))}
+        data["S_b"] = pl_to_dict(self.index["basin_state"].group_by("B", maintain_order=True).agg("S_B"))
+        data["S_h"] = pl_to_dict(self.index["hydro_power_state"].drop_nulls("H").group_by("H", maintain_order=True).agg("S_H"))
+        data["S_BH"] = {None: list(map(tuple, self.index["hydro_power_state"].drop_nulls("H")["S_BH"].to_list()))}
     
-        data["pump_factor"] = {None: self.pump_factor}
-        data["turbine_factor"] = {None: self.turbine_factor}
+        data["max_turbined_volume_factor"] = {None: self.max_turbined_volume_factor}
         data["volume_factor"] = {None: self.volume_factor}
         
         data["start_basin_volume"] = pl_to_dict(self.index["water_basin"][["B", "start_volume"]])
-        data["water_pumped_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "pumped_factor"])
-        data["water_turbined_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "turbined_factor"])
+        data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
+        data["spilled_factor"] = pl_to_dict(self.spilled_factor["B", "spilled_factor"])
+
         data["min_basin_volume"] = pl_to_dict_with_tuple(
-            self.index["state"].select("BS", c("volume").struct.field("min")))
+            self.index["basin_state"].select("BS", "volume_min"))
         data["max_basin_volume"] = pl_to_dict_with_tuple(
-            self.index["state"].select("BS", c("volume").struct.field("max")))
-        data["max_flow_turbined"] = pl_to_dict_with_tuple(
-            hydropower_state.select("HS", c("flow_turbined").struct.field("min")))
-        data["max_flow_pumped"] = pl_to_dict_with_tuple(
-            hydropower_state.select("HS", c("flow_pumped").struct.field("min")))
-        data["alpha_turbined"] = pl_to_dict_with_tuple(
-            hydropower_state.select("HS", c("alpha_turbined").struct.field("min")))
-        data["alpha_pumped"] = pl_to_dict_with_tuple(
-            hydropower_state.select("HS", c("alpha_pumped").struct.field("min")))
+            self.index["basin_state"].select("BS", "volume_max"))
+        
+        data["max_flow"] = pl_to_dict_with_tuple(
+            self.index["hydro_power_state"].select("HS", "flow"))
+        data["alpha"] = pl_to_dict_with_tuple(
+            self.index["hydro_power_state"].select("HS", "alpha"))
+
         data["discharge_volume"] = pl_to_dict_with_tuple(self.discharge_volume[["TB", "discharge_volume"]])  
 
         data["market_price"] = pl_to_dict(self.market_price[["T", "avg"]])
@@ -138,10 +131,9 @@ class BaselineFirstStage(BaseLineInput):
     def solve_model(self):
         with tqdm.tqdm(total=1, desc="Solving first stage optimization problem", ncols=150) as pbar:
             self.create_model_instance()
-            _ = self.solver.solve(self.model_instance)
+            _ = self.solver.solve(self.model_instance, tee=False)
             pbar.update()
         self.optimization_results = process_first_stage_results(
-            model_instance=self.model_instance, market_price=self.market_price,
-            water_basin_index=self.index["water_basin"],
-            flow_to_vol_factor= self.real_timestep.total_seconds() * self.volume_factor )
+            model_instance=self.model_instance, market_price=self.market_price, index=self.index,
+            flow_to_vol_factor= self.real_timestep.total_seconds() * self.volume_factor)
         
