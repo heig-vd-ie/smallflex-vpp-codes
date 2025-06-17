@@ -37,38 +37,43 @@ r"""
 """
 import pyomo.environ as pyo
 
-def discrete_hydro_constraints(model):
+def hydro_constraints(model):
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
     model.max_active_flow_by_state_constraint = pyo.Constraint(model.T, model.HS, rule=max_active_flow_by_state_constraint)
     model.max_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.S_BH, rule=max_inactive_flow_by_state_constraint)
-    model.min_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.S_BH, rule=min_inactive_flow_by_state_constraint)
+    model.max_flow_by_state_constraint = pyo.Constraint(model.T, model.S_BH, rule=max_flow_by_state_constraint)
     model.flow_constraint = pyo.Constraint(model.T, model.H, rule=flow_constraint)
     model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
 
     return model
 
 def max_active_flow_by_state_constraint(model, t, h, s_h):
-    return model.flow_by_state[t, h, s_h] <= model.big_m * model.active_hydro[t, h] 
-
+    if h in model.DH:
+        return model.flow_by_state[t, h, s_h] <= model.big_m * model.active_hydro[t, h]
+    else:
+        return pyo.Constraint.Skip
 
 def max_inactive_flow_by_state_constraint(model, t, h, b, s_h, s_b):
-    return (
-        model.flow_by_state[t, h, s_h] >= 
-        model.max_flow[h, s_h] * model.basin_state[t, b, s_b] - model.big_m * (1- model.active_hydro[t, h]) 
-    )
-
-def min_inactive_flow_by_state_constraint(model, t, h, b, s_h, s_b):
+    if h in model.DH:
+        return (
+            model.flow_by_state[t, h, s_h] >=
+            model.max_flow[h, s_h] * model.basin_state[t, b, s_b] - model.big_m * (1- model.active_hydro[t, h]) 
+        )
+    else:
+        return pyo.Constraint.Skip
+    
+def max_flow_by_state_constraint(model, t, h, b, s_h, s_b):
     return (
         model.flow_by_state[t, h, s_h] <=  model.max_flow[h, s_h] * model.basin_state[t, b, s_b]
     )
-    
+
 def flow_constraint(model, t, h):
     return (
         model.flow[t, h] ==
         sum(model.flow_by_state[t, h, s_h] for s_h in model.S_H[h])
-    ) 
+    )
 
 def hydro_power_constraint(model, t, h):
     return (

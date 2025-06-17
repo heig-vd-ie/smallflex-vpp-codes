@@ -32,10 +32,16 @@ It is assumed that the water level in downstream basins does not affect the beha
 import pyomo.environ as pyo
 from itertools import product
 
+from shapely import within
+
 def baseline_sets(model):
     model.T = pyo.Set()
     model.H = pyo.Set()
     model.B = pyo.Set()
+    
+    model.DH = pyo.Set(within=model.H)
+    model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])
+    
     # index gathering the state per basin and the hydro powerplants
 
     # index gathering the state of every basin and hydro powerplants

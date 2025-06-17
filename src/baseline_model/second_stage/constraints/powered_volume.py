@@ -47,7 +47,7 @@ def powered_volume_constraints(model):
 def diff_volume_constraint(model, h):
     return (
         model.diff_volume_pos[h] - model.diff_volume_neg[h] ==
-        model.remaining_volume[h] + model.powered_volume[h]  - 
+        model.remaining_volume[h] + model.powered_volume[h]  -
         sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor
     )
 

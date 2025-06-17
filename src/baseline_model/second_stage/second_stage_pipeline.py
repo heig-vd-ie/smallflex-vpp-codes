@@ -13,7 +13,7 @@ from utility.pyomo_preprocessing import (generate_datetime_index, generate_clean
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
 from baseline_model.baseline_input import BaseLineInput
-from baseline_model.optimization_results_processing import process_second_stage_results, combine_second_stage_results
+from baseline_model.optimization_results_processing import process_second_stage_results
 from baseline_model.first_stage.first_stage_pipeline import BaselineFirstStage
 from baseline_model.second_stage.sets import baseline_sets
 from baseline_model.second_stage.parameters import baseline_parameters
@@ -21,7 +21,7 @@ from baseline_model.second_stage.variables import baseline_variables
 from baseline_model.second_stage.objective import baseline_objective
 from baseline_model.second_stage.constraints.basin_volume import basin_volume_constraints
 from baseline_model.second_stage.constraints.powered_volume import powered_volume_constraints
-from baseline_model.second_stage.constraints.discrete_hydro import discrete_hydro_constraints
+from baseline_model.second_stage.constraints.hydro_power_plant import hydro_constraints
 
 
 
@@ -110,10 +110,11 @@ class BaselineSecondStage(BaseLineInput):
         alpha_neg: dict[int, float] = {}
         for data in self.power_performance_table:
             alpha = data["power_performance"].with_columns(pl.when(c("flow") < 0).then(-c("alpha")).otherwise(c("alpha")).alias("alpha"))
-            alpha_pos[data["H"]] = alpha["alpha"].min()
-            alpha_neg[data["H"]] = alpha["alpha"].max()
+            alpha_pos[data["H"]] = alpha["alpha"].max()
+            alpha_neg[data["H"]] = alpha["alpha"].min()
         
         self.data["H"] = {None: self.index["hydro_power_plant"]["H"].to_list()}
+        self.data["DH"] = {None: self.index["hydro_power_plant"].filter(c("control") == "discrete")["H"].to_list()}
         self.data["B"] = {None: self.index["water_basin"]["B"].to_list()}
         self.data["buffer"] = {None: self.buffer}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
@@ -137,7 +138,7 @@ class BaselineSecondStage(BaseLineInput):
         self.model = baseline_objective(self.model)
         self.model = basin_volume_constraints(self.model)
         self.model = powered_volume_constraints(self.model)
-        self.model = discrete_hydro_constraints(self.model)
+        self.model = hydro_constraints(self.model)
 
 
     def initialise_volume(self):
@@ -149,7 +150,7 @@ class BaselineSecondStage(BaseLineInput):
         self.optimization_results["remaining_volume"] = self.index["hydro_power_plant"]\
             .select(
                 c("H"),
-                pl.lit(self.sim_nb).alias("sim_nb"), 
+                pl.lit(self.sim_nb).alias("sim_nb"),
                 pl.lit(0).alias("remaining_volume")
             )
 
@@ -161,7 +162,7 @@ class BaselineSecondStage(BaseLineInput):
         offset = divisors - self.first_stage_results.height%divisors
         self.powered_volume = self.first_stage_results.select(
             c("T"), 
-            cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
+            cs.starts_with("powered_volume").abs().name.map(lambda c: c.replace("powered_volume_", "")),
         ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
         .agg(pl.all().exclude("sim_nb", "T").sum())\
         .unpivot(
@@ -294,6 +295,7 @@ class BaselineSecondStage(BaseLineInput):
 
     def solve_model(self):
         logging.getLogger('pyomo.core').setLevel(logging.ERROR)
+        pump_id =self.index["hydro_power_plant"].filter(c("type") == "pump")["H"].to_list()
         for sim_nb in tqdm.tqdm(
             range(self.sim_tot + 1),
             desc=f"Solving second stage optimization model number {self.model_nb}",
@@ -307,11 +309,11 @@ class BaselineSecondStage(BaseLineInput):
             solution = self.solver.solve(self.model_instance, tee=self.log_solver_info)
             if solution["Solver"][0]["Status"] == "ok":
                 self.optimization_results = process_second_stage_results(
-                    model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
+                    model_instance=self.model_instance, optimization_results=self.optimization_results, pump_id=pump_id, sim_nb=self.sim_nb)
             elif solution["Solver"][0]["Status"] == "aborted":
                 self.log_mip_gap(solution)
                 self.optimization_results = process_second_stage_results(
-                    model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
+                    model_instance=self.model_instance, optimization_results=self.optimization_results, pump_id=pump_id, sim_nb=self.sim_nb)
             else:
                 self.solver.solve(self.model_instance, tee=True)
                 # solved = self.solve_changing_powered_volume_constraint()
@@ -323,13 +325,14 @@ class BaselineSecondStage(BaseLineInput):
     
     def solve_one_instance(self, sim_nb: int):
         self.sim_nb = sim_nb
+        pump_id =self.index["hydro_power_plant"].filter(c("type") == "pump")["H"].to_list()
         if sim_nb == self.sim_tot:
             self.powered_volume_enabled = False
         self.generate_state_index()
         self.generate_model_instance()
         _ = self.solver.solve(self.model_instance)
         self.optimization_results = process_second_stage_results(
-            model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
+            model_instance=self.model_instance, optimization_results=self.optimization_results, pump_id=pump_id, sim_nb=self.sim_nb)
 
     def log_mip_gap(self, solution):
         self.log_book = pl.concat([

@@ -76,13 +76,17 @@ def process_first_stage_results(model_instance: pyo.Model, market_price: pl.Data
     
     return simulation_results
 
-def process_second_stage_results(model_instance: pyo.Model, optimization_results: dict[str, pl.DataFrame], sim_nb: int) -> dict[str, pl.DataFrame]:
+def process_second_stage_results(model_instance: pyo.Model, optimization_results: dict[str, pl.DataFrame], pump_id: list[int], sim_nb: int) -> dict[str, pl.DataFrame]:
     
         for var_name in ["flow", "hydro_power", "basin_volume", "spilled_volume"]:
             data = extract_optimization_results(
                     model_instance=model_instance, var_name=var_name
                 ).with_columns(
                     pl.lit(sim_nb).alias("sim_nb")
+                )
+            if var_name == "flow":
+                data = data.with_columns(
+                    pl.when(c("H").is_in(pump_id)).then(-c("flow")).otherwise(c("flow"))
                 )
             optimization_results[var_name] = pl.concat([optimization_results[var_name], data], how="diagonal_relaxed")
                     
@@ -129,13 +133,13 @@ def combine_second_stage_results(
             .agg((c("flow").sum() * flow_to_vol_factor ).alias("real_powered_volume")),
         on="H", index="sim_nb", 
         values="real_powered_volume")
-    
+
             
     start_basin_volume = pivot_result_table(
         df = optimization_results["start_basin_volume"],
         on="B", index="sim_nb", 
         values="start_basin_volume")
-    
+
     optimization_summary = remaining_volume\
     .join(powered_volume, on = "sim_nb", how="inner")\
     .join(real_powered_volume, on = "sim_nb", how="inner")\
@@ -147,9 +151,9 @@ def combine_second_stage_results(
         values="volume", reindex=True)
 
     power = pivot_result_table(
-        df = optimization_results["power"], on="H", index=["T", "sim_nb"], 
-        values="power", reindex=True)
-    
+        df = optimization_results["hydro_power"], on="H", index=["T", "sim_nb"], 
+        values="hydro_power", reindex=True)
+
     volume_max_mapping: dict[str, float] = pl_to_dict(index["water_basin"][["B", "volume_max"]])
     basin_volume = optimization_results["basin_volume"].with_columns(
         (c("basin_volume") / c("B").replace_strict(volume_max_mapping, default=None)).alias("basin_volume")
@@ -158,7 +162,7 @@ def combine_second_stage_results(
     basin_volume = pivot_result_table(
         df = basin_volume, on="B", index=["T", "sim_nb"], 
         values="basin_volume", reindex=True)
-    
+
     spilled_volume = pivot_result_table(
         df = optimization_results["spilled_volume"], on="B", index=["T", "sim_nb"], 
         values="spilled_volume", reindex=True)
@@ -174,7 +178,8 @@ def combine_second_stage_results(
         .join(spilled_volume, on = "real_index", how="inner")\
         .join(market_price, on = "real_index", how="inner")\
         .with_columns(
-            (pl.sum_horizontal(cs.starts_with("power")) * c("market_price")).alias("income"),
+            (pl.sum_horizontal(cs.starts_with("hydro_power")) * c("market_price")).alias("income"),
         )
+
 
     return optimization_summary, combined_results

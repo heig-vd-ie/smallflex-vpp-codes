@@ -220,7 +220,7 @@ def generate_seconde_stage_basin_state(
 
     water_flow = water_flow.with_columns(
         (c("start_volume") + c("water_flow_in") + c("discharge_volume")).alias("max_volume"),
-        (c("start_volume") + c("water_flow_out")).alias("min_volume")
+        (c("start_volume") +  c("water_flow_out")).alias("min_volume")
     ).with_columns(
         pl.concat_list("min_volume", "max_volume").alias("boundaries")
     )
@@ -249,9 +249,10 @@ def generate_seconde_stage_basin_state(
             )
             new_basin_state = new_basin_volume.group_by("S_b").agg(
                 c("volume").min().alias("volume_min"),
-                c("volume").max().alias("volume_max"),
                 pl.lit(index_b).alias("B")
-            ).sort("S_b")
+            ).sort("S_b").with_columns(
+                c("volume_min").shift(-1).fill_null(new_basin_volume["volume"].max()).alias("volume_max")
+            )
 
             
         basin_volume = pl.concat([basin_volume, new_basin_volume], how="diagonal_relaxed")
