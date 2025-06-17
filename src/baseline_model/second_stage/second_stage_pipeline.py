@@ -250,16 +250,15 @@ class BaselineSecondStage(BaseLineInput):
             .group_by("B", maintain_order=True).agg("S_b")
             .with_columns(c("S_b").list.sort())
         )
-
-        self.data["BS"] = {None: list(map(tuple,self.index["basin_state"]["BS"].to_list()))}
-        self.data["HS"] = {None: list(map(tuple,self.index["hydro_power_state"]["HS"].to_list()))}
-        self.data["S_BH"] = {None: list(map(tuple,self.index["hydro_power_state"]["S_BH"].to_list()))}
         self.data["S_H"] = pl_to_dict(
             self.index["hydro_power_state"]
             .group_by("H", maintain_order=True)
             .agg("S_h")
             .with_columns(c("S_h").list.sort())
             )
+
+        self.data["S_BH"] = {None: list(map(tuple,self.index["hydro_power_state"]["S_BH"].to_list()))}
+        
         self.data["start_basin_volume"] = pl_to_dict(
             self.optimization_results["start_basin_volume"].filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
         self.data["remaining_volume"] = pl_to_dict(self.optimization_results["remaining_volume"].filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]])

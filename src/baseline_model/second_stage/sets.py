@@ -42,24 +42,14 @@ def baseline_sets(model):
     model.DH = pyo.Set(within=model.H)
     model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])
     
-    # index gathering the state per basin and the hydro powerplants
-
-    # index gathering the state of every basin and hydro powerplants
-    model.BS = pyo.Set(dimen=2)
-    model.HS = pyo.Set(dimen=2)
-    # model.HQS = pyo.Set(dimen=3)
-    # model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
-    # model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
-    # model.HQS = pyo.Set(
-        # dimen=3, initialize=lambda model: [(h, s_h, s_q) for (h, s_h) in model.HS for s_q in model.S_Q[h, s_h]])
-    
+    # index gathering the state per basin and the hydro powerplantss
     model.S_B = pyo.Set(model.B)
     model.S_H = pyo.Set(model.H)
-    model.S_BH = pyo.Set(dimen=4)
+    model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
+    model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
     
-    # # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
-    # model.B_H = pyo.Set(model.H)
-    # model.SB_H = pyo.Set(model.HS)
-    # model.S_BH = pyo.Set(dimen=4) 
+    # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
+    model.S_BH = pyo.Set(dimen=4)
+
     
     return model

@@ -31,7 +31,7 @@ r"""
 The constraint :eq:`pumped-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
 basin set :math:`B` and the hydro powerplant set :math:`H`.
 """
-
+import pyomo.environ as pyo
 
 def hydro_power_plant_constraints(model):
     ####################################################################################################################
@@ -40,7 +40,7 @@ def hydro_power_plant_constraints(model):
     @model.Constraint(model.T, model.S_BH) # type: ignore
     def flow_by_state_constraint(model, t, h, b, s_h, s_b):
         return (
-            model.flow_by_state[t, h, s_h] <= 
+            model.flow_by_state[t, h, s_h] <=
             model.max_turbined_volume_factor * model.max_flow[h, s_h] * model.basin_state[t, b, s_b]
         ) 
     @model.Constraint(model.T, model.H) # type: ignore
@@ -58,4 +58,23 @@ def hydro_power_plant_constraints(model):
                 model.flow_by_state[t, h, s_h] *  model.alpha[h, s_h]
             for s_h in model.S_h[h])
         )
+    
+    @model.Constraint(model.T, model.CH) # type: ignore
+    def positive_hydro_ancillary_power_constraint(model, t, h):
+        
+        return (
+            model.hydro_power[t, h] + model.ancillary_power[t, h] <= model.max_power[h]
+            # sum(
+            #     model.max_turbined_volume_factor * model.max_flow[h, s_h] * model.basin_state[t, b, s_b] * model.alpha[h, s_h]
+            # for s_h in model.S_h[h])
+        )
+    
+        
+    @model.Constraint(model.T, model.CH) # type: ignore
+    def negative_hydro_ancillary_power_constraint(model, t, h):
+        
+        return model.hydro_power[t, h] - model.ancillary_power[t, h] >= 0
+
     return model
+
+

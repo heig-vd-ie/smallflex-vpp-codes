@@ -19,10 +19,10 @@ def plot_basin_volume(
     simulation_results: pl.DataFrame,  fig: Figure, row: int, time_divider: int, **kwargs
     ) -> Figure:
     name = ["Upstream basin", "Down stream basin"]
-    for i, name in enumerate(simulation_results.select(cs.starts_with("basin_volume")).columns):
+    for i, col in enumerate(simulation_results.select(cs.starts_with("basin_volume")).columns):
         fig.add_trace(
         go.Scatter(
-            x=(simulation_results["T"]/time_divider).to_list(), y=simulation_results[name].to_list(),
+            x=(simulation_results["T"]/time_divider).to_list(), y=simulation_results[col].to_list(),
             mode='lines', line=dict(color=COLORS[i]), showlegend=True, name=name[i],
             legendgroup="basin_volume",
         ), row=row, col=1)
@@ -124,7 +124,7 @@ def plot_second_stage_market_price(
             ), row=row, col=1
         ) 
 
-    fig.update_traces(selector=dict(legendgroup="market_price"), legendgrouptitle_text="<b>DA market price [EUR/MW]<b>")
+    fig.update_traces(selector=dict(legendgroup="market_price"), legendgrouptitle_text="<b>DA market price [EUR/MWh]<b>")
     return fig
 
 def plot_second_stage_powered_volume(

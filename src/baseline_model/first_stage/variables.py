@@ -11,6 +11,8 @@ def baseline_variables(model):
     
     model.flow = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals) # m^3
     model.hydro_power= pyo.Var(model.T, model.H, within=pyo.Reals)  # MWh
+    
+    model.ancillary_power= pyo.Var(model.T, model.CH, within=pyo.NonNegativeReals)  # MWh
 
     model.flow_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
 

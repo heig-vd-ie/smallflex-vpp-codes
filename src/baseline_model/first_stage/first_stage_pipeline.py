@@ -73,10 +73,19 @@ class BaselineFirstStage(BaseLineInput):
         ### Market price ###############################################################################################
         self.market_price: pl.DataFrame = generate_clean_timeseries(
             data=self.market_price_measurement,
+            col_name="avg",
+            min_datetime=self.min_datetime,
+            max_datetime=self.max_datetime,
+            timestep=self.timestep,
+            agg_type="mean"
+        )
+        
+        self.ancillary_market_price: pl.DataFrame = generate_clean_timeseries(
+            data=self.ancillary_market_price_measurement,
             col_name="avg", 
-            min_datetime=self.min_datetime, 
-            max_datetime=self.max_datetime, 
-            timestep=self.timestep, 
+            min_datetime=self.min_datetime,
+            max_datetime=self.max_datetime,
+            timestep=self.timestep,
             agg_type="mean"
         )
 
@@ -96,6 +105,8 @@ class BaselineFirstStage(BaseLineInput):
         data["T"] = {None: self.index["datetime"]["T"].to_list()}
         data["H"] = {None: self.index["hydro_power_plant"]["H"].to_list()}
         data["B"] = {None: self.index["water_basin"]["B"].to_list()}
+        data["DH"] = {None: self.index["hydro_power_plant"].filter(c("control") == "discrete")["H"].to_list()}
+        
         data["S_b"] = pl_to_dict(self.index["basin_state"].group_by("B", maintain_order=True).agg("S_B"))
         data["S_h"] = pl_to_dict(self.index["hydro_power_state"].drop_nulls("H").group_by("H", maintain_order=True).agg("S_H"))
         data["S_BH"] = {None: list(map(tuple, self.index["hydro_power_state"].drop_nulls("H")["S_BH"].to_list()))}
@@ -120,7 +131,8 @@ class BaselineFirstStage(BaseLineInput):
         data["discharge_volume"] = pl_to_dict_with_tuple(self.discharge_volume[["TB", "discharge_volume"]])  
 
         data["market_price"] = pl_to_dict(self.market_price[["T", "avg"]])
-        
+        data["ancillary_market_price"] = pl_to_dict(self.ancillary_market_price[["T", "avg"]])
+        data["max_power"] = {1: 7}
         
         data["max_market_price"] = pl_to_dict(self.market_price[["T", "max_avg"]])
         data["min_market_price"] = pl_to_dict(self.market_price[["T", "min_avg"]])

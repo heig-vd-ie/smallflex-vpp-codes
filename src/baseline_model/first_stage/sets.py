@@ -31,6 +31,9 @@ def baseline_sets(model):
     model.T = pyo.Set()
     model.H = pyo.Set()
     model.B = pyo.Set()
+    
+    model.DH = pyo.Set(within=model.H)
+    model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])
     # index gathering the state per basin and the hydro powerplants
     model.S_b = pyo.Set(model.B)
     model.S_h = pyo.Set(model.H)
