@@ -1,0 +1,2 @@
+FILE_NAMES = "data/file_names.json"
+LOG_LEVEL = "INFO"
