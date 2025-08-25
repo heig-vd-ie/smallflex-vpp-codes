@@ -35,8 +35,8 @@ log = generate_log(name=__name__)
 
 
 def generate_basin_volume_table(
-    index: dict[str, pl.DataFrame], basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float = 1
-    ) -> dict[int, Optional[pl.DataFrame]]:
+    water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float = 1
+    ) -> pl.DataFrame:
     """
     Generates a dictionary mapping water basin identifiers to interpolated height-volume tables.
     For each water basin in the provided index, this function filters the given basin_height_volume_table
@@ -55,9 +55,9 @@ def generate_basin_volume_table(
             height-volume tables, or None if no data is available for a basin.
     """
 
-    volume_table: dict[int, Optional[pl.DataFrame]] = {}
+    basin_volume_table: pl.DataFrame = pl.DataFrame()
 
-    for water_basin_index in index["water_basin"].to_dicts():
+    for water_basin_index in water_basin.to_dicts():
 
         basin_height_volume_table = basin_height_volume_table\
                 .filter(c("water_basin_fk") == water_basin_index["uuid"])\
@@ -65,12 +65,11 @@ def generate_basin_volume_table(
                     (c("volume") * volume_factor).alias("volume")
                 )
         if basin_height_volume_table.is_empty():
-            volume_table[water_basin_index["B"]] = None
             continue
         height_min: float= water_basin_index["height_min"] if water_basin_index["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore
         height_max: float= water_basin_index["height_max"] if water_basin_index["height_max"] is not None else basin_height_volume_table["height"].max() # type: ignore
 
-        volume_table[water_basin_index["B"]] = arange_float(height_max, height_min, d_height)\
+        new_volume_table = arange_float(height_max, height_min, d_height)\
             .to_frame(name="height")\
             .join(basin_height_volume_table, on ="height", how="full", coalesce=True)\
             .sort("height")\
@@ -79,14 +78,17 @@ def generate_basin_volume_table(
                 linear_interpolation_for_bound(x_col=c("height"), y_col=c("volume")).alias("volume")
             ).drop_nulls("height")[["height", "volume"]]\
             .filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
+            .with_columns(
+                pl.lit(water_basin_index["B"]).alias("B")
+            )
+        basin_volume_table = pl.concat([basin_volume_table, new_volume_table], how="diagonal_relaxed")    
             
-            
-    return volume_table
+    return basin_volume_table
 
 def clean_hydro_power_performance_table(
-    smallflex_input_schema: SmallflexInputSchema, index: dict[str, pl.DataFrame], 
-    basin_volume_table: dict[int, Optional[pl.DataFrame]]
-    ) -> list[dict]:
+    hydro_power_plant: pl.DataFrame, water_basin: pl.DataFrame, hydro_power_performance_table: pl.DataFrame,
+    basin_volume_table: pl.DataFrame
+    ) -> pl.DataFrame:
     """
     Cleans and processes the hydro power performance table for each hydro power plant.
     This function iterates over all hydro power plants, retrieves relevant basin and state information,
@@ -107,38 +109,38 @@ def clean_hydro_power_performance_table(
             - "power_performance": The cleaned and interpolated power performance table as a Polars DataFrame.
     """
     
-    power_performance_table: list[dict] = []
-    for power_plant_data in index["hydro_power_plant"].to_dicts():
+    power_performance_table: pl.DataFrame = pl.DataFrame()
+    for power_plant_data in hydro_power_plant.to_dicts():
         
         
-        volume_table = basin_volume_table[power_plant_data["upstream_B"]]
+        volume_table = basin_volume_table.filter(c("B") == power_plant_data["upstream_B"])
 
-        upstream_basin = index["water_basin"].filter(c("B") == power_plant_data["upstream_B"]).to_dicts()[0]
-        downstream_basin = index["water_basin"].filter(c("B") == power_plant_data["downstream_B"]).to_dicts()[0]
+        upstream_basin = water_basin.filter(c("B") == power_plant_data["upstream_B"]).to_dicts()[0]
+        downstream_basin = water_basin.filter(c("B") == power_plant_data["downstream_B"]).to_dicts()[0]
         if volume_table is None:
             continue
-        power_performance: pl.DataFrame = pl.DataFrame(smallflex_input_schema.hydro_power_performance_table)\
+        new_performance_table: pl.DataFrame = hydro_power_performance_table\
             .filter(
                 c("power_plant_fk") == power_plant_data["uuid"]
             ).with_columns(
                 (c("head") + downstream_basin["height_max"]).alias("height"),
             )
             
-        power_performance = power_performance.join(volume_table, on ="height", how="full", coalesce=True).drop("power_plant_fk")
+        new_performance_table = new_performance_table.join(volume_table, on ="height", how="full", coalesce=True).drop("power_plant_fk")
 
-        power_performance = linear_interpolation_using_cols(
-            df=power_performance, 
+        new_performance_table = linear_interpolation_using_cols(
+            df=new_performance_table, 
             x_col="height", 
-            y_col=power_performance.select(pl.all().exclude("height", "volume")).columns
+            y_col=new_performance_table.select(pl.all().exclude("height", "volume")).columns
             ).filter(c("height").ge(volume_table["height"].min()).and_(c("height").le(volume_table["height"].max())))
 
-        power_performance = power_performance.with_columns(
+        new_performance_table = new_performance_table.with_columns(
             (c("power")/c("flow")).alias("alpha"),
+            pl.lit(power_plant_data["H"]).alias("H"),
+            pl.lit(upstream_basin["B"]).alias("B"),
         )
-            
-        power_performance_table.append({
-            "H": power_plant_data["H"], "B": upstream_basin["B"], "power_performance": power_performance
-            })
+        power_performance_table = pl.concat([power_performance_table, new_performance_table], how="diagonal_relaxed")       
+   
             
     return  power_performance_table
 

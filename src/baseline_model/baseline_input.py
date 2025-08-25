@@ -45,6 +45,16 @@ class BaseLineInput():
         self.build_input_data(input_schema_file_name)
         
     def build_input_data(self, input_schema_file_name):
+        
+        water_volume_mapping = {
+                "upstream_basin_fk" : -1, "downstream_basin_fk" :  1
+            }
+
+        hydro_type_mapping = {
+                "turbine" : 1, "pump" :  -1
+            }
+
+        
         smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=input_schema_file_name)
 
         self.index["hydro_power_plant"] = smallflex_input_schema.hydro_power_plant\
@@ -88,25 +98,19 @@ class BaseLineInput():
             .filter(c("market") == self.ancillary_market)\
             .filter(c("source") == self.market_source).sort("timestamp")
                 
-        water_volume_mapping = {
-                "upstream_basin_fk" : -1, "downstream_basin_fk" :  1
-            }
-
-        hydro_type_mapping = {
-                "turbine" : 1, "pump" :  -1
-            }
-
+        
         water_flow_factor = water_flow_factor.with_columns(
             c("basin_fk").replace_strict(basin_index_mapping, default=None).alias("B"),
             (
-                c("basin_type").replace_strict(water_volume_mapping, default=None) * 
+                c("basin_type").replace_strict(water_volume_mapping, default=None) *
                 c("type").replace_strict(hydro_type_mapping, default=None)
             ).alias("water_factor")
         )
 
-        self.spilled_factor = water_flow_factor.filter(c("basin_type") =="upstream_basin_fk").select(
-            "B", pl.lit(1e3).alias("spilled_factor")
-        ).unique(subset="B")
+        self.spilled_factor = water_flow_factor.filter(c("basin_type") =="upstream_basin_fk")\
+            .select(
+                "B", pl.lit(1e3).alias("spilled_factor")
+            ).unique(subset="B")
         
         self.water_flow_factor = water_flow_factor.select("B", "H", pl.concat_list(["B", "H"]).alias("BH"), "water_factor")
 
@@ -118,6 +122,7 @@ class BaseLineInput():
         self.power_performance_table: list[dict] = clean_hydro_power_performance_table(
                     index=self.index,
                     smallflex_input_schema=smallflex_input_schema,
-                    basin_volume_table=self.basin_volume_table)
+                    basin_volume_table=self.basin_volume_table
+        )
             
 
