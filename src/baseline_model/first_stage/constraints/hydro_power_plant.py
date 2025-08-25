@@ -64,9 +64,6 @@ def hydro_power_plant_constraints(model):
         
         return (
             model.hydro_power[t, h] + model.ancillary_power[t, h] <= model.max_power[h]
-            # sum(
-            #     model.max_turbined_volume_factor * model.max_flow[h, s_h] * model.basin_state[t, b, s_b] * model.alpha[h, s_h]
-            # for s_h in model.S_h[h])
         )
     
         

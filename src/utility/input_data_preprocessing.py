@@ -189,7 +189,7 @@ def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = 
         data.with_columns(
             ((c(col_name) + offset)//divisors).alias("sim_nb")
         ).with_columns(
-            c(col_name).cum_count().over("sim_nb").alias(col_name)
+            (c(col_name).cum_count() - 1).over("sim_nb").alias(col_name)
         )
     )
     

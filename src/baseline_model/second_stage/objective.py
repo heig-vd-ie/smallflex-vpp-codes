@@ -36,19 +36,24 @@ def baseline_objective(model):
     return model
         
 def selling_income(model):
-    return (
-        sum(
+    
+    market_price = sum(
             model.nb_hours * sum(model.market_price[t] * model.hydro_power[t, h] for t in model.T)
             for h in model.H
         ) 
-        + sum(
+    
+    ancillary_market_price = sum(
+            4*model.ancillary_market_price[f]  *
+            sum(model.ancillary_power[f, h] for h in model.CH) for f in model.F
+        )
+    power_volume_penalty = sum(
             (model.diff_volume_pos[h] * model.alpha_pos[h] * model.pos_unpowered_price -
             model.diff_volume_neg[h] * model.alpha_neg[h] * model.neg_unpowered_price) 
             for h in model.H
         ) / (model.nb_sec * model.volume_factor) 
-        - sum(
+    spilled_penalty = sum(
             sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
             for b in model.B
         ) / (model.nb_sec * model.volume_factor)
-    )
+    return market_price + ancillary_market_price - spilled_penalty - power_volume_penalty
         
