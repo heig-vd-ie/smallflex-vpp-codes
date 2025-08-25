@@ -29,25 +29,26 @@ log = generate_log(name=__name__)
 
 class BaselineSecondStage(BaseLineInput):
     def __init__(
-        self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, timestep: timedelta, model_nb: int = 1,
+        self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, sim_timestep: timedelta, 
+        ancillary_market_timestep: timedelta, model_nb: int = 1,
         buffer: float = 0.2, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
         quantile: float = 0.15, with_penalty: bool = True, log_solver_info: bool = False,
         global_price: bool = False, time_limit:float =  120, is_parallel: bool = False, nb_state: int = 5
         ):
         self.retrieve_input(input_instance)
-        self.sim_nb = 0
-        self.sim_tot = 0
-        self.is_parallel = is_parallel
-        self.model_nb = model_nb
+        self.sim_nb: int = 0
+        self.sim_tot: int = 0
+        self.is_parallel : bool=  is_parallel
+        self.model_nb: int = model_nb
         self.error_threshold = error_threshold
         self.buffer: float = buffer
-        self.powered_volume_enabled = powered_volume_enabled
-        self.quantile = quantile
-        self.global_price = global_price
-        self.with_penalty = with_penalty
-        self.log_solver_info = log_solver_info
-        self.timestep = timestep
-        self.divisors: int = int(self.timestep / self.real_timestep)
+        self.powered_volume_enabled: float = powered_volume_enabled
+        self.quantile: float = quantile
+        self.global_price: bool = global_price
+        self.with_penalty: bool = with_penalty
+        self.log_solver_info: bool = log_solver_info
+        self.sim_timestep: timedelta = sim_timestep
+        self.ancillary_market_timestep: timedelta = ancillary_market_timestep
         self.nb_state: int = nb_state
         
         self.index: dict[str, pl.DataFrame] = first_stage.index
@@ -62,6 +63,7 @@ class BaselineSecondStage(BaseLineInput):
             "remaining_volume": pl.DataFrame(),
             "flow": pl.DataFrame(),
             "hydro_power":  pl.DataFrame(),
+            "ancillary_power":  pl.DataFrame(),
             "spilled_volume": pl.DataFrame(),
             "basin_volume": pl.DataFrame(),   
         }                   
@@ -92,16 +94,23 @@ class BaselineSecondStage(BaseLineInput):
 
     def generate_index(self):
         
-        divisors: int = int(self.timestep / self.real_timestep)
-        
+        divisors: int = self.sim_timestep // self.real_timestep
+        ancillary_divisors = self.ancillary_market_timestep // self.real_timestep
         datetime_index= generate_datetime_index(
             min_datetime=self.min_datetime, 
             max_datetime=self.max_datetime, 
             real_timestep=self.real_timestep, 
         )
 
-        self.index["datetime"] = split_timestamps_per_sim(data=datetime_index, divisors=divisors)
         
+        
+        self.index["datetime"] = split_timestamps_per_sim(data=datetime_index, divisors=divisors)\
+            .with_columns(
+                (c("T") // ancillary_divisors).cast(pl.UInt32).alias("F")
+            ).with_columns(
+                pl.concat_list(["T", "F"]).alias("TF")
+            )
+
         self.sim_tot: int = self.index["datetime"]["sim_nb"].max()  # type: ignore
 
     def generate_constant_parameters(self):
@@ -157,20 +166,19 @@ class BaselineSecondStage(BaseLineInput):
     
     def calculate_powered_volume(self):
         
-        divisors: int = int(self.timestep / self.first_stage_timestep)
+        divisors: int = int(self.sim_timestep / self.first_stage_timestep)
 
         offset = divisors - self.first_stage_results.height%divisors
         self.powered_volume = self.first_stage_results.select(
             c("T"), 
-            cs.starts_with("powered_volume").abs().name.map(lambda c: c.replace("powered_volume_", "")),
+            cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
         ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
         .agg(pl.all().exclude("sim_nb", "T").sum())\
         .unpivot(
             index="sim_nb", variable_name="H", value_name="powered_volume"
         ).with_columns(
             c("H").cast(pl.UInt32).alias("H")
-        )
-            
+        )  
     def generate_volume_buffer(self):
         rated_volume_dict = pl_to_dict(
             self.index["hydro_power_plant"]
@@ -195,6 +203,8 @@ class BaselineSecondStage(BaseLineInput):
 
             
     def process_timeseries(self):
+        
+        time_divisors: int = int(self.sim_timestep / self.real_timestep)
         ### Discharge_flow ##############################################################################################
         discharge_volume: pl.DataFrame = generate_clean_timeseries(
             data=self.discharge_flow_measurement,
@@ -204,8 +214,7 @@ class BaselineSecondStage(BaseLineInput):
             timestep=self.real_timestep, 
             agg_type="sum"
         )
-
-        self.discharge_volume = split_timestamps_per_sim(data=discharge_volume, divisors=self.divisors)\
+        self.discharge_volume = split_timestamps_per_sim(data=discharge_volume, divisors=time_divisors)\
             .with_columns(
                 pl.lit(0).alias("B")
             ).with_columns(
@@ -220,9 +229,20 @@ class BaselineSecondStage(BaseLineInput):
             timestep=self.real_timestep, 
             agg_type="mean"
         )
-        self.market_price = split_timestamps_per_sim(data=market_price, divisors=self.divisors)
-    
-    
+        self.market_price = split_timestamps_per_sim(data=market_price, divisors=time_divisors)
+        ### Ancillary Market price #####################################################################################
+        time_divisors: int = int(self.sim_timestep / self.ancillary_market_timestep)
+        ancillary_market_price: pl.DataFrame = generate_clean_timeseries(
+            data=self.ancillary_market_price_measurement,
+            col_name="avg", 
+            min_datetime=self.min_datetime, 
+            max_datetime=self.max_datetime, 
+            timestep=self.ancillary_market_timestep, 
+            agg_type="mean"
+        )
+        self.ancillary_market_price = split_timestamps_per_sim(data=ancillary_market_price, divisors=time_divisors)\
+            .rename({"T": "F"})
+
     def generate_state_index(self):
         start_volume_dict = pl_to_dict(
             self.optimization_results["start_basin_volume"].filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
@@ -234,7 +254,7 @@ class BaselineSecondStage(BaseLineInput):
             index=self.index, water_flow_factor=self.water_flow_factor, 
             basin_volume_table=self.basin_volume_table, start_volume_dict=start_volume_dict, 
             discharge_volume_tot=discharge_volume_tot,
-            timestep=self.timestep, volume_factor=self.volume_factor, nb_state=self.nb_state
+            timestep=self.sim_timestep, volume_factor=self.volume_factor, nb_state=self.nb_state
         )
 
         self.index["hydro_power_state"] = generate_second_stage_hydro_power_state(
@@ -245,6 +265,8 @@ class BaselineSecondStage(BaseLineInput):
         
 
         self.data["T"] = {None: self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["T"].to_list()}
+        self.data["F"] = {None: self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["F"].unique().sort().to_list()}
+        self.data["TF"] = {None: list(map(tuple, self.index["datetime"].filter(c("sim_nb") == self.sim_nb)["TF"].to_list()))}
         self.data["S_B"] = pl_to_dict(
             self.index["basin_state"]["B", "S_b"]
             .group_by("B", maintain_order=True).agg("S_b")
@@ -257,16 +279,11 @@ class BaselineSecondStage(BaseLineInput):
             .with_columns(c("S_h").list.sort())
             )
 
-        self.data["S_BH"] = {None: list(map(tuple,self.index["hydro_power_state"]["S_BH"].to_list()))}
+        self.data["S_BH"] = {None: list(map(tuple, self.index["hydro_power_state"]["S_BH"].to_list()))}
         
         self.data["start_basin_volume"] = pl_to_dict(
             self.optimization_results["start_basin_volume"].filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])
         self.data["remaining_volume"] = pl_to_dict(self.optimization_results["remaining_volume"].filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]])
-
-
-        # self.data["B_H"] = pl_to_dict(hydropower_state.group_by("H").agg(c("B").unique()))
-        # self.data["SB_H"] = pl_to_dict_with_tuple(hydropower_state.group_by("HS").agg(c("S").unique()))
-
 
         self.data["min_basin_volume"] = pl_to_dict_with_tuple(
                     self.index["basin_state"]["BS", "volume_min"])
@@ -276,6 +293,8 @@ class BaselineSecondStage(BaseLineInput):
 
         self.data["discharge_volume"] = pl_to_dict_with_tuple(self.discharge_volume.filter(c("sim_nb") == self.sim_nb)[["TB", "discharge_volume"]])  
         self.data["market_price"] = pl_to_dict(self.market_price.filter(c("sim_nb") == self.sim_nb)[["T", "avg"]])
+        self.data["ancillary_market_price"] = pl_to_dict(self.ancillary_market_price.filter(c("sim_nb") == self.sim_nb)[["F", "avg"]])
+        
         if not self.global_price:
             self.data["neg_unpowered_price"] = {
                 None: self.market_price.filter(c("sim_nb") == self.sim_nb)["avg"].quantile(0.5 + self.quantile)}
@@ -287,9 +306,10 @@ class BaselineSecondStage(BaseLineInput):
 
         self.data["max_flow"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "flow"]])  
         self.data["alpha"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "alpha"]])  
-                
-        self.model_instance: pyo.Model = self.model.create_instance({None: self.data})
-        # self.model_instance._sim_nb = self.sim_nb    
+        
+        self.data["max_power"] = {1: 7}
+                        
+        self.model_instance: pyo.Model = self.model.create_instance({None: self.data}) 
 
 
     def solve_model(self):
@@ -329,9 +349,9 @@ class BaselineSecondStage(BaseLineInput):
             self.powered_volume_enabled = False
         self.generate_state_index()
         self.generate_model_instance()
-        _ = self.solver.solve(self.model_instance)
-        self.optimization_results = process_second_stage_results(
-            model_instance=self.model_instance, optimization_results=self.optimization_results, pump_id=pump_id, sim_nb=self.sim_nb)
+        # _ = self.solver.solve(self.model_instance)
+        # self.optimization_results = process_second_stage_results(
+        #     model_instance=self.model_instance, optimization_results=self.optimization_results, pump_id=pump_id, sim_nb=self.sim_nb)
 
     def log_mip_gap(self, solution):
         self.log_book = pl.concat([
@@ -344,184 +364,3 @@ class BaselineSecondStage(BaseLineInput):
                 }
             )
         ], how="diagonal_relaxed")   
-
-    # def calculated_feasibility(self):
-    #     start_basin_volume = self.start_basin_volume.filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]]
-    #     remaining_volume = self.remaining_volume.filter(c("sim_nb") == self.sim_nb)[["H", "remaining_volume"]]
-    #     powered_volume = self.powered_volume.filter(c("sim_nb") == self.sim_nb)[["H", "powered_volume"]]
-    #     volume_buffer = self.volume_buffer.filter(c("sim_nb") == self.sim_nb)[["H", "volume_buffer"]]
-    #     basin_power_mapping =pl.from_dicts(self.power_performance_table).drop("power_performance").with_columns(
-    #         pl.all().cast(pl.UInt32)
-    #     )
-
-    #     print(start_basin_volume\
-    #         .join(basin_power_mapping, on="B", how="inner")\
-    #         .join(remaining_volume, on="H", how="inner")\
-    #         .join(powered_volume, on="H", how="inner")\
-    #         .join(volume_buffer, on="H", how="inner")\
-    #         .join(self.index["water_basin"][["B", "volume_max", "volume_min"]], on="B", how="inner")\
-    #         .with_columns(
-    #             (c("start_basin_volume") - c("powered_volume") + c("volume_buffer") -
-    #             pl.when(c("remaining_volume") < 0).then(c("remaining_volume")).otherwise(0)
-    #             ).alias("pos_boundary"),
-    #             (c("start_basin_volume") - c("powered_volume") - c("volume_buffer") -
-    #             pl.when(c("remaining_volume") > 0).then(c("remaining_volume")).otherwise(0)
-    #             ).alias("neg_boundary"),
-    #         ).to_dicts()[0]
-    #     )
-        
-    # def solve_changing_powered_volume_constraint(self) -> bool:
-    #     if self.powered_volume_enabled == True:
-    #         self.powered_volume_enabled = False
-    #         self.generate_model_instance()   
-    #         solution = self.solver.solve(self.model_instance, tee=self.log_solver_info)
-    #         if solution["Solver"][0]["Status"] == "ok":
-    #             self.optimization_results = process_second_stage_results(
-    #                 model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
-    #         elif solution["Solver"][0]["Status"] == "aborted":
-    #             self.log_mip_gap(solution)
-    #             self.optimization_results = process_second_stage_results(
-    #                 model_instance=self.model_instance, optimization_results=self.optimization_results, sim_nb=self.sim_nb)
-    #         else:
-    #             self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
-    #             self.calculated_feasibility()
-    #             log.warning(f"Second stage optimization problem is infeasible for sim_nb: {self.sim_nb}")
-    #             return False
-    #     else:
-    #         self.infeasible_constraints = check_infeasible_constraints(model=self.model_instance)
-    #         self.calculated_feasibility()
-    #         log.warning(f"Second stage optimization problem is infeasible for sim_nb: {self.sim_nb}")
-    #         return False
-    #     self.powered_volume_enabled = True
-    #     return True
-
-    # def log_unbounded(self):
-    #     self.log_book = pl.concat([
-    #         self.log_book,
-    #         pl.DataFrame(
-    #             {
-    #                 "sim_nb": [self.sim_nb],
-    #                 "unbounded": [True]
-    #             }
-    #         )
-    #     ], how="diagonal_relaxed")
-        
-    
-
-    
-
-    
-    # def extract_result(self):
-
-    #     flow = extract_optimization_results(
-    #             model_instance=self.model_instance, var_name="flow"
-    #         ).with_columns(
-    #             pl.lit(self.sim_nb).alias("sim_nb")
-    #         )
-    #     power = extract_optimization_results(
-    #             model_instance=self.model_instance, var_name="power"
-    #         ).with_columns(
-    #             pl.lit(self.sim_nb).alias("sim_nb")
-    #         )
-
-    #     basin_volume = extract_optimization_results(
-    #             model_instance=self.model_instance, var_name="basin_volume"
-    #         ).with_columns(
-    #             pl.lit(self.sim_nb).alias("sim_nb")
-    #         )
-        
-    #     spilled_volume = extract_optimization_results(
-    #             model_instance=self.model_instance, var_name="spilled_volume"
-    #         ).with_columns(
-    #             pl.lit(self.sim_nb).alias("sim_nb")
-    #         )
-                
-    #     start_basin_volume = extract_optimization_results(
-    #             model_instance=self.model_instance, var_name="end_basin_volume"
-    #         ).with_columns(
-    #             pl.lit(self.sim_nb + 1).alias("sim_nb")
-    #         ).rename({"end_basin_volume": "start_basin_volume"})
-
-    #     remaining_volume = join_pyomo_variables(
-    #             model_instance=self.model_instance, 
-    #             var_list=["diff_volume_pos", "diff_volume_neg"], 
-    #             index_list=["H"]
-    #         ).select(
-    #             c("H"),
-    #             pl.lit(self.sim_nb + 1).alias("sim_nb"),
-    #             (c("diff_volume_pos") - c("diff_volume_neg")).alias("remaining_volume"),
-    #         )
-        
-    #     self.start_basin_volume = pl.concat([self.start_basin_volume , start_basin_volume], how="diagonal_relaxed")
-    #     self.remaining_volume = pl.concat([self.remaining_volume, remaining_volume], how="diagonal_relaxed")     
-    #     self.result_flow = pl.concat([self.result_flow, flow], how="diagonal_relaxed")
-    #     self.result_power = pl.concat([self.result_power, power], how="diagonal_relaxed")
-    #     self.result_spilled_volume = pl.concat([self.result_spilled_volume, spilled_volume], how="diagonal_relaxed")
-    #     self.result_basin_volume = pl.concat([self.result_basin_volume, basin_volume], how="diagonal_relaxed")
-
-
-    # def finalizes_results_processing(self):
-    #     remaining_volume = pivot_result_table(
-    #         df = self.remaining_volume, on="H", index="sim_nb", 
-    #         values="remaining_volume")
-
-    #     powered_volume = pivot_result_table(
-    #         df = self.powered_volume, on="H", index="sim_nb", 
-    #         values="powered_volume"
-    #         ).with_columns(
-    #             c("sim_nb").cast(pl.Int32).alias("sim_nb")
-    #         )
-
-    #     real_powered_volume = pivot_result_table(
-    #         df = self.result_flow
-    #             .group_by("sim_nb", "H")
-    #             .agg((c("flow").sum() * self.real_timestep.total_seconds() * self.volume_factor).alias("real_powered_volume")),
-    #         on="H", index="sim_nb", 
-    #         values="real_powered_volume")
-        
-                
-    #     start_basin_volume = pivot_result_table(
-    #         df = self.start_basin_volume,
-    #         on="B", index="sim_nb", 
-    #         values="start_basin_volume")
-        
-    #     volume = self.result_flow.with_columns((c("flow") * self.real_timestep.total_seconds()).alias("volume"))
-    #     volume = pivot_result_table(
-    #         df = volume, on="H", index=["T", "sim_nb"], 
-    #         values="volume", reindex=True)
-
-    #     power = pivot_result_table(
-    #         df = self.result_power, on="H", index=["T", "sim_nb"], 
-    #         values="power", reindex=True)
-        
-    #     volume_max_mapping: dict[str, float] = pl_to_dict(self.index["water_basin"][["B", "volume_max"]])
-    #     basin_volume = self.result_basin_volume.with_columns(
-    #         (c("basin_volume") / c("B").replace_strict(volume_max_mapping, default=None)).alias("basin_volume")
-    #     )
-
-    #     basin_volume = pivot_result_table(
-    #         df = basin_volume, on="B", index=["T", "sim_nb"], 
-    #         values="basin_volume", reindex=True)
-        
-    #     spilled_volume = pivot_result_table(
-    #         df = self.result_spilled_volume, on="B", index=["T", "sim_nb"], 
-    #         values="spilled_volume", reindex=True)
-
-    #     market_price = self.market_price.with_row_index(name="real_index")\
-    #         .select(c("real_index"), c("avg").alias("market_price"))
-
-    #     self.simulation_summary = remaining_volume\
-    #         .join(powered_volume, on = "sim_nb", how="inner")\
-    #         .join(real_powered_volume, on = "sim_nb", how="inner")\
-    #         .join(start_basin_volume, on = "sim_nb", how="inner")
-            
-    #     self.simulation_results = self.index["datetime"]\
-    #         .with_row_index(name="real_index")[["real_index", "timestamp"]]\
-    #         .join(basin_volume, on = "real_index", how="inner")\
-    #         .join(volume, on = "real_index", how="inner")\
-    #         .join(power, on = "real_index", how="inner")\
-    #         .join(spilled_volume, on = "real_index", how="inner")\
-    #         .join(market_price, on = "real_index", how="inner")\
-    #         .with_columns(
-    #             (pl.sum_horizontal(cs.starts_with("power")) * c("market_price")).alias("income"),
-    #         )

@@ -44,8 +44,7 @@ def process_first_stage_results(model_instance: pyo.Model, market_price: pl.Data
             model_instance=model_instance, var_name="flow"
         ).with_columns(
             (
-                pl.when(c("H").is_in(pump_index)).then(-c("flow")).otherwise(c("flow")) * flow_to_vol_factor *
-                c("T").replace_strict(nb_hours_mapping, default=None)
+                c("flow") * flow_to_vol_factor * c("T").replace_strict(nb_hours_mapping, default=None)
             ).alias("powered_volume")
         )
         
@@ -78,7 +77,7 @@ def process_first_stage_results(model_instance: pyo.Model, market_price: pl.Data
 
 def process_second_stage_results(model_instance: pyo.Model, optimization_results: dict[str, pl.DataFrame], pump_id: list[int], sim_nb: int) -> dict[str, pl.DataFrame]:
     
-        for var_name in ["flow", "hydro_power", "basin_volume", "spilled_volume"]:
+        for var_name in ["flow", "hydro_power", "basin_volume", "spilled_volume", "ancillary_power"]:
             data = extract_optimization_results(
                     model_instance=model_instance, var_name=var_name
                 ).with_columns(

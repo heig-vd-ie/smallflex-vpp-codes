@@ -3,6 +3,7 @@ import pyomo.environ as pyo
 def baseline_parameters(model):
     
     model.market_price = pyo.Param(model.T)
+    model.ancillary_market_price = pyo.Param(model.F)
     model.nb_hours = pyo.Param(default=1)
     model.nb_sec = pyo.Param(default=3600) # s
     model.volume_factor = pyo.Param()
@@ -28,7 +29,7 @@ def baseline_parameters(model):
 
     model.max_flow = pyo.Param(model.HS, default=0) #m^3/s 
     model.alpha = pyo.Param(model.HS, default=0) #MW/(Mm^3/s)
-
+    model.max_power = pyo.Param(model.H, default=0)
     
     model.big_m = pyo.Param(default=1e6)  # Big M value for constraints
     
