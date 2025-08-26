@@ -37,7 +37,7 @@ class BaselineSecondStage(BaseLineInput):
         ):
         self.retrieve_input(input_instance)
         self.sim_nb: int = 0
-        self.sim_tot: int = 0
+        self.sim_tot: int
         self.is_parallel : bool=  is_parallel
         self.model_nb: int = model_nb
         self.error_threshold = error_threshold
@@ -131,118 +131,24 @@ class BaselineSecondStage(BaseLineInput):
         self.data["alpha_neg"] = alpha_neg
         self.data["volume_factor"] = {None: self.volume_factor}
         self.data["spilled_factor"] = pl_to_dict(self.spilled_factor["B", "spilled_factor"])
-        if self.global_price:
-            self.data["neg_unpowered_price"] = {
-                None: self.market_price["avg"].quantile(0.5 + self.quantile)}
-            self.data["pos_unpowered_price"] = {
-                None: self.market_price["avg"].quantile(0.5 - self.quantile)}
+        self.data["neg_unpowered_price"] = {
+            None: self.market_price["avg"].quantile(0.5 + self.quantile)}
+        self.data["pos_unpowered_price"] = {
+            None: self.market_price["avg"].quantile(0.5 - self.quantile)}
             
         
-    def generate_model(self):
-        self.model: pyo.AbstractModel = pyo.AbstractModel()  # type: ignore
-        self.model = baseline_sets(self.model)
-        self.model = baseline_parameters(self.model)
-        self.model = baseline_variables(self.model)
+    # def generate_model(self):
+    #     self.model: pyo.AbstractModel = pyo.AbstractModel()  # type: ignore
+    #     self.model = baseline_sets(self.model)
+    #     self.model = baseline_parameters(self.model)
+    #     self.model = baseline_variables(self.model)
         
-        self.model = baseline_objective(self.model)
-        self.model = basin_volume_constraints(self.model)
-        self.model = powered_volume_constraints(self.model)
-        self.model = hydro_constraints(self.model)
-
-
-    def initialise_volume(self):
-        self.optimization_results["start_basin_volume"] = self.index["water_basin"].select(
-            c("B"),
-            pl.lit(self.sim_nb).alias("sim_nb"),
-            c("start_volume").alias("start_basin_volume")
-        )
-        self.optimization_results["remaining_volume"] = self.index["hydro_power_plant"]\
-            .select(
-                c("H"),
-                pl.lit(self.sim_nb).alias("sim_nb"),
-                pl.lit(0).alias("remaining_volume")
-            )
-
-    
-    def calculate_powered_volume(self):
-        
-        divisors: int = int(self.sim_timestep / self.first_stage_timestep)
-
-        offset = divisors - self.first_stage_results.height%divisors
-        self.powered_volume = self.first_stage_results.select(
-            c("T"), 
-            cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
-        ).group_by(((c("T") + offset)//divisors).alias("sim_nb"), maintain_order=True)\
-        .agg(pl.all().exclude("sim_nb", "T").sum())\
-        .unpivot(
-            index="sim_nb", variable_name="H", value_name="powered_volume"
-        ).with_columns(
-            c("H").cast(pl.UInt32).alias("H")
-        )  
-    def generate_volume_buffer(self):
-        rated_volume_dict = pl_to_dict(
-            self.index["hydro_power_plant"]
-            .select(
-                c("H").cast(pl.Utf8), 
-                c("rated_flow") * self.real_timestep.total_seconds() * self.volume_factor * self.buffer
-            )
-        )
-
-        volume_buffer: pl.DataFrame = self.index["datetime"]
-
-        self.volume_buffer = volume_buffer.group_by("sim_nb", maintain_order=True).agg(c("sim_nb").count().alias("nb_timestep"))\
-            .with_columns(
-                (c("nb_timestep") * volume).alias(str(name))  
-                for name, volume in rated_volume_dict.items()
-            ).unpivot(
-                index=["sim_nb"], on=list(rated_volume_dict.keys()),
-                variable_name="H", value_name="volume_buffer"
-            ).with_columns(
-                c("H").cast(pl.UInt32),
-            )
+    #     self.model = baseline_objective(self.model)
+    #     self.model = basin_volume_constraints(self.model)
+    #     self.model = powered_volume_constraints(self.model)
+    #     self.model = hydro_constraints(self.model)
 
             
-    def process_timeseries(self):
-        
-        time_divisors: int = int(self.sim_timestep / self.real_timestep)
-        ### Discharge_flow ##############################################################################################
-        discharge_volume: pl.DataFrame = generate_clean_timeseries(
-            data=self.discharge_flow_measurement,
-            col_name="discharge_volume", 
-            min_datetime=self.min_datetime,
-            max_datetime=self.max_datetime,
-            timestep=self.real_timestep, 
-            agg_type="sum"
-        )
-        self.discharge_volume = split_timestamps_per_sim(data=discharge_volume, divisors=time_divisors)\
-            .with_columns(
-                pl.lit(0).alias("B")
-            ).with_columns(
-                pl.concat_list(["T", "B"]).alias("TB")
-        )
-        ### Market price ###############################################################################################
-        market_price: pl.DataFrame = generate_clean_timeseries(
-            data=self.market_price_measurement,
-            col_name="avg", 
-            min_datetime=self.min_datetime, 
-            max_datetime=self.max_datetime, 
-            timestep=self.real_timestep, 
-            agg_type="mean"
-        )
-        self.market_price = split_timestamps_per_sim(data=market_price, divisors=time_divisors)
-        ### Ancillary Market price #####################################################################################
-        time_divisors: int = int(self.sim_timestep / self.ancillary_market_timestep)
-        ancillary_market_price: pl.DataFrame = generate_clean_timeseries(
-            data=self.ancillary_market_price_measurement,
-            col_name="avg", 
-            min_datetime=self.min_datetime, 
-            max_datetime=self.max_datetime, 
-            timestep=self.ancillary_market_timestep, 
-            agg_type="mean"
-        )
-        self.ancillary_market_price = split_timestamps_per_sim(data=ancillary_market_price, divisors=time_divisors)\
-            .rename({"T": "F"})
-
     def generate_state_index(self):
         start_volume_dict = pl_to_dict(
             self.optimization_results["start_basin_volume"].filter(c("sim_nb") == self.sim_nb)[["B", "start_basin_volume"]])

@@ -3,7 +3,9 @@ from polars import col as c
 from polars import selectors as cs
 import pyomo.environ as pyo
 
-
+from pipelines.data_configs import PipelineConfig
+from pipelines.data_manager import PipelineDataManager
+from pipelines.model_manager.baseline_first_stage import BaselineFirstStage
 from utility.pyomo_preprocessing import (
     join_pyomo_variables, extract_optimization_results, pivot_result_table, remove_suffix)
 
@@ -11,15 +13,12 @@ from general_function import pl_to_dict, generate_log
 
 log = generate_log(name=__name__)
 
-def process_first_stage_results(model_instance: pyo.Model, market_price: pl.DataFrame, index: dict[str, pl.DataFrame], flow_to_vol_factor: float) -> pl.DataFrame:
+def process_first_stage_results(model_instance: pyo.ConcreteModel,pipeline_config: PipelineConfig, pipeline_data_manager:PipelineDataManager) -> pl.DataFrame:
 
-    model_instance=model_instance
-    market_price= market_price
-    water_basin_index= index["water_basin"]
-    pump_index = index["hydro_power_plant"].filter(c("type")== "pump")["H"].to_list()
+    pump_index = pipeline_data_manager.hydro_power_plant.filter(c("type")== "pump")["H"].to_list()
 
-
-    volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index["B", "volume_max"])
+    flow_to_vol_factor= pipeline_config.first_stage_timestep.total_seconds() * pipeline_config.volume_factor
+    volume_max_mapping: dict[str, float] = pl_to_dict(pipeline_data_manager.water_basin["B", "volume_max"])
     market_price = market_price.select(
             c("T"),
             c("timestamp"),
@@ -61,16 +60,26 @@ def process_first_stage_results(model_instance: pyo.Model, market_price: pl.Data
         df = hydro_power, on="H", index=["T"], 
         values="hydro_power")
 
+    ancillary_power = extract_optimization_results(
+            model_instance=model_instance, var_name="ancillary_power"
+        )
+
+    ancillary_power = pivot_result_table(
+        df = ancillary_power, on="CH", index=["T"], 
+        values="ancillary_power")
+
     simulation_results: pl.DataFrame = market_price\
         .join(basin_volume, on = "T", how="inner")\
         .join(powered_volume, on = "T", how="inner")\
         .join(hydro_power, on = "T", how="inner")\
+        .join(ancillary_power, on = "T", how="inner")\
         .with_columns(
             (
             pl.sum_horizontal(cs.starts_with("powered_volume")) *
             c("T").replace_strict(nb_hours_mapping, default=None) * c("market_price")
             ).alias("income")
         )
+    
     
     
     return simulation_results
