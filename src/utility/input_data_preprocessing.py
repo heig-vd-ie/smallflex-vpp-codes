@@ -135,37 +135,37 @@ def clean_hydro_power_performance_table(
             ).filter(c("height").ge(volume_table["height"].min()).and_(c("height").le(volume_table["height"].max())))
 
         new_performance_table = new_performance_table.with_columns(
-            (c("power")/c("flow")).alias("alpha"),
             pl.lit(power_plant_data["H"]).alias("H"),
             pl.lit(upstream_basin["B"]).alias("B"),
         )
         power_performance_table = pl.concat([power_performance_table, new_performance_table], how="diagonal_relaxed")       
-   
+
             
     return  power_performance_table
 
-def generate_hydro_power_state(power_performance_table: list[dict], basin_state: pl.DataFrame) -> pl.DataFrame:
+def generate_hydro_power_state(power_performance_table: pl.DataFrame, basin_state: pl.DataFrame) -> pl.DataFrame:
 
     state_index: pl.DataFrame = pl.DataFrame()
-    for data in power_performance_table: 
-        power_performance: pl.DataFrame = data["power_performance"]
+    for hydro_power_index in power_performance_table["H"].unique(): 
+        power_performance: pl.DataFrame = power_performance_table.filter(c("H") == hydro_power_index)
+
         new_state_index = power_performance.sort("volume").join(
-            basin_state.filter(c("B") == data["B"])["volume_min", "S_B"], left_on="volume",  right_on="volume_min", how="left")\
-            .fill_null(strategy ="forward")\
-            .group_by("S_B").agg(c("flow", "power", "alpha").mean()).sort("S_B")\
+            basin_state.filter(c("B") == power_performance["B"][0])["volume_min", "S"], 
+            left_on="volume",  right_on="volume_min", how="left")
+        
+        new_state_index = new_state_index.fill_null(strategy ="forward")\
+            .group_by("S").agg(c("H", "B").first(), c("flow", "power").mean()).sort("S")\
             .with_columns(
-                pl.when(c("flow") < 0).then(-c("flow")).otherwise(c("flow")).alias("flow"),
-                pl.when(c("flow") < 0).then(-c("alpha")).otherwise(c("alpha")).alias("alpha"),
-                pl.lit(data["H"]).alias("H"),
-                pl.lit(data["B"]).alias("B")
+                c("flow").abs().alias("flow")
+            ).with_columns(
+                (c("power")/c("flow")).alias("alpha"),
             )
         state_index = pl.concat([state_index, new_state_index], how="diagonal_relaxed")
 
-    state_index = state_index.with_row_index(name="S_H").with_columns(
-        pl.concat_list("H", "B", "S_H", "S_B").alias("S_BH"),
-        pl.concat_list("H", "S_H").alias("HS")
+    state_index = state_index.with_columns(
+        pl.concat_list("H", "B", "S").alias("BHS"),
+        pl.concat_list("H", "S").alias("HS")
     )
-
     return state_index
             
 
@@ -315,7 +315,11 @@ def generate_second_stage_hydro_power_state(
     return hydro_state
 
 
-def generate_basin_state_table(basin_volume_table: dict, water_basin: pl.DataFrame, nb_state: int = 5) -> pl.DataFrame:
+def generate_basin_state_table(
+    basin_volume_table: pl.DataFrame, 
+    water_basin: pl.DataFrame, 
+    nb_state_dict: dict[int, int] = {}
+    ) -> pl.DataFrame:
     """
     Generates a table of basin states based on the volume table in the baseline input.
     
@@ -329,14 +333,20 @@ def generate_basin_state_table(basin_volume_table: dict, water_basin: pl.DataFra
 
     basin_state = pl.DataFrame()
 
-    for index, data in basin_volume_table.items():
-        if data is None:
-            basin_state = pl.concat([
-                basin_state, 
-                water_basin.filter(c("B") == index)["B", "volume_max", "volume_min"]
-                ], how="diagonal_relaxed")
-            continue
-        bin = np.linspace(data.select(c("height").min()).item(), data.select(c("height").max()).item(), nb_state + 1, dtype=np.int64)
+    for basin_index in basin_volume_table["B"].unique():
+        data = basin_volume_table.filter(c("B") == basin_index)
+
+        if basin_index in nb_state_dict.keys():
+            nb_state = nb_state_dict[basin_index] 
+        else:
+            nb_state = water_basin.filter(c("B")== basin_index)["n_state_min"][0]
+            
+        bin = np.linspace(
+            data.select(c("height").min()).item(), 
+            data.select(c("height").max()).item(), 
+            nb_state + 1, 
+            dtype=np.int64
+        )
 
         basin_state = pl.concat([
             basin_state,
@@ -345,11 +355,20 @@ def generate_basin_state_table(basin_volume_table: dict, water_basin: pl.DataFra
                 "height",
                 c("volume").alias("volume_min"),
                 c("volume").shift(-1).alias("volume_max"),
-                pl.lit(index).alias("B")
+                pl.lit(basin_index).alias("B")
             ).drop_nulls()
         ], how="diagonal_relaxed")
-    basin_state = basin_state.with_row_index(name="S_B").with_columns(
-        pl.concat_list("B", "S_B").alias("BS")
+    
+    
+    basin_state = pl.concat([
+        basin_state, 
+        water_basin.filter(~c("B").is_in(basin_volume_table["B"]))["B", "volume_max", "volume_min"]
+    ], how="diagonal_relaxed")
+
+    
+    basin_state = basin_state.with_row_index(name="S").with_columns(
+        pl.concat_list("B", "S").alias("BS")
     )
+    
     
     return basin_state

@@ -1,6 +1,6 @@
 import pyomo.environ as pyo
 
-def baseline_parameters(model):
+def first_stage_parameters(model):
     
     
     model.market_price = pyo.Param(model.T)

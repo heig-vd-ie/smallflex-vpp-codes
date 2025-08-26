@@ -151,16 +151,17 @@ def limit_column(
 
 def generate_datetime_index(
     min_datetime: datetime, max_datetime: datetime, 
-    real_timestep: timedelta, model_timestep: Optional[timedelta] = None,
+    real_timestep: timedelta, sim_timestep: Optional[timedelta] = None,
     ) ->  pl.DataFrame:
 
     datetime_index: pl.DataFrame = pl.datetime_range(
         start=min_datetime, end=max_datetime,
-        interval= real_timestep, eager=True, closed="left", time_zone="UTC"
+        interval=real_timestep, eager=True, closed="left", time_zone="UTC"
     ).to_frame(name="timestamp").with_row_index(name="T")
-    if model_timestep:
+    
+    if sim_timestep:
         datetime_index: pl.DataFrame = datetime_index.group_by_dynamic(
-            every=model_timestep, index_column="timestamp", start_by="datapoint", closed="left"
+            every=sim_timestep, index_column="timestamp", start_by="datapoint", closed="left"
             ).agg(
                 c("T").count().alias("n_index")
             ).with_row_index(name="T")
