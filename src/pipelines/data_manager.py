@@ -12,7 +12,7 @@ from utility.input_data_preprocessing import (
 from utility.pyomo_preprocessing import (
     extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
 from utility.input_data_preprocessing import (
-    generate_hydro_power_state, generate_basin_state_table
+    generate_basin_state, generate_hydro_power_state, generate_first_stage_basin_state_table
 )
 
 from general_function import pl_to_dict, duckdb_to_dict
@@ -34,6 +34,8 @@ class PipelineDataManager(PipelineConfig):
             setattr(self, key, value)
 
         self.second_stage_nb_sim: int
+        self.neg_unpowered_price: float
+        self.pos_unpowered_price: float
         # Index table
         self.first_stage_timestep_index: pl.DataFrame
         self.second_stage_timestep_index: pl.DataFrame
@@ -56,18 +58,18 @@ class PipelineDataManager(PipelineConfig):
         self.second_stage_ancillary_market_price: pl.DataFrame
 
 
-        self.build_timestep_index()
-        self.build_hydro_power_plant_data(
+        self.__build_timestep_index()
+        self.__build_hydro_power_plant_data(
             smallflex_input_schema=smallflex_input_schema, 
             hydro_power_mask=hydro_power_mask
             )
         
-        self.process_timeseries_input(
+        self.__process_timeseries_input(
             smallflex_input_schema=smallflex_input_schema,
         )
-        
+        self.__calculate_power_volume_buffer()
 
-    def build_hydro_power_plant_data(
+    def __build_hydro_power_plant_data(
         self, smallflex_input_schema: SmallflexInputSchema, hydro_power_mask: pl.Expr
         ):
         
@@ -126,7 +128,8 @@ class PipelineDataManager(PipelineConfig):
         self.basin_volume_table = generate_basin_volume_table(
             water_basin=self.water_basin,
             basin_height_volume_table=smallflex_input_schema.basin_height_volume_table,
-            volume_factor=self.volume_factor)
+            volume_factor=self.volume_factor,
+            d_height=self.d_height)
         
         self.power_performance_table = clean_hydro_power_performance_table(
                     hydro_power_plant=self.hydro_power_plant,
@@ -134,24 +137,25 @@ class PipelineDataManager(PipelineConfig):
                     hydro_power_performance_table=smallflex_input_schema.hydro_power_performance_table.as_polars(),
                     basin_volume_table=self.basin_volume_table)
         
-        self.first_stage_basin_state = generate_basin_state_table(
-            basin_volume_table=self.basin_volume_table, 
-            water_basin=self.water_basin
+        self.first_stage_basin_state = generate_first_stage_basin_state_table(
+            basin_volume_table=self.basin_volume_table,
+            water_basin=self.water_basin,
+            nb_state_dict=self.nb_state_dict
         )
         self.first_stage_hydro_power_state  = generate_hydro_power_state(
             power_performance_table=self.power_performance_table, basin_state=self.first_stage_basin_state)
         
-    def calculate_power_volume_buffer(self):
+    def __calculate_power_volume_buffer(self):
     
         self.volume_buffer: dict[int, float] = pl_to_dict(
             self.hydro_power_plant
             .select(
-                c("H").cast(pl.Utf8), 
+                c("H"),
                 c("rated_flow") * self.second_stage_sim_horizon.total_seconds() * self.volume_factor * self.volume_buffer_ratio
             )
         )
 
-    def build_timestep_index(self):
+    def __build_timestep_index(self):
         
         self.first_stage_timestep_index = generate_datetime_index(
             min_datetime=self.min_datetime, max_datetime=self.max_datetime,
@@ -168,14 +172,14 @@ class PipelineDataManager(PipelineConfig):
             data=second_stage_timestep_index, divisors=self.second_stage_nb_timestamp)
         
         self.second_stage_timestep_index = second_stage_timestep_index.with_columns(
-                (c("T") // self.ancillary_nb_timestamp).cast(pl.UInt32).alias("F")
+                (c("T") // self.nb_timestamp_per_ancillary).cast(pl.UInt32).alias("F")
             ).with_columns(
                 pl.concat_list(["T", "F"]).alias("TF")
             )
 
-        self.second_stage_nb_sim = second_stage_timestep_index["sim_nb"].max()  # type: ignore
+        self.second_stage_nb_sim = second_stage_timestep_index["sim_idx"].max()  # type: ignore
     
-    def process_timeseries_input(self, smallflex_input_schema: SmallflexInputSchema):
+    def __process_timeseries_input(self, smallflex_input_schema: SmallflexInputSchema):
         
         basin_index_mapping = pl_to_dict(self.water_basin[["uuid", "B"]])
     
@@ -195,6 +199,9 @@ class PipelineDataManager(PipelineConfig):
             .filter(c("country") == self.market_country)\
             .filter(c("market") == self.ancillary_market)\
             .filter(c("source") == self.market_source).sort("timestamp")
+
+        self.neg_unpowered_price = market_price["avg"].quantile(0.5 + self.second_stage_quantile)  # type: ignore
+        self.pos_unpowered_price = market_price["avg"].quantile(0.5 - self.second_stage_quantile)  # type: ignore
         ### Discharge_flow ##############################################################################################
         
         self.first_stage_discharge_volume: pl.DataFrame = generate_clean_timeseries(
@@ -264,17 +271,4 @@ class PipelineDataManager(PipelineConfig):
             data=second_stage_ancillary_market_price, divisors=self.ancillary_nb_timestamp
             ).rename({"T": "F"})
     
-    def extract_powered_volume_quota(self, first_stage_results: pl.DataFrame):
-        offset = self.first_stage_nb_timestamp - first_stage_results.height%self.first_stage_nb_timestamp
-        self.powered_volume_quota = first_stage_results\
-            .select(
-                c("T"),
-                cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
-            ).group_by(((c("T") + offset)//self.first_stage_nb_timestamp).alias("sim_nb"), maintain_order=True)\
-            .agg(pl.all().exclude("sim_nb", "T").sum())\
-            .unpivot(
-                index="sim_nb", variable_name="H", value_name="powered_volume"
-            ).with_columns(
-                c("H").cast(pl.UInt32).alias("H")
-            )  
 

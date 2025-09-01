@@ -29,89 +29,28 @@ log = generate_log(name=__name__)
 
 class BaselineSecondStage(BaseLineInput):
     def __init__(
-        self, input_instance: BaseLineInput, first_stage: BaselineFirstStage, sim_timestep: timedelta, 
-        ancillary_market_timestep: timedelta, model_nb: int = 1,
-        buffer: float = 0.2, error_threshold: float = 0.1, powered_volume_enabled: bool = True,
-        quantile: float = 0.15, with_penalty: bool = True, log_solver_info: bool = False,
-        global_price: bool = False, time_limit:float =  120, is_parallel: bool = False, nb_state: int = 5
+        self,
         ):
-        self.retrieve_input(input_instance)
-        self.sim_nb: int = 0
-        self.sim_tot: int
-        self.is_parallel : bool=  is_parallel
-        self.model_nb: int = model_nb
-        self.error_threshold = error_threshold
-        self.buffer: float = buffer
-        self.powered_volume_enabled: float = powered_volume_enabled
-        self.quantile: float = quantile
-        self.global_price: bool = global_price
-        self.with_penalty: bool = with_penalty
-        self.log_solver_info: bool = log_solver_info
-        self.sim_timestep: timedelta = sim_timestep
-        self.ancillary_market_timestep: timedelta = ancillary_market_timestep
-        self.nb_state: int = nb_state
+    
         
-        self.index: dict[str, pl.DataFrame] = first_stage.index
-        self.first_stage_timestep: timedelta = first_stage.timestep
-        self.water_flow_factor: pl.DataFrame = first_stage.water_flow_factor
-        self.first_stage_results: pl.DataFrame = first_stage.optimization_results
-        self.power_performance_table: list = first_stage.power_performance_table
-        
-        
-        self.optimization_results: dict[str, pl.DataFrame] = {
-            "start_basin_volume": pl.DataFrame(),
-            "remaining_volume": pl.DataFrame(),
-            "flow": pl.DataFrame(),
-            "hydro_power":  pl.DataFrame(),
-            "ancillary_power":  pl.DataFrame(),
-            "spilled_volume": pl.DataFrame(),
-            "basin_volume": pl.DataFrame(),   
-        }                   
-        self.basin_volume : pl.DataFrame = pl.DataFrame()                                               
-        self.result_power: pl.DataFrame = pl.DataFrame()
-        self.result_basin_volume: pl.DataFrame = pl.DataFrame()
-        self.result_spilled_volume: pl.DataFrame = pl.DataFrame()
-        self.log_book: pl.DataFrame = pl.DataFrame()
-        self.data: dict = {}
-        
+
         
         self.solver.options['TimeLimit'] = time_limit
         self.solver.options['Threads'] = 8 
         
-        self.generate_index()
-        self.generate_model()
+        # self.generate_index()
+        # self.generate_model()
         
-        self.initialise_volume()
-        self.calculate_powered_volume()
-        self.generate_volume_buffer()
-        self.process_timeseries()
+        # self.initialise_volume()
+        # self.calculate_powered_volume()
+        # self.generate_volume_buffer()
+        # self.process_timeseries()
         
         self.generate_constant_parameters()
         
     def retrieve_input(self, input_instance):
         for name, value in input_instance.__dict__.items():
             setattr(self, name, value) 
-
-    def generate_index(self):
-        
-        divisors: int = self.sim_timestep // self.real_timestep
-        ancillary_divisors = self.ancillary_market_timestep // self.real_timestep
-        datetime_index= generate_datetime_index(
-            min_datetime=self.min_datetime, 
-            max_datetime=self.max_datetime, 
-            real_timestep=self.real_timestep, 
-        )
-
-        
-        
-        self.index["datetime"] = split_timestamps_per_sim(data=datetime_index, divisors=divisors)\
-            .with_columns(
-                (c("T") // ancillary_divisors).cast(pl.UInt32).alias("F")
-            ).with_columns(
-                pl.concat_list(["T", "F"]).alias("TF")
-            )
-
-        self.sim_tot: int = self.index["datetime"]["sim_nb"].max()  # type: ignore
 
     def generate_constant_parameters(self):
         
@@ -136,17 +75,6 @@ class BaselineSecondStage(BaseLineInput):
         self.data["pos_unpowered_price"] = {
             None: self.market_price["avg"].quantile(0.5 - self.quantile)}
             
-        
-    # def generate_model(self):
-    #     self.model: pyo.AbstractModel = pyo.AbstractModel()  # type: ignore
-    #     self.model = baseline_sets(self.model)
-    #     self.model = baseline_parameters(self.model)
-    #     self.model = baseline_variables(self.model)
-        
-    #     self.model = baseline_objective(self.model)
-    #     self.model = basin_volume_constraints(self.model)
-    #     self.model = powered_volume_constraints(self.model)
-    #     self.model = hydro_constraints(self.model)
 
             
     def generate_state_index(self):

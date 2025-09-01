@@ -55,9 +55,9 @@ r"""
     :nowrap:
     
     \begin{align}
-    V_\text{BAS}^{t,~b} &\leq V_\text{BAS, MAX}^{b,~s_b} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}} 
-    \cdot \left(1 -S_\text{BAS}^{t,~b,~s_b} \right)
-    \qquad \forall \{t\in T~\vert~b \in B~\vert~ s_b \in S_B\{b\} \}
+    V_\text{BAS}^{t,~b} &\leq V_\text{BAS, MAX}^{b,~s} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}} 
+    \cdot \left(1 -S_\text{BAS}^{t,~b,~s} \right)
+    \qquad \forall \{t\in T~\vert~b \in B~\vert~ s \in S_B\{b\} \}
     \end{align}
     
 .. math::
@@ -65,7 +65,7 @@ r"""
     :nowrap:
     
     \begin{align}
-    V_\text{BAS}^{t,~b} &\geq V_\text{BAS, MIN}^{b,~s_b} \cdot S_\text{BAS}^{t,~b,~s_b}
+    V_\text{BAS}^{t,~b} &\geq V_\text{BAS, MIN}^{b,~s} \cdot S_\text{BAS}^{t,~b,~s}
     \qquad \forall \{t\in T~\vert~b \in B \}
     \end{align}
 
@@ -146,15 +146,15 @@ def basin_min_end_volume_constraint(model, b):
 ### Basin volume boundary constraints used to determine the state of each basin ####################################
 ####################################################################################################################
 
-def basin_max_state_constraint(model, t, b, s_b):
+def basin_max_state_constraint(model, t, b, s):
     return (
-        model.basin_volume[t, b] <= model.max_basin_volume[b, s_b] +
+        model.basin_volume[t, b] <= model.max_basin_volume[b, s] +
         model.max_basin_volume[b, model.S_B[b].last()] * 
-        (1 - model.basin_state[t, b, s_b])
+        (1 - model.basin_state[t, b, s])
     )
 
-def basin_min_state_constraint(model, t, b, s_b):
-    return model.basin_volume[t, b] >= model.min_basin_volume[b, s_b] * model.basin_state[t, b, s_b]
+def basin_min_state_constraint(model, t, b, s):
+    return model.basin_volume[t, b] >= model.min_basin_volume[b, s] * model.basin_state[t, b, s]
 
 def basin_state_constraint(model, t, b):
     return sum(model.basin_state[t, b, s] for s in model.S_B[b]) == 1

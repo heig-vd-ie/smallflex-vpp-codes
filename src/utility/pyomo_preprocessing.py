@@ -370,3 +370,18 @@ def check_infeasible_constraints(model: pyo.Model) -> pl.DataFrame:
 
 def remove_suffix(struct: pl.Expr) -> pl.Expr:
     return struct.name.map_fields(lambda x: "_".join(x.split("_")[:-1]))
+
+
+    def extract_powered_volume_quota(self, first_stage_results: pl.DataFrame):
+        offset = self.first_stage_nb_timestamp - first_stage_results.height%self.first_stage_nb_timestamp
+        self.powered_volume_quota = first_stage_results\
+            .select(
+                c("T"),
+                cs.starts_with("powered_volume").name.map(lambda c: c.replace("powered_volume_", "")),
+            ).group_by(((c("T") + offset)//self.first_stage_nb_timestamp).alias("sim_nb"), maintain_order=True)\
+            .agg(pl.all().exclude("sim_nb", "T").sum())\
+            .unpivot(
+                index="sim_nb", variable_name="H", value_name="powered_volume"
+            ).with_columns(
+                c("H").cast(pl.UInt32).alias("H")
+            )  

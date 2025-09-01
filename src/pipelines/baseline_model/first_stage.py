@@ -12,7 +12,7 @@ def first_stage_baseline_constraints(model):
     model.basin_min_state = pyo.Constraint(model.T, model.BS, rule=basin_min_state)
     model.basin_state_total = pyo.Constraint(model.T, model.B, rule=basin_state_total)
 
-    model.max_flow_by_state = pyo.Constraint(model.T, model.BHS, rule=max_flow_by_state)
+    model.max_flow_by_state = pyo.Constraint(model.T, model.HBS, rule=max_flow_by_state)
     model.total_flow = pyo.Constraint(model.T, model.H, rule=total_flow)
     model.total_hydro_power = pyo.Constraint(model.T, model.H, rule=total_hydro_power)
     model.positive_hydro_ancillary_power = pyo.Constraint(model.T, model.CH, rule=positive_hydro_ancillary_power)
