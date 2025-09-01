@@ -10,7 +10,7 @@ import tqdm
 from utility.pyomo_preprocessing import (
     extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
 from utility.input_data_preprocessing import (
-    generate_hydro_power_state, generate_basin_state_table
+    generate_hydro_power_state
 )
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from pipelines.data_configs import PipelineConfig
@@ -23,12 +23,13 @@ log = generate_log(name=__name__)
 
 class BaselineFirstStage(PipelineDataManager):
     def __init__(
-        self, pipeline_data_manager: PipelineDataManager
+        self, 
+        pipeline_data_manager: PipelineDataManager,
         ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
             setattr(self, key, value)
-        
+            
         self.model: pyo.AbstractModel = first_stage_baseline_model()
         self.model_instance: pyo.ConcreteModel
     
@@ -48,11 +49,11 @@ class BaselineFirstStage(PipelineDataManager):
             self.first_stage_hydro_power_state
             .drop_nulls("H").group_by("H", maintain_order=True).agg("S")
         )
-        data["BHS"] = {None: 
+        data["HBS"] = {None: 
             list(map(
                 tuple, 
                 self.first_stage_hydro_power_state\
-                    .drop_nulls("H")["BHS"].to_list()
+                    .drop_nulls("H")["HBS"].to_list()
             ))}
         data["nb_hours"] = pl_to_dict(self.first_stage_timestep_index[["T", "n_index"]])
 
@@ -70,7 +71,7 @@ class BaselineFirstStage(PipelineDataManager):
             self.first_stage_hydro_power_state.select("HS", "flow"))
         data["alpha"] = pl_to_dict_with_tuple(
             self.first_stage_hydro_power_state.select("HS", "alpha"))
-        data["max_power"] = {1: 7}
+        data["max_power"] = {0: 7}
         
         # Timeseries
         data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TB", "discharge_volume"]])
@@ -86,7 +87,7 @@ class BaselineFirstStage(PipelineDataManager):
     def solve_model(self):
         with tqdm.tqdm(total=1, desc="Solving first stage optimization problem", ncols=150) as pbar:
             self.create_model_instance()
-            _ = self.solver.solve(self.model_instance, tee=self.verbose)
+            _ = self.first_stage_solver.solve(self.model_instance, tee=self.verbose)
             pbar.update()
         # self.optimization_results = process_first_stage_results(
         #     model_instance=self.model_instance, market_price=self.market_price, index=self.index,

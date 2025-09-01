@@ -1,6 +1,6 @@
 import pyomo.environ as pyo
 
-def baseline_parameters(model):
+def second_stage_parameters(model):
     
     model.market_price = pyo.Param(model.T)
     model.ancillary_market_price = pyo.Param(model.F)
@@ -10,12 +10,11 @@ def baseline_parameters(model):
     # model.big_m = pyo.Param()  
     model.powered_volume_enabled = pyo.Param(within=pyo.Binary, default=True)
 
-    model.neg_unpowered_price = pyo.Param() # MW/(m^3/s)
-    model.pos_unpowered_price = pyo.Param() # MW/(m^3/s)
-    model.alpha_neg = pyo.Param(model.H) # MW/(m^3/s)
-    model.alpha_pos = pyo.Param(model.H) # MW/(m^3/s)
+    model.unpowered_factor_price_pos = pyo.Param(model.H) # CHF/(m^3/s)
+    model.unpowered_factor_price_neg = pyo.Param(model.H) # CHF/(m^3/s)
     model.powered_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
-    model.remaining_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.remaining_volume_pos = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.remaining_volume_neg = pyo.Param(model.H, default=0) # MW/(m^3/s)
     model.volume_buffer = pyo.Param(model.H) # MW/(m^3/s)
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
