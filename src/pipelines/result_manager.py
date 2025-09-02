@@ -1,40 +1,17 @@
-from traitlets import Int
-from pipelines.baseline_model import first_stage
-from pipelines.data_configs import PipelineConfig
-from pipelines.data_manager import PipelineDataManager
-import os
-from multiprocessing import get_context
-from smallflex_data_schema import SmallflexInputSchema
-from typing import Union
-import json
-from datetime import timedelta
-import shutil
 import polars as pl
 from polars  import col as c
-
-from general_function import build_non_existing_dirs, generate_log, dict_to_duckdb
-
-from config import settings
-
-from data_display.baseline_plots import plot_first_stage_result, plot_second_stage_result
-from pipelines.model_manager import baseline_first_stage, baseline_second_stage
-from utility.pyomo_preprocessing import (
-    extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
-from utility.input_data_preprocessing import (
-    generate_hydro_power_state, split_timestamps_per_sim
-)
-
-import polars as pl
-from polars import col as c
+from typing  import Tuple
 from polars import selectors as cs
 import pyomo.environ as pyo
 
-from general_function import pl_to_dict, generate_log
+from general_function import pl_to_dict
 
-from utility.pyomo_preprocessing import (
-    join_pyomo_variables, extract_optimization_results, pivot_result_table, remove_suffix)
-
-from pipelines.model_manager.baseline_first_stage import BaselineFirstStage
+from pipelines.data_manager import PipelineDataManager
+from utility.pyomo_preprocessing import ( 
+    extract_optimization_results, pivot_result_table)
+from utility.input_data_preprocessing import (
+    split_timestamps_per_sim
+)
 
 class PipelineResultManager(PipelineDataManager):
     """
@@ -51,7 +28,7 @@ class PipelineResultManager(PipelineDataManager):
         self.first_optimization_results: pl.DataFrame
     
     
-    def extract_first_stage_optimization_results(
+    def extract_optimization_results(
         self, model_instance: pyo.ConcreteModel, is_first_stage: int) -> pl.DataFrame:
 
             
@@ -112,10 +89,6 @@ class PipelineResultManager(PipelineDataManager):
                 model_instance=model_instance, var_name="ancillary_power"
             )
 
-        ancillary_power = pivot_result_table(
-            df = ancillary_power, on="CH", index=["T" if is_first_stage else "F"], 
-            values="ancillary_power")
-        
         if not is_first_stage:
             ancillary_power = ancillary_power.with_columns(
                 pl.all().exclude("F").map_elements(
@@ -145,6 +118,44 @@ class PipelineResultManager(PipelineDataManager):
                 )
         )
         return self.first_stage_optimization_results
+    
+    def extract_second_stage_optimization_results(
+        self, model_instances: dict[int, pyo.ConcreteModel]) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+
+        optimization_results: pl.DataFrame = pl.DataFrame()
+        powered_volume_overage: pl.DataFrame = pl.DataFrame()
+        powered_volume_shortage: pl.DataFrame = pl.DataFrame()
+        for key, model_instance in model_instances.items():
+            optimization_results = pl.concat([
+                optimization_results,
+                self.extract_optimization_results(model_instance=model_instance, is_first_stage=False)
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+            powered_volume_overage = pl.concat([
+                powered_volume_overage,
+                extract_optimization_results(model_instance, "powered_volume_overage")
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+            
+            powered_volume_shortage = pl.concat([
+                powered_volume_shortage,
+                extract_optimization_results(model_instance, "powered_volume_shortage")
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+
+        powered_volume_overage = powered_volume_overage.pivot(on="H", values="powered_volume_overage", index="sim_idx")
+        powered_volume_shortage = powered_volume_shortage.pivot(on="H", values="powered_volume_shortage", index="sim_idx")
+
+        optimization_results = optimization_results.join(
+            self.second_stage_timestep_index["T", "sim_idx", "timestamp"], on=["sim_idx", "T"], how="left")
+    
+        return optimization_results, powered_volume_overage, powered_volume_shortage
     
     def extract_powered_volume_quota(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
     
