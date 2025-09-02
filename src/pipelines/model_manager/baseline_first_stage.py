@@ -67,6 +67,7 @@ class BaselineFirstStage(PipelineDataManager):
     
         data["total_positive_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_positive_flex_power"])
         data["total_negative_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_negative_flex_power"])
+        print(data["total_positive_flex_power"])
         
         # Timeseries
         data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TB", "discharge_volume"]])
