@@ -1,19 +1,11 @@
 
-from datetime import timedelta
-from itertools import tee
-import polars as pl
+
 from polars import col as c
-from polars import selectors as cs
 import pyomo.environ as pyo
 import tqdm
 
-from utility.pyomo_preprocessing import (
-    extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
-from utility.input_data_preprocessing import (
-    generate_hydro_power_state
-)
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
-from pipelines.data_configs import PipelineConfig
+
 from pipelines.data_manager import PipelineDataManager
 
 from optimization_model.baseline.first_stage import first_stage_baseline_model
@@ -72,6 +64,9 @@ class BaselineFirstStage(PipelineDataManager):
         data["alpha"] = pl_to_dict_with_tuple(
             self.first_stage_hydro_power_state.select("HS", "alpha"))
         data["max_power"] = {0: 7}
+    
+        data["total_positive_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_positive_flex_power"])
+        data["total_negative_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_negative_flex_power"])
         
         # Timeseries
         data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TB", "discharge_volume"]])
@@ -89,7 +84,3 @@ class BaselineFirstStage(PipelineDataManager):
             self.create_model_instance()
             _ = self.first_stage_solver.solve(self.model_instance, tee=self.verbose)
             pbar.update()
-        # self.optimization_results = process_first_stage_results(
-        #     model_instance=self.model_instance, market_price=self.market_price, index=self.index,
-        #     flow_to_vol_factor= self.real_timestep.total_seconds() * self.volume_factor)
-        

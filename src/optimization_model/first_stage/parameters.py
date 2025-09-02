@@ -22,6 +22,8 @@ def first_stage_parameters(model):
     
     model.max_flow= pyo.Param(model.HS, default=0) #m^3/s 
     model.max_power = pyo.Param(model.H, default=0)
+    model.total_positive_flex_power = pyo.Param(model.S, default=0)
+    model.total_negative_flex_power = pyo.Param(model.S, default=0)
     model.alpha = pyo.Param(model.HS, default=0)  #MW/(m^3/s)
 
     

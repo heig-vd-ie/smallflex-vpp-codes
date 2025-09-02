@@ -7,10 +7,9 @@ import pyomo.environ as pyo
 from general_function import pl_to_dict
 
 from pipelines.data_manager import PipelineDataManager
-from utility.pyomo_preprocessing import ( 
-    extract_optimization_results, pivot_result_table)
-from utility.input_data_preprocessing import (
-    split_timestamps_per_sim
+
+from utility.data_preprocessing import (
+    split_timestamps_per_sim, extract_result_table, pivot_result_table
 )
 
 class PipelineResultManager(PipelineDataManager):
@@ -32,10 +31,10 @@ class PipelineResultManager(PipelineDataManager):
         self, model_instance: pyo.ConcreteModel, is_first_stage: int) -> pl.DataFrame:
 
             
-        market_price = extract_optimization_results(
+        market_price = extract_result_table(
             model_instance=model_instance, var_name="market_price"
         )
-        ancillary_market_price = extract_optimization_results(
+        ancillary_market_price = extract_result_table(
             model_instance=model_instance, var_name="ancillary_market_price"
         )
 
@@ -44,7 +43,7 @@ class PipelineResultManager(PipelineDataManager):
         flow_to_vol_factor = 3600 * self.volume_factor
         
         if is_first_stage:
-            nb_hours_mapping = pl_to_dict(extract_optimization_results(
+            nb_hours_mapping = pl_to_dict(extract_result_table(
                     model_instance=model_instance, var_name="nb_hours"
             )[["T", "nb_hours"]])
         else:
@@ -52,7 +51,7 @@ class PipelineResultManager(PipelineDataManager):
 
         volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index["B", "volume_max"])
 
-        basin_volume = extract_optimization_results(
+        basin_volume = extract_result_table(
                 model_instance=model_instance, var_name="basin_volume"
             ).with_columns(
                 (c("basin_volume") / c("B").replace_strict(volume_max_mapping, default=None)).alias("basin_volume")
@@ -64,7 +63,7 @@ class PipelineResultManager(PipelineDataManager):
 
         
 
-        powered_volume = extract_optimization_results(
+        powered_volume = extract_result_table(
                 model_instance=model_instance, var_name="flow"
             ).with_columns(
                 (
@@ -77,7 +76,7 @@ class PipelineResultManager(PipelineDataManager):
             values="powered_volume")
             
 
-        hydro_power = extract_optimization_results(
+        hydro_power = extract_result_table(
                 model_instance=model_instance, var_name="hydro_power"
             )
 
@@ -85,7 +84,7 @@ class PipelineResultManager(PipelineDataManager):
             df = hydro_power, on="H", index=["T"], 
             values="hydro_power")
 
-        ancillary_power = extract_optimization_results(
+        ancillary_power = extract_result_table(
                 model_instance=model_instance, var_name="ancillary_power"
             )
 
@@ -101,7 +100,7 @@ class PipelineResultManager(PipelineDataManager):
                 )
             ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F")
 
-        self.first_stage_optimization_results: pl.DataFrame =(
+        optimization_results: pl.DataFrame =(
             market_price
                 .join(basin_volume, on = "T", how="inner")
                 .join(ancillary_market_price, on = "T", how="inner")
@@ -117,7 +116,15 @@ class PipelineResultManager(PipelineDataManager):
                     ).alias("income")
                 )
         )
-        return self.first_stage_optimization_results
+        return optimization_results
+    
+    def extract_first_stage_optimization_results(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
+
+        optimization_results = self.extract_optimization_results(model_instance=model_instance, is_first_stage=False)
+        optimization_results = optimization_results.join(
+            self.first_stage_timestep_index["T", "timestamp"], on= "T", how="left")
+        
+        return optimization_results
     
     def extract_second_stage_optimization_results(
         self, model_instances: dict[int, pyo.ConcreteModel]) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
@@ -135,7 +142,7 @@ class PipelineResultManager(PipelineDataManager):
             ], how="diagonal_relaxed")
             powered_volume_overage = pl.concat([
                 powered_volume_overage,
-                extract_optimization_results(model_instance, "powered_volume_overage")
+                extract_result_table(model_instance, "powered_volume_overage")
                     .with_columns(
                         pl.lit(key).alias("sim_idx")
                     )
@@ -143,7 +150,7 @@ class PipelineResultManager(PipelineDataManager):
             
             powered_volume_shortage = pl.concat([
                 powered_volume_shortage,
-                extract_optimization_results(model_instance, "powered_volume_shortage")
+                extract_result_table(model_instance, "powered_volume_shortage")
                     .with_columns(
                         pl.lit(key).alias("sim_idx")
                     )
@@ -161,11 +168,11 @@ class PipelineResultManager(PipelineDataManager):
     
         flow_to_vol_factor = 3600 * self.volume_factor
 
-        nb_hours_mapping = pl_to_dict(extract_optimization_results(
+        nb_hours_mapping = pl_to_dict(extract_result_table(
                         model_instance=model_instance, var_name="nb_hours"
                     )[["T", "nb_hours"]])
 
-        powered_volume_quota = extract_optimization_results(
+        powered_volume_quota = extract_result_table(
                 model_instance=model_instance, var_name="flow"
             ).with_columns(
                 (

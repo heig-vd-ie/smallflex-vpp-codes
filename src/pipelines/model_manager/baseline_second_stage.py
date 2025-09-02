@@ -1,23 +1,17 @@
-
-from datetime import timedelta
-from typing import Optional, Self
+from typing import Optional
 from collections import Counter
 import logging
 import polars as pl
 from polars import col as c
-from polars import selectors as cs
 import pyomo.environ as pyo
 import tqdm
 
-from utility.pyomo_preprocessing import (
-    extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
-from utility.input_data_preprocessing import (
+from utility.data_preprocessing import (
     generate_hydro_power_state, generate_basin_state
 )
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
-from pipelines.data_configs import PipelineConfig
-from pipelines.data_manager import PipelineDataManager
 
+from pipelines.data_manager import PipelineDataManager
 from optimization_model.baseline.second_stage import second_stage_baseline_model
 
 
@@ -113,11 +107,7 @@ class BaselineSecondStage(PipelineDataManager):
                 c("H").replace_strict(self.powered_volume_overage, default=0)
             ).alias("powered_volume")
         )
-
         self.data["powered_volume"] = pl_to_dict(powered_volume_quota[["H", "powered_volume"]])
-
-        # self.data["shortage_volume_buffer"] = self.volume_buffer
-        # self.data["overage_volume_buffer"] = self.volume_buffer
         self.data["shortage_volume_buffer"] = dict(
             Counter(self.volume_buffer) + Counter(dict(map(lambda x: (x[0], x[1]/3), self.powered_volume_shortage.items())))
         ) 
@@ -190,6 +180,7 @@ class BaselineSecondStage(PipelineDataManager):
             ).sum().to_dicts()[0]
     
     def calculate_basin_volume_boundaries(self, sim_idx: int, start_volume_dict: dict[int, float]):
+        
         hydro_power_min_volume = self.hydro_power_plant.select(
             "H", c("upstream_B").alias("B"), 
             (c("rated_flow") * self.second_stage_sim_horizon.total_seconds() * 
@@ -235,8 +226,6 @@ class BaselineSecondStage(PipelineDataManager):
     
         return basin_volume_boundaries
 
-    
-        
     def solve_every_models(self, nb_sim_tot: Optional[int] = None):
         logging.getLogger('pyomo.core').setLevel(logging.ERROR)
         if not nb_sim_tot:

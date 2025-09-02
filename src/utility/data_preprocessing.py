@@ -1,38 +1,165 @@
-
+from typing import Optional, Union, Literal
 import polars as pl
 from polars import col as c
-from polars import selectors as cs
-from datetime import timedelta
 import numpy as np
-
-
-from smallflex_data_schema import SmallflexInputSchema
-from typing_extensions import Optional
-from utility.pyomo_preprocessing import (
-    arange_float, filter_data_with_next,
-    linear_interpolation_for_bound, linear_interpolation_using_cols,
-    generate_state_index_using_errors,
-    filter_by_index, get_min_avg_max_diff, define_state)
+import math
+from datetime import datetime, date, timedelta
+import pyomo.environ as pyo
 
 from general_function import pl_to_dict, generate_log
 
 
 log = generate_log(name=__name__)
-# This module provides utility functions for preprocessing input data related to hydro power plants and water basins.
-# It uses the Polars library for efficient DataFrame operations and includes functions for generating water flow factors,
-# creating basin volume tables, cleaning hydro power performance tables, generating hydro power states, splitting timestamps,
-# and generating second stage states for simulation or optimization purposes.
 
-# The main functionalities include:
-# - Mapping water flow factors based on the relationship between basins and power plants.
-# - Interpolating and constructing volume tables for water basins.
-# - Cleaning and restructuring hydro power performance tables for further analysis.
-# - Generating state indices for hydro power plants based on performance and error thresholds.
-# - Splitting timestamps for simulation runs.
-# - Generating second stage states for advanced modeling, considering start volumes and discharge volumes.
 
-# The code relies on several helper functions imported from other modules, such as interpolation, filtering, and logging utilities.
+def extract_result_table(model_instance: pyo.Model, var_name: str) -> pl.DataFrame:
+    
+    index_list: list[str] = list(map(lambda x: x.name, getattr(model_instance, var_name).index_set().subsets()))
+        
+    if len(index_list) == 1:
+        data_pl: pl.DataFrame = pl.DataFrame(
+            map(list, getattr(model_instance, var_name).extract_values().items()), 
+            schema= [index_list[0], var_name]
+        )
+    else:
+        data_pl: pl.DataFrame = pl.DataFrame(
+            map(list, getattr(model_instance, var_name).extract_values().items()), 
+            schema= ["index", var_name]
+        ).with_columns(
+            c("index").list.to_struct(fields=index_list)
+        ).unnest("index")
+    return data_pl.with_columns(c(index_list).cast(pl.UInt32))
 
+def pivot_result_table(
+    df: pl.DataFrame, on: str, index: Union[list[str], str], values: str, reindex: bool= False,
+    shift: bool = False
+    ) -> pl.DataFrame:
+    df = df.with_columns(
+        (values + "_" + c(on).cast(pl.Utf8)).alias(on)
+    ).pivot(on=on, index=index, values=values)
+    
+    if shift:
+        df = df.with_columns(
+            pl.all().exclude(index).shift(-1)
+        ).drop_nulls()
+    
+    if reindex:
+        df = df.drop(index).with_row_index(name="real_index")
+    
+    return df
+
+def arange_float(high, low, step):
+    return pl.arange(
+        start=0,
+        end=math.floor((high-low)/step) + 1,
+        step=1,
+        eager=True
+    ).cast(pl.Float64)*step + low
+
+def filter_data_with_next(data: pl.DataFrame, col: str, boundaries: tuple[float, float]) -> pl.DataFrame:
+    lower = data.filter(c(col).lt(boundaries[0]))[col].max()
+    larger = data.filter(c(col).gt(boundaries[1]))[col].min()
+    if lower is None:
+        lower = data[col].min()
+    if larger is None:
+        larger = data[col].max()
+
+    return data.sort(col).filter(c(col).ge(lower).and_(c(col).le(larger)))
+
+def linear_interpolation_for_bound(x_col: pl.Expr, y_col: pl.Expr) -> pl.Expr:
+    
+    a_diff: pl.Expr = y_col.diff()/x_col.diff()
+    x_diff: pl.Expr = x_col.diff().backward_fill()
+    y_diff: pl.Expr = pl.coalesce(
+        pl.when(y_col.is_null().or_(y_col.is_nan()))
+        .then(a_diff.forward_fill()*x_diff)
+        .otherwise(pl.lit(0)).cum_sum(),
+        pl.when(y_col.is_null().or_(y_col.is_nan()))
+        .then(-a_diff.backward_fill()*x_diff)
+        .otherwise(pl.lit(0)).cum_sum(reverse=True)
+    )
+
+    return y_col.backward_fill().forward_fill() + y_diff
+
+def linear_interpolation_using_cols(
+    df: pl.DataFrame, x_col: str, y_col: Union[list[str], str]
+    ) -> pl.DataFrame:
+    df = df.sort(x_col)
+    x = df[x_col].to_numpy()
+    if isinstance(y_col, str):
+        y_col = [y_col]
+    for col in y_col:
+        y = df[col].to_numpy()
+        mask = ~np.isnan(y)
+        df = df.with_columns(
+            pl.Series(np.interp(x, x[mask], y[mask], left=np.nan, right=np.nan)).fill_nan(None).alias(col)
+        ).with_columns(
+            linear_interpolation_for_bound(x_col=c(x_col), y_col=c(col)).alias(col)
+        )
+    return df
+
+def limit_column(
+    col: pl.Expr, lower_bound: Optional[int | datetime | float | date] = None, 
+    upper_bound: Optional[int | datetime | float | date] = None
+) -> pl.Expr:
+    if lower_bound is not None:
+        col = pl.when(col < lower_bound).then(lower_bound).otherwise(col)
+    if upper_bound is not None:
+        col = pl.when(col > upper_bound).then(upper_bound).otherwise(col)
+    return col    
+
+def generate_datetime_index(
+    min_datetime: datetime, max_datetime: datetime, 
+    real_timestep: timedelta, sim_timestep: Optional[timedelta] = None,
+    ) ->  pl.DataFrame:
+
+    datetime_index: pl.DataFrame = pl.datetime_range(
+        start=min_datetime, end=max_datetime,
+        interval=real_timestep, eager=True, closed="left", time_zone="UTC"
+    ).to_frame(name="timestamp").with_row_index(name="T")
+    
+    if sim_timestep:
+        datetime_index: pl.DataFrame = datetime_index.group_by_dynamic(
+            every=sim_timestep, index_column="timestamp", start_by="datapoint", closed="left"
+            ).agg(
+                c("T").count().alias("n_index")
+            ).with_row_index(name="T")
+    else:
+        datetime_index = datetime_index.with_columns(pl.lit(1).alias("n_index"))
+
+    return datetime_index
+
+
+def generate_clean_timeseries(
+    data: pl.DataFrame, col_name : str, min_datetime: datetime, max_datetime: datetime, timestep: timedelta, 
+    max_value: Optional[int] = None, min_value: Optional[int] = None,
+    agg_type: Literal["mean", "sum", "first"] = "first", timestamp_col: str = "timestamp"
+    ) -> pl.DataFrame:
+
+    datetime_index = generate_datetime_index(
+            min_datetime=min_datetime, max_datetime=max_datetime, real_timestep=timestep)
+    
+    cleaned_data: pl.DataFrame = data\
+        .filter(c(timestamp_col).ge(min_datetime).and_(c(timestamp_col).lt(max_datetime)))\
+        .sort(timestamp_col)\
+        .with_columns(
+            c(col_name).pipe(limit_column, lower_bound=min_value, upper_bound=max_value).alias(col_name)
+        )
+    
+    
+    cleaned_data = cleaned_data\
+        .group_by_dynamic(
+            index_column=timestamp_col, start_by="datapoint", every=timestep, closed="left"
+        ).agg(
+            c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
+            c(col_name).max().name.prefix("max_"),
+            c(col_name).min().name.prefix("min_"),
+        )
+    return (
+        datetime_index["T", "timestamp"]\
+            .join(cleaned_data, left_on="timestamp", right_on=timestamp_col, how="left")\
+            .with_columns(c(col_name).interpolate().forward_fill().backward_fill())
+    )
 
 def generate_basin_volume_table(
     water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float

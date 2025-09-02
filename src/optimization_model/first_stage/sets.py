@@ -38,8 +38,9 @@ def first_stage_sets(model):
     model.S_B = pyo.Set(model.B)
     model.S_H = pyo.Set(model.H)
     # index gathering the state of every basin and hydro powerplants
-    model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s_b) for b in model.B for s_b in model.S_B[b]])
-    model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s_h) for h in model.H for s_h in model.S_H[h]])
+    model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s) for b in model.B for s in model.S_B[b]])
+    model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s) for h in model.H for s in model.S_H[h]])
+    model.S = pyo.Set(dimen=1, initialize=lambda model: [s for h in model.H for s in model.S_H[h]])
     # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
     model.HBS = pyo.Set(dimen=3) 
     
