@@ -13,12 +13,11 @@ def second_stage_parameters(model):
     model.unpowered_factor_price_pos = pyo.Param(model.H) # CHF/(m^3/s)
     model.unpowered_factor_price_neg = pyo.Param(model.H) # CHF/(m^3/s)
     model.powered_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
-    model.remaining_volume_pos = pyo.Param(model.H, default=0) # MW/(m^3/s)
-    model.remaining_volume_neg = pyo.Param(model.H, default=0) # MW/(m^3/s)
-    model.volume_buffer = pyo.Param(model.H) # MW/(m^3/s)
+    model.overage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.shortage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
-    model.spilled_factor = pyo.Param(model.B, default=0.01) # m^3
+    model.spilled_factor = pyo.Param(model.B, default=1) # m^3
     
     model.min_basin_volume = pyo.Param(model.BS, default=0) # m^3
     model.max_basin_volume = pyo.Param(model.BS, default=0) # m^3 
@@ -28,8 +27,10 @@ def second_stage_parameters(model):
 
     model.max_flow = pyo.Param(model.HS, default=0) #m^3/s 
     model.alpha = pyo.Param(model.HS, default=0) #MW/(Mm^3/s)
-    model.max_power = pyo.Param(model.H, default=0)
+    
     
     model.big_m = pyo.Param(default=1e6)  # Big M value for constraints
+    model.total_positive_flex_power = pyo.Param(default=0)
+    model.total_negative_flex_power = pyo.Param(default=0)
     
     return model

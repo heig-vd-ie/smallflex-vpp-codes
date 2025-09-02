@@ -16,7 +16,7 @@ from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from pipelines.data_configs import PipelineConfig
 from pipelines.data_manager import PipelineDataManager
 
-from pipelines.baseline_model.first_stage import first_stage_baseline_model
+from optimization_model.baseline.first_stage import first_stage_baseline_model
 
 
 log = generate_log(name=__name__)

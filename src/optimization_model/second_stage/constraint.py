@@ -187,10 +187,7 @@ a Big-M decomposition is required to linearize it.
             V_\text{BUF}^{h} & \text{otherwise }
         \end{cases} \qquad \forall \{h\in H\}
     \end{align} 
-"""
-import pyomo.environ as pyo
-
-        
+"""       
 def second_stage_baseline_objective(model):
     
     market_price = sum(
@@ -199,25 +196,33 @@ def second_stage_baseline_objective(model):
         ) 
     
     ancillary_market_price = sum(
-            4*model.ancillary_market_price[f]  *
-            sum(model.ancillary_power[f, h] for h in model.CH) for f in model.F
+            4*model.ancillary_market_price[f]  * model.ancillary_power[f] for f in model.F
         )
-    power_volume_penalty = sum(
-            model.diff_volume_pos[h] * model.unpowered_factor_price_pos[h] -
-            model.diff_volume_neg[h] * model.unpowered_factor_price_neg[h] 
-            for h in model.H
-        ) / (model.nb_sec * model.volume_factor) 
+    # powered_volume_penalty = sum(
+    #         model.powered_volume_overage[h] * model.unpowered_factor_price_pos[h] -
+    #         model.powered_volume_shortage[h] * model.unpowered_factor_price_neg[h] 
+    #         for h in model.H
+    #     ) / (model.nb_sec * model.volume_factor) 
     spilled_penalty = sum(
             sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
             for b in model.B
         ) / (model.nb_sec * model.volume_factor)
-    return market_price + ancillary_market_price - spilled_penalty + power_volume_penalty
+    return market_price + ancillary_market_price - spilled_penalty + sum(model.powered_volume_penalty[h] for h in model.H)
 
+def powered_volume_penalty_constraint(model, h):
+    
+    
+    return (
+        model.powered_volume_penalty[h] ==
+        (model.powered_volume_overage[h] * model.unpowered_factor_price_pos[h] -
+        model.powered_volume_shortage[h] * model.unpowered_factor_price_neg[h] 
+    )/ (model.nb_sec * model.volume_factor) )
+    
 
 ####################################################################################################################
 ### Basin volume evolution constraints #############################################################################  
 #################################################################################################################### 
-  
+
 def basin_volume_evolution(model, t, b):
     if t == model.T.first():
         return model.basin_volume[t, b] == model.start_basin_volume[b]
@@ -292,35 +297,41 @@ def hydro_power_constraint(model, t, h):
         for s in model.S_H[h])
     )
 
-def positive_hydro_ancillary_power_constraint(model, t, f, h):
+def positive_hydro_ancillary_power_constraint(model, t, f):
+    
+    # return model.ancillary_power[f] <= 0
+        
+    return (
+        model.ancillary_power[f] <= 
+        model.total_positive_flex_power - sum(model.hydro_power[t, h] for h in model.CH) 
+    ) 
+
+def negative_hydro_ancillary_power_constraint(model, t, f):
     
     return (
-        model.hydro_power[t, h] + model.ancillary_power[f, h] <= model.max_power[h]
-    )
-
-def negative_hydro_ancillary_power_constraint(model, t, f, h):
-    
-    return model.hydro_power[t, h] - model.ancillary_power[f, h] >= 0
+        model.ancillary_power[f] <= 
+        model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH) 
+    ) 
 
 
 def diff_volume_constraint(model, h):
     return (
-        model.diff_volume_pos[h] - model.diff_volume_neg[h] ==
-        model.remaining_volume_pos[h] - model.remaining_volume_neg[h] + model.powered_volume[h]  -
-        sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor
+        model.powered_volume_overage[h] - model.powered_volume_shortage[h] == 
+        sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor - 
+        model.powered_volume[h]
     )
 
     
 def max_powered_volume_quota_constraint(model, h):
     return (
-        model.diff_volume_pos[h] <= model.volume_buffer[h] + model.remaining_volume_pos[h]/2
+        model.powered_volume_overage[h] <= model.overage_volume_buffer[h]
     )
 
     
 def min_powered_volume_quota_constraint(model, h):
 
     return (
-        model.diff_volume_neg[h] <= model.volume_buffer[h] + model.remaining_volume_neg[h]/2
+        model.powered_volume_shortage[h] <= model.shortage_volume_buffer[h]
     )
 
     

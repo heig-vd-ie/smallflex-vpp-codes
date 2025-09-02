@@ -7,7 +7,7 @@ class PipelineConfig:
     """Configuration for the Dig A Plan optimization pipeline"""
     
     year: int
-    first_stage_timestep: timedelta = timedelta(days=1)
+    first_stage_timestep: timedelta = timedelta(days=2)
     second_stage_timestep: timedelta = timedelta(hours=1)
     ancillary_market_timestep: timedelta = timedelta(hours=4)
     second_stage_sim_horizon: timedelta = timedelta(days=4)

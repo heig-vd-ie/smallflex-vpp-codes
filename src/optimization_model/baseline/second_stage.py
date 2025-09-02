@@ -29,13 +29,15 @@ def second_stage_baseline_constraints(model: pyo.AbstractModel) -> pyo.AbstractM
     model.max_flow_by_state_constraint = pyo.Constraint(model.T, model.HBS, rule=max_flow_by_state_constraint)
     model.flow_constraint = pyo.Constraint(model.T, model.H, rule=flow_constraint)
     model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
-    model.positive_hydro_ancillary_power_constraint = pyo.Constraint(model.TF, model.CH, rule=positive_hydro_ancillary_power_constraint)
-    model.negative_hydro_ancillary_power_constraint = pyo.Constraint(model.TF, model.CH, rule=negative_hydro_ancillary_power_constraint)
+    model.positive_hydro_ancillary_power_constraint = pyo.Constraint(model.TF, rule=positive_hydro_ancillary_power_constraint)
+    model.negative_hydro_ancillary_power_constraint = pyo.Constraint(model.TF, rule=negative_hydro_ancillary_power_constraint)
     ####################################################################################################################
     ### Hydropower volume quota constraints ############################################################################
     ####################################################################################################################
     model.max_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=max_powered_volume_quota_constraint)
     model.min_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=min_powered_volume_quota_constraint)
+    model.powered_volume_penalty_constraint = pyo.Constraint(model.H, rule=powered_volume_penalty_constraint)
+
     model.diff_volume_constraint = pyo.Constraint(model.H, rule=diff_volume_constraint)
     return model
 

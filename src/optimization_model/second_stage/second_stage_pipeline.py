@@ -140,9 +140,7 @@ class BaselineSecondStage(BaseLineInput):
 
         self.data["max_flow"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "flow"]])  
         self.data["alpha"] = pl_to_dict_with_tuple(self.index["hydro_power_state"][["HS", "alpha"]])  
-        
-        self.data["max_power"] = {1: 7}
-                        
+
         self.model_instance: pyo.Model = self.model.create_instance({None: self.data}) 
 
 
