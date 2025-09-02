@@ -6,13 +6,10 @@ from polars import selectors as cs
 import pyomo.environ as pyo
 from smallflex_data_schema import SmallflexInputSchema
 
-from utility.input_data_preprocessing import (
-    generate_basin_volume_table, clean_hydro_power_performance_table, split_timestamps_per_sim
-)
-from utility.pyomo_preprocessing import (
-    extract_optimization_results, pivot_result_table, remove_suffix, generate_clean_timeseries, generate_datetime_index)
-from utility.input_data_preprocessing import (
-    generate_basin_state, generate_hydro_power_state, generate_first_stage_basin_state_table
+from utility.data_preprocessing import (
+    generate_basin_volume_table, clean_hydro_power_performance_table, split_timestamps_per_sim,
+    generate_hydro_power_state, generate_first_stage_basin_state_table, 
+    generate_clean_timeseries, generate_datetime_index
 )
 
 from general_function import pl_to_dict, duckdb_to_dict
@@ -48,6 +45,7 @@ class PipelineDataManager(PipelineConfig):
         self.water_flow_factor: pl.DataFrame
         self.first_stage_basin_state: pl.DataFrame
         self.first_stage_hydro_power_state: pl.DataFrame
+        self.first_stage_hydro_flex_power: pl.DataFrame
         self.volume_buffer: dict[int, float]
         # Timeseries measurement table
         self.first_stage_discharge_volume: pl.DataFrame
@@ -144,6 +142,14 @@ class PipelineDataManager(PipelineConfig):
         )
         self.first_stage_hydro_power_state  = generate_hydro_power_state(
             power_performance_table=self.power_performance_table, basin_state=self.first_stage_basin_state)
+        
+        self.first_stage_hydro_flex_power = self.first_stage_hydro_power_state\
+            .filter(c("H").is_in(self.hydro_power_plant.filter(c("control")=="continuous")["H"].to_list()))\
+            .group_by("S", maintain_order=True)\
+            .agg(
+                c("power").filter(c("power")>0).min().fill_null(0).alias("total_positive_flex_power"),
+                (-c("power").filter(c("power")<0).max()).fill_null(0).alias("total_negative_flex_power")
+            )
         
     def __calculate_power_volume_buffer(self):
     
