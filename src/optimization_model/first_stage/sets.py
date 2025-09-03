@@ -14,14 +14,14 @@ such as :math:`S\_B`. To handle this limitation, we need to create new sets (i.e
 represent the deployment of these subsets. These new sets will be structured to map the relationships required for 
 indexing variables and parameters in the model effectively.
 
-:math:`SB \in \{b, s_b\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
+:math:`SB \in \{b, s\}=\{(1,~1),~(1,~2),~(2,~3),~(2,~4),~(2,~5),~(3,~6)\}` 
 
 
-The set :math:`S\_BH` defines the connections between each basin, its corresponding state, and the hydro powerplants. 
+The set :math:`HBS` defines the connections between each basin, its corresponding state, and the hydro powerplants. 
 This link is established solely between a hydro powerplant and its associated upstream basin. It is assumed that the 
 water level in downstream basins does not affect the behavior of turbined or pumped energy.
 
-:math:`S_{BH} \in \{b, h\, s_b, s_h\}=\{(1, ~1, ~1, ~1),~(1, ~1, ~2, ~2),~(1, ~1, ~3, ~3)\}` 
+:math:`HBS \in \{b, ~h, ~s\}=\{(1, ~1, ~1),~(1, ~1, ~2),~(1, ~1, ~3,)\}`
 
 """
 

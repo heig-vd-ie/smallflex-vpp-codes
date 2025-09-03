@@ -63,11 +63,9 @@ class BaselineFirstStage(PipelineDataManager):
             self.first_stage_hydro_power_state.select("HS", "flow"))
         data["alpha"] = pl_to_dict_with_tuple(
             self.first_stage_hydro_power_state.select("HS", "alpha"))
-        data["max_power"] = {0: 7}
     
         data["total_positive_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_positive_flex_power"])
         data["total_negative_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_negative_flex_power"])
-        print(data["total_positive_flex_power"])
         
         # Timeseries
         data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TB", "discharge_volume"]])
@@ -75,7 +73,7 @@ class BaselineFirstStage(PipelineDataManager):
         data["ancillary_market_price"] = pl_to_dict(self.first_stage_ancillary_market_price[["T", "avg"]])
 
         # Configuration parameters
-        data["max_turbined_volume_factor"] = {None: self.first_stage_max_turbined_volume}
+        data["max_powered_flow_ratio"] = {None: self.first_stage_max_powered_flow_ratio}
         data["volume_factor"] = {None: self.volume_factor}
 
         self.model_instance = self.model.create_instance({None: data}) # type: ignore

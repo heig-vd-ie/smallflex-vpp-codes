@@ -1,15 +1,21 @@
 r"""
+1.5.1 Objective
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. math::
     :label: first-objective
     :nowrap:
     
     \begin{align}
-        \max \sum_{t \in T} c_\text{DA}^{t} \cdot nb_\text{HOUR}^{t} \cdot 
-        \sum_{h \in H} \left( P_\text{TUR}^{t,~h} - P_\text{PUM}^{t,~h} \right)
+        \max \sum_{t~\in~T} nb_\text{HOUR}^{t} \cdot \lbrack 
+        c_\text{FLEX}^{t} \cdot  P_\text{ANC}^{t} +
+        \sum_{h~\in~H} c_\text{DA}^{t} \cdot  P_\text{HYDRO}^{t,~h}
+        
+        \rbrack
     \end{align}
 
 
-1.5.1. Water basin volume evolution
+1.5.2. Water basin volume evolution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
@@ -19,13 +25,11 @@ r"""
     \begin{align}
         V_\text{BAS}^{t,~b} =
         \begin{cases} 
-            V_\text{BAS, START}^{b} & \text{if } t = t_0 \\
+            V_\text{START}^{b} & \text{if } t = t_0 \\
             V_\text{BAS}^{t - 1,~b} + V_\text{DIS}^{t - 1,~b} - V_\text{SPIL}^{t - 1,~b} + 
             nb_\text{SEC} \cdot nb_\text{HOUR}^{t-1} \cdot 
-            \sum_{h \in H} \left( 
-                F_\text{TUR}^{b,~h} \cdot Q_\text{TUR}^{t-1,~h} + 
-                F_\text{PUM}^{b,~h} \cdot Q_\text{PUM}^{t-1,~h} 
-            \right) \quad & \text{if } t \neq t_0
+            \sum_{h~\in~H} F_\text{HYDRO}^{b,~h} \cdot Q^{t-1,~h}
+            \quad & \text{if } t \neq t_0
         \end{cases} \qquad \forall \{t\in T, b \in B \}
     \end{align}
 
@@ -34,16 +38,13 @@ r"""
     :nowrap:
     
     \begin{align}
-    V_\text{BAS, START}^{b} = V_\text{BAS}^{t_{end},~b} + V_\text{DIS}^{t_{end},~b}  - V_\text{SPIL}^{t_{end},~b} + 
+    V_\text{START}^{b} = V_\text{BAS}^{t_{end},~b} + V_\text{DIS}^{t_{end},~b}  - V_\text{SPIL}^{t_{end},~b} + 
     nb_\text{SEC} \cdot nb_\text{HOUR}^{t_{end}} \cdot
-        \sum_{h \in H} \left(
-            F_\text{TUR}^{b,~h} \cdot Q_\text{TUR}^{t_{end},~h} +
-            F_\text{PUM}^{b,~h} \cdot Q_\text{PUM}^{t_{end},~h}
-        \right) \qquad \forall \{b \in B \}
+        \sum_{h~\in~H} F^{b,~h} \cdot Q^{t_{end},~h} \qquad \forall \{b \in B \}
     \end{align} 
 
     
-1.5.2. Water basin state
+1.5.3. Water basin state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. math::
@@ -51,9 +52,9 @@ r"""
     :nowrap:
     
     \begin{align}
-        V_\text{BAS}^{t,~b} \leq V_\text{BAS, MAX}^{b,~s} +  V_\text{BAS, MAX}^{b,~S_B^\text{END}\{b\}} 
-        \cdot \left(1 -S_\text{BAS}^{t,~b,~s} \right)
-    \qquad \forall \{t\in T~\vert~b \in B~\vert~ s \in S_B\{b\} \}
+        V_\text{BAS}^{t,~b} \leq V_\text{MAX}^{b,~s} +  V_\text{MAX}^{b,~S_B^\text{END}\{b\}} 
+        \cdot \left(1 -State^{t,~b,~s} \right)
+    \qquad \forall \{t\in T~\vert~(b,~s) \in BS \}
     
     \end{align} 
 
@@ -62,7 +63,7 @@ r"""
     :nowrap:
     
     \begin{align}
-        V_\text{BAS}^{t,~b} \geq V_\text{BAS, MIN}^{b,~s} \cdot S_\text{BAS}^{t,~b,~s}
+        V_\text{BAS}^{t,~b} \geq V_\text{MIN}^{b,~s} \cdot State^{t,~b,~s}
         \qquad \forall \{t\in T~\vert~b \in B \}
     \end{align}
 .. math::
@@ -70,43 +71,64 @@ r"""
     :nowrap:
     
     \begin{align}
-        \sum_{s \in S_B\{b\}} S_\text{BAS}^{t,~b,~s} = 1 \qquad \forall \{t\in T~\vert~b \in B \}
-    \end{align} 
-    
-
-1.5.4. Water pumped
-~~~~~~~~~~~~~~~~~~~~
-
-.. math::
-    :label: pumped-flow-state
-    :nowrap:
-    
-    \begin{align}
-        Q_\text{PUM, S}^{t,~h,~s_h} \leq Q_\text{PUM, MAX}^{h,~s_h} \cdot S_\text{BAS}^{t,~b,~s}
-        \qquad \forall \{t\in T~\vert~b,~h,~s_h ~s_h \in S_{BH} \}
+        \sum_{s~\in~S_B\{b\}} State^{t,~b,~s} = 1 \qquad \forall \{t\in T~\vert~b \in B \}
     \end{align}
+
+1.5.4. Hydropower plants
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 .. math::
-    :label: pumped-flow
+    :label: flow-state
     :nowrap:
     
     \begin{align}
-        Q_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} Q_\text{PUM, S}^{t,~h,~s} 
+        Q_\text{S}^{t,~h,~s} \leq Q_\text{MAX}^{h,~s} \cdot State^{t,~b,~s}
+        \qquad \forall \{t\in T~\vert~(h,~b,~s) \in HBS \}
+    \end{align}
+    
+.. math::
+    :label: flow
+    :nowrap:
+    
+    \begin{align}
+        Q^{t,~h} = \sum_{s~\in~S_H\{h\}} Q_\text{S}^{t,~h,~s} 
         \qquad \forall \{t\in T~\vert~h \in H~\}
     \end{align}
     
 .. math::
-    :label: pumped-power
+    :label: hydro-power
     :nowrap:
     
     \begin{align}
-        P_\text{PUM}^{t,~h} = \sum_{s \in S_H\{h\}} \alpha_\text{PUM, AVG}^{h,~s} \cdot  Q_\text{PUM, S}^{t,~h,~s}
+        P_\text{HYDRO}^{t,~h} = \sum_{s~\in~S_H\{h\}} \alpha^{h,~s} \cdot  Q_\text{S}^{t,~h,~s}
         \qquad \forall \{t\in T~\vert~h \in H\}
     \end{align}
 
-The constraint :eq:`pumped-flow-state` takes the set :math:`S\_BH` as argument, enabling the connection between the 
-basin set :math:`B` and the hydro powerplant set :math:`H`.
+1.5.5. Ancillary services
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. math::
+    :label: positive-hydro-ancillary-power
+    :nowrap:
+    
+    \begin{align}
+        P_\text{ANC}^{t} \leq \sum_{b,~s~\in~BS} P_\text{FLEX +}^{~s} \cdot State^{t,~b,~s} - 
+        \sum_{h~\in~CH} P_\text{HYDRO}^{t,~h} \qquad \forall \{t\in T\}
+    \end{align}
+    
+.. math::
+    :label: hydro-power
+    :nowrap:
+    
+    \begin{align}
+        P_\text{ANC}^{t} \leq \sum_{b,~s~\in~BS} P_\text{FLEX -}^{~s} \cdot State^{t,~b,~s} + 
+        \sum_{h~\in~CH} P_\text{HYDRO}^{t,~h}\qquad \forall \{t\in T~\}
+    \end{align}
+
 """
-import pyomo.environ as pyo
+########################################################################################################################
+# 1.5.1 Water basin volume evolution ###################################################################################
+########################################################################################################################
 
 def first_stage_baseline_objective(model):
     market_price = sum(
@@ -124,7 +146,11 @@ def first_stage_baseline_objective(model):
     ) / (model.nb_sec * model.volume_factor)
         
     return market_price + ancillary_market_price - spilled_penalty
-    
+
+########################################################################################################################
+# 1.5.2 Water basin volume evolution ###################################################################################
+########################################################################################################################
+
 def basin_volume_evolution(model, t, b):
     if t == model.T.first():
         return model.basin_volume[t, b] == model.start_basin_volume[b]
@@ -143,6 +169,10 @@ def basin_end_volume_constraint(model, b):
         sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
     )
 
+########################################################################################################################
+# 1.5.3. Water basin state #############################################################################################
+########################################################################################################################
+
 def basin_max_state(model, t, b, s):
     return (
         model.basin_volume[t, b] <= model.max_basin_volume[b, s] +
@@ -156,11 +186,14 @@ def basin_min_state(model, t, b, s):
 def basin_state_total(model, t, b):
     return sum(model.basin_state[t, b, s] for s in model.S_B[b]) == 1
 
+########################################################################################################################
+# 1.5.4. Hydropower plants #############################################################################################
+########################################################################################################################
 
 def max_flow_by_state(model, t, h, b, s):
     return (
         model.flow_by_state[t, h, s] <=
-        model.max_turbined_volume_factor * model.max_flow[h, s] * model.basin_state[t, b, s]
+        model.max_powered_flow_ratio * model.max_flow[h, s] * model.basin_state[t, b, s]
     )
 
 def total_flow(model, t, h):
@@ -177,27 +210,18 @@ def total_hydro_power(model, t, h):
         for s in model.S_H[h])
     )
 
-# def positive_hydro_ancillary_power(model, t, h):
-#     return (
-#         model.hydro_power[t, h] + model.ancillary_power[t, h] <= model.max_power[h]
-#     )
 
-# def negative_hydro_ancillary_power(model, t, h):
-#     return model.hydro_power[t, h] - model.ancillary_power[t, h] >= 0
-
-
+########################################################################################################################
+# 1.5.5. Ancillary services ############################################################################################
+########################################################################################################################
 
 def positive_hydro_ancillary_power_constraint(model, t):
-    
-    # return model.ancillary_power[f] <= 0
-        
     return (
         model.ancillary_power[t] <=
         sum(model.total_positive_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) - sum(model.hydro_power[t, h] for h in model.CH)
     ) 
 
 def negative_hydro_ancillary_power_constraint(model, t):
-    
     return (
         model.ancillary_power[t] <=
         sum(model.total_negative_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) + sum(model.hydro_power[t, h] for h in model.CH)

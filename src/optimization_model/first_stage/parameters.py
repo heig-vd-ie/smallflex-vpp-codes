@@ -8,7 +8,7 @@ def first_stage_parameters(model):
     model.nb_hours = pyo.Param(model.T)
     model.nb_sec = pyo.Param(default=3600) # s
     
-    model.max_turbined_volume_factor = pyo.Param()
+    model.max_powered_flow_ratio = pyo.Param()
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
     model.spilled_factor = pyo.Param(model.B, default=0)
@@ -21,7 +21,6 @@ def first_stage_parameters(model):
     model.volume_factor = pyo.Param() 
     
     model.max_flow= pyo.Param(model.HS, default=0) #m^3/s 
-    model.max_power = pyo.Param(model.H, default=0)
     model.total_positive_flex_power = pyo.Param(model.S, default=0)
     model.total_negative_flex_power = pyo.Param(model.S, default=0)
     model.alpha = pyo.Param(model.HS, default=0)  #MW/(m^3/s)

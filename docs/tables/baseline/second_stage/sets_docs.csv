@@ -1,9 +1,14 @@
 ﻿Name,Dimension,Sub index,Description
 :math:`T`,1,,time
+:math:`F`,1,,Ancillary services flex time
 :math:`H`,1,,Hydro powerplants
+:math:`CH`,1,,Continous hydro powerplants
+:math:`DH`,1,,On/off Hydro powerplants
 :math:`B`,1,,Water basins
+:math:`S`,1,,States
+:math:`TF`,1,:math:`\{ T; ~F \}`,Index to make correspondance between time and flex time
+:math:`S_H`,2,:math:`H`,State of each hydro powerplants
 :math:`S_B`,2,:math:`B`,State of each basins
-:math:`S_H`,2,:math:`H`,State of each hydro powerplants (related to upstream basin state)
-:math:`S_Q`,3,:math:`S_H`,State of each hydro powerplant  water flow
-:math:`B_{H}`,2,:math:`H`,Index to make the correspondence between hydro powerplants ant their upper stream bassin
-:math:`SB_{H}`,3,:math:`S_H`,Index to make the correspondence between basins' and hydro powerplants' states
+:math:`HS`,2,:math:`\{ H; ~S \}`,Index to make the correspondence between the states and hydro powerplants
+:math:`BS`,2,:math:`\{ B; ~S \}`,Index to make the correspondence between the states and basins
+:math:`HBS`,3,:math:`\{ H; ~B; ~S \}`,"Index to make the correspondence between the states, basins and hydro powerplants"

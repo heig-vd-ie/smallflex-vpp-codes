@@ -1,7 +1,12 @@
 ﻿Name,Dimension,Sub index,Description
 :math:`T`,1,,time
 :math:`H`,1,,Hydro powerplants
+:math:`CH`,1,,Continous hydro powerplants
+:math:`DH`,1,,On/off Hydro powerplants
 :math:`B`,1,,Water basins
+:math:`S`,1,,States
 :math:`S_H`,2,:math:`H`,State of each hydro powerplants
 :math:`S_B`,2,:math:`B`,State of each basins
-:math:`S_{BH}`,4,:math:`\{ H; ~B; ~S_H \;~S_B \}`,"Index to make the correspondence between the states, basins and hydro powerplants"
+:math:`HS`,2,:math:`\{ H; ~S \}`,Index to make the correspondence between the states and hydro powerplants
+:math:`BS`,2,:math:`\{ B; ~S \}`,Index to make the correspondence between the states and basins
+:math:`HBS`,3,:math:`\{ H; ~B; ~S \}`,"Index to make the correspondence between the states, basins and hydro powerplants"
