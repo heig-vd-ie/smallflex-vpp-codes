@@ -120,7 +120,7 @@ class PipelineResultManager(PipelineDataManager):
     
     def extract_first_stage_optimization_results(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
 
-        optimization_results = self.extract_optimization_results(model_instance=model_instance, is_first_stage=False)
+        optimization_results = self.extract_optimization_results(model_instance=model_instance, is_first_stage=True)
         optimization_results = optimization_results.join(
             self.first_stage_timestep_index["T", "timestamp"], on= "T", how="left")
         

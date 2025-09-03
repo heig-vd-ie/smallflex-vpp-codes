@@ -33,9 +33,9 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 
 pipeline_config: PipelineConfig = PipelineConfig(year=YEAR)
 pipeline_data_manager: PipelineDataManager = PipelineDataManager(
-    smallflex_input_schema=smallflex_input_schema,
-    pipeline_config=pipeline_config,
-    hydro_power_mask=HYDROPOWER_MASK[2]
+smallflex_input_schema=smallflex_input_schema,
+pipeline_config=pipeline_config,
+hydro_power_mask=HYDROPOWER_MASK[2]
 )
 result_manager:PipelineResultManager = PipelineResultManager(pipeline_data_manager=pipeline_data_manager)
 

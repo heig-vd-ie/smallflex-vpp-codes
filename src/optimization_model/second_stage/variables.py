@@ -9,7 +9,7 @@ def second_stage_variables(model):
     model.powered_volume_overage = pyo.Var(model.H, within=pyo.NonNegativeReals) # m^3
     model.powered_volume_shortage = pyo.Var(model.H, within=pyo.NonNegativeReals) # m^3
     
-    model.powered_volume_penalty = pyo.Var(model.H, within=pyo.Reals) # m^3
+    # model.powered_volume_penalty = pyo.Var(model.H, within=pyo.Reals) # m^3
 
     
     model.flow = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals) # m^3

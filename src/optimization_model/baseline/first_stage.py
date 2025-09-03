@@ -1,5 +1,5 @@
 import pyomo.environ as pyo
-from optimization_model.first_stage.constraint import *
+from optimization_model.first_stage.constraints import *
 from optimization_model.first_stage.sets import *
 from optimization_model.first_stage.parameters import *
 from optimization_model.first_stage.variables import *

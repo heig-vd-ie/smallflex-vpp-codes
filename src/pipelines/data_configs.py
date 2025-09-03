@@ -19,7 +19,7 @@ class PipelineConfig:
     volume_factor: float = 1e-6
     spilled_factor: float = 1e3
     solver_name: str = 'gurobi'
-    first_stage_max_turbined_volume: float= 0.75
+    first_stage_max_powered_flow_ratio: float= 0.75
     second_stage_min_volume_ratio: float = 0.1
     second_stage_quantile: float = 0.15 
     verbose: bool = False
