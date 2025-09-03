@@ -17,7 +17,6 @@ dependencies = [
     "gurobipy (>=12.0.2,<13.0.0)",
     "patito (>=0.8.3,<0.9.0)",
     "smallflex-data-schema @ git+ssh://git@github.com/heig-vd-ie/smallflex_data_schema.git",
-    "demandlib (>=0.2.2,<0.3.0)"
 ]
 
 

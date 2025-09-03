@@ -9,7 +9,7 @@ on:
   push:
     branches: [ develop_luca ]
   pull_request:
-    branches: [ luca ]
+    branches: [ develop_luca ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -38,10 +38,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install R
-        run: |
-          sudo apt update
-          sudo apt install -y r-base r-base-dev
       # WORKFLOW FOR SPHINX WITH PIP
       # - name: Install dependencies
       #   run: | 
@@ -65,7 +61,6 @@ jobs:
       - name: Install dependencies with Poetry
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          poetry run pip install --no-cache-dir rpy2
           poetry install --no-root
       #   poetry install
     
