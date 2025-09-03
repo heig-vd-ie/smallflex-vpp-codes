@@ -32,8 +32,9 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
             ${{ secrets.SSH_PRIVATE_KEY_SMALLFLEX_DATASCHEMA }}
+            ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
+            
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v2
