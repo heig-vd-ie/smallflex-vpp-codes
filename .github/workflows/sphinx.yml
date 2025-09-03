@@ -42,18 +42,6 @@ jobs:
       - name: Test SSH connection
         run: |
           ssh -T git@github.com || true
-      # WORKFLOW FOR SPHINX WITH PIP
-      # - name: Install dependencies
-      #   run: | 
-      #     python -m pip install --upgrade pip
-      #     pip install sphinx nbsphinx myst_parser sphinx-copybutton sphinx_rtd_theme sphinx_rtd_size ghp-import pyomo
-      # - name: Build HTML
-      #   run: | 
-      #     cd docs/
-      #     make html
-      # - name: Run ghp-import
-      #   run: | 
-      #     ghp-import -n -p -f docs/_build/html
 
       # WORKFLOW FOR SPHINX WITH POETRY
       - name: Install Poetry
@@ -61,9 +49,7 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           export PATH="$HOME/.local/bin:$PATH"
           poetry --version
-          
-      - name: Configure Poetry to use system Git
-        run: poetry config experimental.system-git-client true
+          poetry config experimental.system-git-client true
 
       - name: Install dependencies with Poetry
         run: |
