@@ -28,7 +28,6 @@ jobs:
       - uses: actions/checkout@v2
 
       # Set up SSH agent for private repo access
-      # Set up SSH agent for private repo access
       - name: Set up SSH for utility-functions repo
         uses: webfactory/ssh-agent@v0.5.3
         with:
@@ -44,7 +43,9 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3.12"
-
+      - name: Test SSH connection
+        run: |
+          ssh -T git@github.com || true
       # WORKFLOW FOR SPHINX WITH PIP
       # - name: Install dependencies
       #   run: | 
