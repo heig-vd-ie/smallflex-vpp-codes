@@ -39,17 +39,29 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3.12"
+          
       - name: Test SSH connection
         run: |
           ssh -T git@github.com || true
 
-      # WORKFLOW FOR SPHINX WITH POETRY
+      # Install Poetry using a dedicated action
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
-          poetry config experimental.system-git-client true
+        uses: snok/install-poetry@v1.3.4
+        with:
+          # This ensures a newer version of Poetry is installed
+          version: 1.8.2
+          virtualenvs-in-project: true
+
+      - name: Set up Poetry to use the system's Git client
+        run: poetry config experimental.system-git-client true    
+
+      # # WORKFLOW FOR SPHINX WITH POETRY
+      # - name: Install Poetry
+      #   run: |
+      #     curl -sSL https://install.python-poetry.org | python3 -
+      #     export PATH="$HOME/.local/bin:$PATH"
+      #     poetry --version
+      #     poetry config experimental.system-git-client true
 
       - name: Install dependencies with Poetry
         run: |
