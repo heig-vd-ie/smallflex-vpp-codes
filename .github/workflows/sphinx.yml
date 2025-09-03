@@ -32,9 +32,8 @@ jobs:
       - name: Set up SSH Keys
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: |
-            ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
-            ${{ secrets.SSH_PRIVATE_KEY_SMALLFLEX_DATASCHEMA }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
+
 
               # Use git to tell it to use SSH over HTTPS for all github.com requests
       - name: Configure Git to use SSH
