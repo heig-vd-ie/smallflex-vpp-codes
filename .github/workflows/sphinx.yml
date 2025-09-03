@@ -49,7 +49,6 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           export PATH="$HOME/.local/bin:$PATH"
           poetry --version
-          poetry config experimental.system-git-client true
 
       - name: Install dependencies with Poetry
         run: |
