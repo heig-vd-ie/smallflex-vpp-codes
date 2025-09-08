@@ -12,7 +12,7 @@ def second_stage_parameters(model):
 
     model.unpowered_factor_price_pos = pyo.Param(model.H) # CHF/(m^3/s)
     model.unpowered_factor_price_neg = pyo.Param(model.H) # CHF/(m^3/s)
-    model.powered_volume = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.powered_volume_quota = pyo.Param(model.H, default=0) # MW/(m^3/s)
     model.overage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
     model.shortage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
     

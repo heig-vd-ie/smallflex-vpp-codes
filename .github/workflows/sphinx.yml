@@ -32,24 +32,14 @@ jobs:
       - name: Set up SSH Keys
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
-
-
-              # Use git to tell it to use SSH over HTTPS for all github.com requests
-      # - name: Configure Git to use SSH
-      #   run: |
-      #     git config --global url."git@github.com:".insteadOf "https://github.com/"
-      # - name: Verify SSH Keys are Loaded
-      #   run: |
-      #     ssh-add -l
-      #     ssh -vT git@github.com       
-            
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY_UTILIY_FUNCTIONS }}
+            ${{ secrets.SSH_PRIVATE_KEY_SMALLFLEX_DATASCHEMA }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v2
         with:
           python-version: "3.12"
-   
 
       # WORKFLOW FOR SPHINX WITH POETRY
       - name: Install Poetry

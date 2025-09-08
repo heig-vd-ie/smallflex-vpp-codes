@@ -105,15 +105,15 @@ class BaselineSecondStage(PipelineDataManager):
                 c("powered_volume") + 
                 c("H").replace_strict(self.powered_volume_shortage, default=0) - 
                 c("H").replace_strict(self.powered_volume_overage, default=0)
-            ).alias("powered_volume")
+            ).alias("powered_volume_quota")
         )
-        self.data["powered_volume"] = pl_to_dict(powered_volume_quota[["H", "powered_volume"]])
+        self.data["powered_volume_quota"] = pl_to_dict(powered_volume_quota[["H", "powered_volume_quota"]])
         self.data["shortage_volume_buffer"] = dict(
             Counter(self.volume_buffer) + Counter(dict(map(lambda x: (x[0], x[1]/3), self.powered_volume_shortage.items())))
         ) 
         self.data["overage_volume_buffer"] = dict(
             Counter(self.volume_buffer) + Counter(dict(map(lambda x: (x[0], x[1]/3), self.powered_volume_overage.items())))
-            ) 
+        ) 
 
         self.data["max_flow"] = pl_to_dict_with_tuple(self.sim_hydro_power_state["HS", "flow"])  
         self.data["alpha"] = pl_to_dict_with_tuple(self.sim_hydro_power_state["HS", "alpha"])  

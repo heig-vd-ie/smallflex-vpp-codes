@@ -350,7 +350,7 @@ description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 groups = ["main"]
-markers = "sys_platform == \"win32\" or platform_system == \"Windows\""
+markers = "platform_system == \"Windows\" or sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -785,6 +785,18 @@ groups = ["main"]
 files = [
     {file = "imagesize-1.4.1-py2.py3-none-any.whl", hash = "sha256:0d8d18d08f840c19d0ee7ca1fd82490fdc3729b7ac93f49870406ddde8ef8d8b"},
     {file = "imagesize-1.4.1.tar.gz", hash = "sha256:69150444affb9cb0d5cc5a92b3676f0b2fb7cd9ae39e947a5e11a36b4497cd4a"},
+]
+
+[[package]]
+name = "iniconfig"
+version = "2.1.0"
+description = "brain-dead simple config-ini parsing"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760"},
+    {file = "iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7"},
 ]
 
 [[package]]
@@ -1685,6 +1697,22 @@ express = ["numpy"]
 kaleido = ["kaleido (==1.0.0rc13)"]
 
 [[package]]
+name = "pluggy"
+version = "1.6.0"
+description = "plugin and hook calling mechanisms for python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
+    {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
+]
+
+[package.extras]
+dev = ["pre-commit", "tox"]
+testing = ["coverage", "pytest", "pytest-benchmark"]
+
+[[package]]
 name = "ply"
 version = "3.11"
 description = "Python Lex & Yacc"
@@ -2225,6 +2253,28 @@ files = [
 dev = ["build", "flake8", "mypy", "pytest", "twine"]
 
 [[package]]
+name = "pytest"
+version = "8.4.1"
+description = "pytest: simple powerful testing with Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7"},
+    {file = "pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c"},
+]
+
+[package.dependencies]
+colorama = {version = ">=0.4", markers = "sys_platform == \"win32\""}
+iniconfig = ">=1"
+packaging = ">=20"
+pluggy = ">=1.5,<2"
+pygments = ">=2.7.2"
+
+[package.extras]
+dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests", "setuptools", "xmlschema"]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -2732,6 +2782,28 @@ files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
 ]
+
+[[package]]
+name = "smallflex-data-schema"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.12"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+jinja2 = ">=3.1.6,<4.0.0"
+patito = ">=0.8.3,<0.9.0"
+polars = ">=1.30.0,<2.0.0"
+utility-functions = {git = "ssh://git@github.com/heig-vd-ie/utility-functions.git"}
+
+[package.source]
+type = "git"
+url = "ssh://git@github.com/heig-vd-ie/smallflex-data-schema.git"
+reference = "HEAD"
+resolved_reference = "79ec95c1a5636e4575e6d147b87dcf260b44119e"
 
 [[package]]
 name = "snowballstemmer"
@@ -3293,6 +3365,7 @@ polars = ">=0.17.0, <2.0.0"
 pyarrow = "^19.0.0"
 pydata-sphinx-theme = "^0.16.1"
 pyocclient = "^0.6"
+pytest = "^8.4.1"
 python-graphblas = "^2024.2.0"
 shapely = "^2.0.6"
 sphinx = "^8.1.3"
@@ -3301,11 +3374,14 @@ sphinx-rtd-size = "^0.2.0"
 sphinx-rtd-theme = "^3.0.2"
 tqdm = "^4.67.1"
 
+[package.extras]
+internal = []
+
 [package.source]
 type = "git"
 url = "ssh://git@github.com/heig-vd-ie/utility-functions.git"
 reference = "HEAD"
-resolved_reference = "2be8bcb916ff4dd5f7abcce5a1b0c4bec02ca2b4"
+resolved_reference = "33e69da7947838225d0e8d0ba8dd6c351b4eebde"
 
 [[package]]
 name = "wcwidth"
@@ -3334,4 +3410,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "f4511360fb8adc21119ba7450899d97f26fb0fba8574ad3df6492519794349e4"
+content-hash = "d37a3d1710de1362840c741a7dc6f118b3c6fe7de52e4643713f166992b1f044"
