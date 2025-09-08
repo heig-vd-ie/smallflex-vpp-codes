@@ -1,22 +1,16 @@
 ﻿Name,Description,Type,Default,Units
 :math:`c_\text{DA}^{t}`,Day-ahead energy market price,:math:`\mathbb{R}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
-:math:`nb_\text{SEC}`,Number of seconds in one hour,:math:`\mathbb{R}^{+}`,3600,
-:math:`nb_\text{HOUR}`,Number of hours for each time-step,:math:`\mathbb{R}^{+}`,,
-:math:`c_\text{UN}^{+}`,Penality price applied to positive difference volume,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
-:math:`c_\text{UN}^{-}`,Penality price applied to negative difference volume,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
-:math:`\alpha^{+}`,Power factor applied to positive difference volume,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{MW}/ \mathrm{m}^{3}`
-:math:`\alpha^{-}`,Power factor applied to negative difference volume,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{MW}/ \mathrm{m}^{3}`
-:math:`V_\text{POW}^{h}`,Powered water volume sepoints for each hydropower plant,:math:`\mathbb{R}`,,:math:`\mathrm{m}^{3}`
-:math:`dV_\text{LAST}^{h}`,Remaining volume unpowered from last simulation,:math:`\mathbb{R}`,,:math:`\mathrm{m}^{3}`
-:math:`V_\text{BUF}^{h}`,Max volume buffer between power volume setpoint and calculated,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{m}^{3}`
-:math:`F_\text{SPIL}^{b}`,Penality factor for water volume splilled : :math:`F_\text{SPIL}^{b}  = \begin{cases} 1e^2 \text{ if  hydo power plant upstream basin} \\ 1e^{-2} \text{ otherwise} \end{cases}`,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{EUR}/ \mathrm{m}^{3}`
-":math:`V_\text{BAS, START}^{b}`",Basins stating water volume,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
-":math:`V_\text{BAS, MAX}^{b,~s_b}`",Basins water volume upper boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
-":math:`V_\text{BAS, MIN}^{b,~s_b}`",Basins water volume lower boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
-":math:`V_\text{BAS, DIS}^{t,~b}`",Water volume entering a basin due to runoff and snowmelt,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
-":math:`F_\text{TUR}^{b,~h}`",Factor to specify whether the turbined water of a plant is added into a basin or removed,:math:`\{-1; ~0; ~1\}`,0,
-":math:`Q_\text{MIN}^{h,~s_h,~s_q}`",Min water flows that can be turbined (or pumed) for each state,:math:`\mathbb{R}`,,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`Q_\text{MAX}^{h,~s_h,~s_q}`",Max water flows that can be  turbined (or pumed)  for each state,:math:`\mathbb{R}`,,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`dQ^{h,~s_h,~s_q}`",Water flow ramps derived from basin volumes for each state.,:math:`\mathbb{R}`,,
-":math:`P_\text{MIN}^{h,~s_h,~s_q}`",Min power that can produced (or consumed) for each state,:math:`\mathbb{R}`,,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`dP^{h,~s_h,~s_q}`",Power ramps derived from basin volumes for each state.,:math:`\mathbb{R}`,,
+:math:`c_\text{FLEX}^{f}`,Primary frequency control market price,:math:`\mathbb{R}`,,:math:`\mathrm{EUR}/\mathrm{MW}`
+:math:`nb_\text{HOUR}^{t}`,Number of hours for each time-step,:math:`\mathbb{R}^{+}`,,
+:math:`V_\text{START}^{b}`,Basins stating water volume,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{m}^{3}`
+":math:`V_\text{MAX}^{b,~s}`",Basins water volume upper boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
+":math:`V_\text{MIN}^{b,~s}`",Basins water volume lower boundary for each state,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
+":math:`V_\text{DIS}^{t,~b}`",Water volume entering a basin due to runoff and snowmelt,:math:`\mathbb{R}^{+}`,0,:math:`\mathrm{m}^{3}`
+":math:`F_\text{HYDRO}^{b,~h}`",Factor to specify whether the water flowing through a hydro power plant is added into a basin or removed,:math:`\{-1; ~0; ~1\}`,0,
+":math:`Q_\text{MAX}^{h,~s}`",Max water that can flows through an  hydro power plant for each state,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`\alpha^{h,~s}`",Average factor for converting water flowing through a hydro power plant into power for each state (positive for turbines and negative for pumps).,:math:`\mathbb{R}`,,:math:`\mathrm{MW} \cdot  \mathrm{s}/ \mathrm{m}^{3}`
+":math:`F_\text{dV +}^{h,~s}`",Factor multipling the overage water volume in the objective penalty (positive for turbine negative for pump),:math:`\mathbb{R}`,,:math:`\mathrm{EUR} / \mathrm{m}^{3}`
+":math:`F_\text{dV -}^{h,~s}`",Factor multipling the shortage water volume in the objective penalty (positive for turbine negative for pump),:math:`\mathbb{R}`,,:math:`\mathrm{EUR} / \mathrm{m}^{3}`
+:math:`V_\text{BUF +}^{h}`,Maximmum overage water volume flowing through an hydro power plant,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{m}^{3}`
+:math:`V_\text{BUF -}^{h}`,Maximmum shortage water volume flowing through an hydro power plant,:math:`\mathbb{R}^{+}`,,:math:`\mathrm{m}^{3}`
+:math:`M`,Arbitrary big number for big_m decomposition ,:math:`\mathbb{R}^{+}`,1E6,

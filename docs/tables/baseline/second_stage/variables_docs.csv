@@ -1,11 +1,13 @@
 ﻿Name,Description,Type,Units
 ":math:`V_\text{BAS}^{t,~b}`",Basins actual water volume,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+":math:`V_\text{END}^{t,~b}`",Basins water volume at the end of the optimization,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
 ":math:`V_\text{SPIL}^{t,~b}`",Spilled water volumes when basins are full,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-":math:`V_\text{BAS, END}^{b}`",Basins end volume,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-:math:`dV_\text{+}^{h}`,Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-:math:`dV_\text{-}^{h}`,Positive difference bertween powered water volume sepoints and calculated,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
-":math:`P^{t,~h}`",Electrical power produced (or consumed) by a hydropower plant,:math:`\mathbb{R}`,:math:`\mathrm{MW}`
-":math:`Q^{t,~h}`",Amount of water that flows through a hydropower plant,:math:`\mathbb{R}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
-":math:`S_\text{BAS}^{t,~b,~s_b}`","Binary variable that indicates the basin's volume state derived from its volume:  :math:`S_\text{BAS}^{t,~b,~s_b} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t,~b} \in  \left[ V_\text{BAS, MIN}^{b,~s_b} ;V_\text{BAS, MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
-":math:`S_\text{FLOW}^{t,~h,~s_h,~s_q}`",Binary variable that indicates the hydo power plant's flow state (for turbine and pump),:math:`\mathbb{B}`,
-":math:`V_\text{BAS, S}^{t,~h,~s_h,~s_q}`","Basin volume seen by hydropowerplant states : :math:`V_\text{BAS, S}^{t,~h,~s_h,~s_q}  = \begin{cases} V_\text{BAS}^{t,~b_h} \text{ if } S_\text{FLOW}^{t,~h,~s_h,~s_q} = 1 \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{R}`,:math:`\mathrm{MW}`
+":math:`State^{t,~b,~s}`","The state of a basin derived from its volume:  :math:`State^{t, b, s} = \begin{cases} 1 \text{ if } V_\text{BAS}^{t, b} \in  \left[ V_\text{MIN}^{b,~s_b} ;V_\text{MAX}^{b,~s_b} \right] \\ 0 \text{ otherwise} \end{cases}`",:math:`\mathbb{B}`,
+":math:`Run_\text{HYDRO}^{t,~h}`",Binary variable to indicates if ON/OFF hydro power plant is  running or not,:math:`\mathbb{B}`,
+":math:`P_\text{HYDRO}^{t,~h}`",Electrical power produced or consumed by a hydro power plant,:math:`\mathbb{R}`,:math:`\mathrm{MW}`
+":math:`Q^{t,~h}`",Amount of water that flows through an hydro power plant,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+":math:`Q_\text{S}^{t,~h,~s}`",Amount of water that flows through a hydro power plant for each corresponding basin state,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}/\mathrm{s}`
+:math:`P_\text{ANC}^{f}`,Flexible power sell to the ancilliary market,:math:`\mathbb{R}^{+}`,:math:`\mathrm{MW}`
+:math:`V_\text{QUOTA}^{h}`,Water volume quota that can flow through an hydro power plant (from first stage optimization),:math:`\mathbb{R}`,:math:`\mathrm{m}^{3}`
+:math:`dV_\text{+}^{h}`,Overage water volume flowing through an hydro power plant compared to the first stage volume quota,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`
+:math:`dV_\text{-}^{h}`,Shortage water volume flowing through an hydro power plant compared to the first stage volume quota,:math:`\mathbb{R}^{+}`,:math:`\mathrm{m}^{3}`

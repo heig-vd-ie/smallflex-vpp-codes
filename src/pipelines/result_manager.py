@@ -1,0 +1,187 @@
+import polars as pl
+from polars  import col as c
+from typing  import Tuple
+from polars import selectors as cs
+import pyomo.environ as pyo
+
+from general_function import pl_to_dict
+
+from pipelines.data_manager import PipelineDataManager
+
+from utility.data_preprocessing import (
+    split_timestamps_per_sim, extract_result_table, pivot_result_table
+)
+
+class PipelineResultManager(PipelineDataManager):
+    """
+    A class to manage the results of a pipeline, including data processing and visualization.
+    """
+
+    def __init__(
+        self,
+        pipeline_data_manager: PipelineDataManager
+    ):
+        # Retrieve attributes from pipeline_data_manager
+        for key, value in vars(pipeline_data_manager).items():
+            setattr(self, key, value)
+        self.first_optimization_results: pl.DataFrame
+    
+    
+    def extract_optimization_results(
+        self, model_instance: pyo.ConcreteModel, is_first_stage: int) -> pl.DataFrame:
+
+            
+        market_price = extract_result_table(
+            model_instance=model_instance, var_name="market_price"
+        )
+        ancillary_market_price = extract_result_table(
+            model_instance=model_instance, var_name="ancillary_market_price"
+        )
+
+        water_basin_index = self.water_basin
+
+        flow_to_vol_factor = 3600 * self.volume_factor
+        
+        if is_first_stage:
+            nb_hours_mapping = pl_to_dict(extract_result_table(
+                    model_instance=model_instance, var_name="nb_hours"
+            )[["T", "nb_hours"]])
+        else:
+            nb_hours_mapping = {}
+
+        volume_max_mapping: dict[str, float] = pl_to_dict(water_basin_index["B", "volume_max"])
+
+        basin_volume = extract_result_table(
+                model_instance=model_instance, var_name="basin_volume"
+            ).with_columns(
+                (c("basin_volume") / c("B").replace_strict(volume_max_mapping, default=None)).alias("basin_volume")
+            )
+
+        basin_volume = pivot_result_table(
+            df = basin_volume, on="B", index=["T"], 
+            values="basin_volume")
+
+        
+
+        powered_volume = extract_result_table(
+                model_instance=model_instance, var_name="flow"
+            ).with_columns(
+                (
+                    c("flow") * flow_to_vol_factor * c("T").replace_strict(nb_hours_mapping, default=1)
+                ).alias("powered_volume")
+            )
+            
+        powered_volume = pivot_result_table(
+            df = powered_volume, on="H", index=["T"], 
+            values="powered_volume")
+            
+
+        hydro_power = extract_result_table(
+                model_instance=model_instance, var_name="hydro_power"
+            )
+
+        hydro_power = pivot_result_table(
+            df = hydro_power, on="H", index=["T"], 
+            values="hydro_power")
+
+        ancillary_power = extract_result_table(
+                model_instance=model_instance, var_name="ancillary_power"
+            )
+
+        if not is_first_stage:
+            ancillary_power = ancillary_power.with_columns(
+                pl.all().exclude("F").map_elements(
+                    lambda x: [x] * self.nb_timestamp_per_ancillary, return_dtype=pl.List(pl.Float64)
+                )
+            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F")
+            ancillary_market_price = ancillary_market_price.with_columns(
+                pl.all().exclude("F").map_elements(
+                    lambda x: [x] * self.nb_timestamp_per_ancillary, return_dtype=pl.List(pl.Float64)
+                )
+            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F")
+
+        optimization_results: pl.DataFrame =(
+            market_price
+                .join(basin_volume, on = "T", how="inner")
+                .join(ancillary_market_price, on = "T", how="inner")
+                .join(powered_volume, on = "T", how="inner")
+                .join(hydro_power, on = "T", how="inner")
+                .join(ancillary_power, on = "T", how="inner")
+                .with_columns(
+                    (
+                    pl.sum_horizontal(cs.starts_with("hydro_power")) *
+                    c("T").replace_strict(nb_hours_mapping, default=1) * c("market_price") +
+                    pl.sum_horizontal(cs.starts_with("ancillary_power")) *
+                    c("T").replace_strict(nb_hours_mapping, default=1) * c("market_price")
+                    ).alias("income")
+                )
+        )
+        return optimization_results
+    
+    def extract_first_stage_optimization_results(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
+
+        optimization_results = self.extract_optimization_results(model_instance=model_instance, is_first_stage=True)
+        optimization_results = optimization_results.join(
+            self.first_stage_timestep_index["T", "timestamp"], on= "T", how="left")
+        
+        return optimization_results
+    
+    def extract_second_stage_optimization_results(
+        self, model_instances: dict[int, pyo.ConcreteModel]) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+
+        optimization_results: pl.DataFrame = pl.DataFrame()
+        powered_volume_overage: pl.DataFrame = pl.DataFrame()
+        powered_volume_shortage: pl.DataFrame = pl.DataFrame()
+        for key, model_instance in model_instances.items():
+            optimization_results = pl.concat([
+                optimization_results,
+                self.extract_optimization_results(model_instance=model_instance, is_first_stage=False)
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+            powered_volume_overage = pl.concat([
+                powered_volume_overage,
+                extract_result_table(model_instance, "powered_volume_overage")
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+            
+            powered_volume_shortage = pl.concat([
+                powered_volume_shortage,
+                extract_result_table(model_instance, "powered_volume_shortage")
+                    .with_columns(
+                        pl.lit(key).alias("sim_idx")
+                    )
+            ], how="diagonal_relaxed")
+
+        powered_volume_overage = powered_volume_overage.pivot(on="H", values="powered_volume_overage", index="sim_idx")
+        powered_volume_shortage = powered_volume_shortage.pivot(on="H", values="powered_volume_shortage", index="sim_idx")
+
+        optimization_results = optimization_results.join(
+            self.second_stage_timestep_index["T", "sim_idx", "timestamp"], on=["sim_idx", "T"], how="left")
+    
+        return optimization_results, powered_volume_overage, powered_volume_shortage
+    
+    def extract_powered_volume_quota(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
+    
+        flow_to_vol_factor = 3600 * self.volume_factor
+
+        nb_hours_mapping = pl_to_dict(extract_result_table(
+                        model_instance=model_instance, var_name="nb_hours"
+                    )[["T", "nb_hours"]])
+
+        powered_volume_quota = extract_result_table(
+                model_instance=model_instance, var_name="flow"
+            ).with_columns(
+                (
+                    c("flow") * flow_to_vol_factor * c("T").replace_strict(nb_hours_mapping, default=1)
+                ).alias("powered_volume")
+            ).drop("flow")
+            
+            
+        powered_volume_quota = split_timestamps_per_sim(
+            data=powered_volume_quota, divisors=self.first_stage_nb_timestamp
+            ).group_by("sim_idx", "H", maintain_order=True).agg(c("powered_volume").sum())
+        return powered_volume_quota
