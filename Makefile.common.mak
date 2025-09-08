@@ -119,7 +119,7 @@ format-py: ## Format Python code using black
 	@echo "Formatting Python code with black..."
 	@poetry run black .
 
-build-wheel: # Build the Python wheel for this project based on pyproject.toml version
+build-wheel: ## Build the Python wheel for this project based on pyproject.toml version
 	@echo "Building Python wheel..."
 	@poetry build -f wheel
 
