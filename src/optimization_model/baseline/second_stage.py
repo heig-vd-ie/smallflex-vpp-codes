@@ -1,4 +1,3 @@
-from pyexpat import model
 import pyomo.environ as pyo
 from optimization_model.second_stage.constraints import *
 from optimization_model.second_stage.sets import *
