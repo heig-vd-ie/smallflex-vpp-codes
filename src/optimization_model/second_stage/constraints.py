@@ -327,7 +327,8 @@ def negative_hydro_ancillary_power_constraint(model, t, f):
 def diff_volume_constraint(model, h):
     return (
         model.powered_volume_overage[h] - model.powered_volume_shortage[h] == 
-        model.powered_volume[h] - sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor
+        sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec * model.volume_factor -
+        model.powered_volume_quota[h]
         
     )
 

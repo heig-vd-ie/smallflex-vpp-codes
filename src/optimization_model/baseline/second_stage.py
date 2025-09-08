@@ -36,8 +36,6 @@ def second_stage_baseline_constraints(model: pyo.AbstractModel) -> pyo.AbstractM
     ####################################################################################################################
     model.max_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=max_powered_volume_quota_constraint)
     model.min_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=min_powered_volume_quota_constraint)
-    model.powered_volume_penalty_constraint = pyo.Constraint(model.H, rule=powered_volume_penalty_constraint)
-
     model.diff_volume_constraint = pyo.Constraint(model.H, rule=diff_volume_constraint)
     return model
 
