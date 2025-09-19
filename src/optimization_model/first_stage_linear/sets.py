@@ -36,14 +36,6 @@ def first_stage_sets(model):
     # subset of hydro powerplants with discrete and continuous control
     model.DH = pyo.Set(within=model.H)
     model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])
-    # index gathering the state per basin and the hydro powerplants
-    model.S_B = pyo.Set(model.B)
-    model.S_H = pyo.Set(model.H)
-    # index gathering the state of every basin and hydro powerplants
-    model.BS = pyo.Set(dimen=2, initialize=lambda model: [(b, s) for b in model.B for s in model.S_B[b]])
-    model.HS = pyo.Set(dimen=2, initialize=lambda model: [(h, s) for h in model.H for s in model.S_H[h]])
-    model.S = pyo.Set(initialize=lambda model: [s for _, s in model.BS])
-    # index (gathering h, b, s_h, s_b) to make the correspondence between the state of basin and hydro powerplants
-    model.HBS = pyo.Set(dimen=3) 
+
     
     return model

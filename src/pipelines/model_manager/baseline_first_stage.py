@@ -32,6 +32,7 @@ class BaselineFirstStage(PipelineDataManager):
         data["H"] = {None: self.first_stage_hydro_power_state["H"].to_list()}
         data["B"] = {None: self.water_basin["B"].to_list()}
         data["DH"] = {None: self.hydro_power_plant.filter(c("control") == "discrete")["H"].to_list()}
+        data["Ω"] = {None: self.year_list}
 
         data["S_B"] = pl_to_dict(
             self.first_stage_basin_state
@@ -68,9 +69,12 @@ class BaselineFirstStage(PipelineDataManager):
         data["total_negative_flex_power"] = pl_to_dict(self.first_stage_hydro_flex_power["S", "total_negative_flex_power"])
         
         # Timeseries
-        data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TB", "discharge_volume"]])
-        data["market_price"] = pl_to_dict(self.first_stage_market_price[["T", "avg"]])
-        data["ancillary_market_price"] = pl_to_dict(self.first_stage_ancillary_market_price[["T", "avg"]])
+        data["discharge_volume"] = pl_to_dict_with_tuple(self.first_stage_discharge_volume[["TΩB", "discharge_volume"]])
+        data["market_price"] = pl_to_dict_with_tuple(self.first_stage_market_price[["TΩ", "avg"]])
+        data["ancillary_market_price"] = pl_to_dict_with_tuple(self.first_stage_ancillary_market_price[["TΩ", "avg"]])
+
+        data["unpowered_factor_price_pos"] = pl_to_dict_with_tuple(self.unpowered_factor_price["ΩB","unpowered_factor_price_pos"])
+        data["unpowered_factor_price_neg"] = pl_to_dict_with_tuple(self.unpowered_factor_price["ΩB","unpowered_factor_price_neg"])
 
         # Configuration parameters
         data["max_powered_flow_ratio"] = {None: self.first_stage_max_powered_flow_ratio}

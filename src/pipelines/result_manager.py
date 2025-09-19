@@ -166,7 +166,7 @@ class PipelineResultManager(PipelineDataManager):
     
     def extract_powered_volume_quota(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
     
-        flow_to_vol_factor = 3600 * self.volume_factor
+        flow_to_vol_factor = 3600
 
         nb_hours_mapping = pl_to_dict(extract_result_table(
                         model_instance=model_instance, var_name="nb_hours"
