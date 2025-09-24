@@ -1,10 +1,10 @@
 import pyomo.environ as pyo
-from optimization_model.second_stage.constraints import *
-from optimization_model.second_stage.sets import *
-from optimization_model.second_stage.parameters import *
-from optimization_model.second_stage.variables import *
+from optimization_model.deterministic_second_stage.constraints import *
+from optimization_model.deterministic_second_stage.sets import *
+from optimization_model.deterministic_second_stage.parameters import *
+from optimization_model.deterministic_second_stage.variables import *
 
-def second_stage_baseline_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
+def deterministic_second_stage_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
     model.objective = pyo.Objective(rule=second_stage_baseline_objective, sense=pyo.maximize)
 
     ####################################################################################################################
@@ -38,10 +38,10 @@ def second_stage_baseline_constraints(model: pyo.AbstractModel) -> pyo.AbstractM
     model.diff_volume_constraint = pyo.Constraint(model.H, rule=diff_volume_constraint)
     return model
 
-def second_stage_baseline_model() -> pyo.AbstractModel:
+def deterministic_second_stage_model() -> pyo.AbstractModel:
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = second_stage_sets(model)
     model = second_stage_parameters(model)
     model = second_stage_variables(model)
-    model = second_stage_baseline_constraints(model)
+    model = deterministic_second_stage_constraints(model)
     return model

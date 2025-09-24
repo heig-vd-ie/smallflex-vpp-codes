@@ -7,7 +7,7 @@ UTILITY_FUNCTIONS_VERSION := 0.1.0
 
 SMALLFLEX_DATASCHEMA_REPO := smallflex-data-schema
 SMALLFLEX_DATASCHEMA_BRANCH := main
-SMALLFLEX_DATASCHEMA_VERSION := 0.1.0
+SMALLFLEX_DATASCHEMA_VERSION := 0.1.2
 
 vis:  ## Run Streamlit visualization
 	streamlit run d:/smallflex-vpp-codes/visualization/home.py

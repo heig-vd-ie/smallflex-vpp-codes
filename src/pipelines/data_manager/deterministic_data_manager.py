@@ -1,9 +1,7 @@
 from typing import Optional
-from datetime import datetime, timedelta, timezone
 import polars as pl
 from polars import col as c
-from polars import selectors as cs
-import pyomo.environ as pyo
+
 from smallflex_data_schema import SmallflexInputSchema
 
 from utility.data_preprocessing import (
@@ -16,14 +14,13 @@ from utility.data_preprocessing import (
     generate_datetime_index,
 )
 
-from general_function import pl_to_dict, duckdb_to_dict
-from pipelines.data_configs import NonLinearDeterministicConfig
+from general_function import pl_to_dict
+from pipelines.data_configs import DeterministicConfig
 
-
-class NonLinearDataManager(NonLinearDeterministicConfig):
+class DeterministicDataManager(DeterministicConfig):
     def __init__(
         self,
-        pipeline_config: NonLinearDeterministicConfig,
+        pipeline_config: DeterministicConfig,
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
     ):
@@ -68,7 +65,32 @@ class NonLinearDataManager(NonLinearDeterministicConfig):
         self.__process_timeseries_input(
             smallflex_input_schema=smallflex_input_schema,
         )
-        self.__calculate_power_volume_buffer()
+        # self.__calculate_power_volume_buffer()
+        
+        
+    def __build_timestep_index(self):
+
+        self.first_stage_timestep_index = generate_datetime_index(
+            min_datetime=self.min_datetime,
+            max_datetime=self.max_datetime,
+            sim_timestep=self.first_stage_timestep,
+            real_timestep=self.second_stage_timestep,
+        )
+
+        second_stage_timestep_index = generate_datetime_index(
+            min_datetime=self.min_datetime,
+            max_datetime=self.max_datetime,
+            real_timestep=self.second_stage_timestep,
+        )
+        second_stage_timestep_index = split_timestamps_per_sim(
+            data=second_stage_timestep_index, divisors=self.second_stage_nb_timestamp
+        )
+
+        self.second_stage_timestep_index = second_stage_timestep_index.with_columns(
+            (c("T") // self.nb_timestamp_per_ancillary).cast(pl.UInt32).alias("F")
+        ).with_columns(pl.concat_list(["T", "F"]).alias("TF"))
+
+        self.second_stage_nb_sim = second_stage_timestep_index["sim_idx"].max()  # type: ignore
 
     def __build_hydro_power_plant_data(
         self, smallflex_input_schema: SmallflexInputSchema, hydro_power_mask: pl.Expr
@@ -179,30 +201,6 @@ class NonLinearDataManager(NonLinearDeterministicConfig):
                 * self.volume_buffer_ratio,
             )
         )
-
-    def __build_timestep_index(self):
-
-        self.first_stage_timestep_index = generate_datetime_index(
-            min_datetime=self.min_datetime,
-            max_datetime=self.max_datetime,
-            sim_timestep=self.first_stage_timestep,
-            real_timestep=self.second_stage_timestep,
-        )
-
-        second_stage_timestep_index = generate_datetime_index(
-            min_datetime=self.min_datetime,
-            max_datetime=self.max_datetime,
-            real_timestep=self.second_stage_timestep,
-        )
-        second_stage_timestep_index = split_timestamps_per_sim(
-            data=second_stage_timestep_index, divisors=self.second_stage_nb_timestamp
-        )
-
-        self.second_stage_timestep_index = second_stage_timestep_index.with_columns(
-            (c("T") // self.nb_timestamp_per_ancillary).cast(pl.UInt32).alias("F")
-        ).with_columns(pl.concat_list(["T", "F"]).alias("TF"))
-
-        self.second_stage_nb_sim = second_stage_timestep_index["sim_idx"].max()  # type: ignore
 
     def __process_timeseries_input(self, smallflex_input_schema: SmallflexInputSchema):
 

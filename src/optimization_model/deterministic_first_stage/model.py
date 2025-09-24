@@ -1,13 +1,13 @@
 import pyomo.environ as pyo
-from optimization_model.first_stage.constraints import *
-from optimization_model.first_stage.sets import *
-from optimization_model.first_stage.parameters import *
-from optimization_model.first_stage.variables import *
+from optimization_model.deterministic_first_stage.constraints import *
+from optimization_model.deterministic_first_stage.sets import *
+from optimization_model.deterministic_first_stage.parameters import *
+from optimization_model.deterministic_first_stage.variables import *
 
-def first_stage_baseline_constraints(model):
-    model.objective = pyo.Objective(rule=first_stage_baseline_objective, sense=pyo.maximize)
+def deterministic_first_stage_constraints(model):
+    model.first_stage_baseline_objective = pyo.Objective(rule=first_stage_baseline_objective, sense=pyo.maximize)
     model.basin_volume_evolution = pyo.Constraint(model.T, model.B, rule=basin_volume_evolution)
-    model.basin_end_volume = pyo.Constraint(model.B, rule=basin_end_volume_constraint)
+    model.basin_end_volume_constraint = pyo.Constraint(model.B, rule=basin_end_volume_constraint)
     model.basin_max_state = pyo.Constraint(model.T, model.BS, rule=basin_max_state)
     model.basin_min_state = pyo.Constraint(model.T, model.BS, rule=basin_min_state)
     model.basin_state_total = pyo.Constraint(model.T, model.B, rule=basin_state_total)
@@ -20,10 +20,10 @@ def first_stage_baseline_constraints(model):
     
     return model
 
-def first_stage_baseline_model() -> pyo.AbstractModel:
+def deterministic_first_stage_model() -> pyo.AbstractModel:
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = first_stage_sets(model)
     model = first_stage_parameters(model)
     model = first_stage_variables(model)
-    model = first_stage_baseline_constraints(model)
+    model = deterministic_first_stage_constraints(model)
     return model

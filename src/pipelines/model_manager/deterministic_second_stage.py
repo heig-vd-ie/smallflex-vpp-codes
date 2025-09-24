@@ -11,15 +11,15 @@ from utility.data_preprocessing import (
 )
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager import NonLinearDataManager
-from optimization_model.baseline.second_stage import second_stage_baseline_model
+from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
+from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model
 
 
 log = generate_log(name=__name__)
 
-class BaselineSecondStage(NonLinearDataManager):
+class DeterministicSecondStage(DeterministicDataManager):
     def __init__(
-        self, pipeline_data_manager: NonLinearDataManager, powered_volume_quota: pl.DataFrame
+        self, pipeline_data_manager: DeterministicDataManager, powered_volume_quota: pl.DataFrame
         ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
@@ -27,7 +27,7 @@ class BaselineSecondStage(NonLinearDataManager):
         
         
         self.powered_volume_quota = powered_volume_quota
-        self.model: pyo.AbstractModel = second_stage_baseline_model()
+        self.model: pyo.AbstractModel = deterministic_second_stage_model()
         self.model_instances: dict[int, pyo.ConcreteModel] = {}
         self.infeasible_increment = 0
         self.sim_idx: int = 0

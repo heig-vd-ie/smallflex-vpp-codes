@@ -160,6 +160,27 @@ def generate_clean_timeseries(
             .join(cleaned_data, left_on="timestamp", right_on=timestamp_col, how="left")\
             .with_columns(c(col_name).interpolate().forward_fill().backward_fill())
     )
+    
+def generate_clean_timeseries_scenarios(
+    data: pl.DataFrame, col_name : str,  timestep: timedelta, 
+    timestamp_mapping: dict[datetime, int],
+    agg_type: Literal["mean", "sum", "first"] = "first", grouping_columns: list[str] = ["Ω"],
+    timestamp_col: str = "timestamp"
+    ) -> pl.DataFrame:
+
+    col_list = ["T"] + grouping_columns
+    data = data.sort("timestamp").group_by_dynamic(
+        index_column=timestamp_col, start_by="datapoint", every=timestep, closed="left", group_by=grouping_columns
+    ).agg(
+        c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
+        c(col_name).max().name.prefix("max_"),
+        c(col_name).min().name.prefix("min_"),
+    ).with_columns(
+        c("timestamp").replace_strict(timestamp_mapping, default=None).alias("T"),
+    ).with_columns(
+        pl.concat_list(col_list).alias("".join(col_list))
+    )
+    return data
 
 def generate_basin_volume_table(
     water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, d_height: float
@@ -294,7 +315,8 @@ def generate_hydro_power_state(power_performance_table: pl.DataFrame, basin_stat
 
     state_index = state_index.with_columns(
         pl.concat_list("H", "B", "S").alias("HBS"),
-        pl.concat_list("H", "S").alias("HS")
+        pl.concat_list("H", "S").alias("HS"),
+        pl.concat_list("H", "B").alias("HB")
     )
     return state_index
             

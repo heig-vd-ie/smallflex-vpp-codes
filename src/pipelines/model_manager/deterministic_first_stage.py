@@ -6,23 +6,23 @@ import tqdm
 
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager import NonLinearDataManager
+from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
 
-from optimization_model.baseline.first_stage import first_stage_baseline_model
+from optimization_model.deterministic_first_stage.model import deterministic_first_stage_model
 
 
 log = generate_log(name=__name__)
 
-class BaselineFirstStage(NonLinearDataManager):
+class DeterministicFirstStage(DeterministicDataManager):
     def __init__(
         self, 
-        pipeline_data_manager: NonLinearDataManager,
+        pipeline_data_manager: DeterministicDataManager,
         ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
             setattr(self, key, value)
             
-        self.model: pyo.AbstractModel = first_stage_baseline_model()
+        self.model: pyo.AbstractModel = deterministic_first_stage_model()
         self.model_instance: pyo.ConcreteModel
     
     def create_model_instance(self):

@@ -1,24 +1,32 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
 import pyomo.environ as pyo
+import numpy as np
 
 @dataclass
 class PipelineConfig:
     """Configuration for the Dig A Plan optimization pipeline"""
-    first_stage_timestep: timedelta = timedelta(days=2)
+    first_stage_timestep: timedelta
+    second_stage_sim_horizon: timedelta
     second_stage_timestep: timedelta = timedelta(hours=1)
     ancillary_market_timestep: timedelta = timedelta(hours=4)
-    second_stage_sim_horizon: timedelta = timedelta(days=4)
     market_country: str = "CH"
     market: str = "DA"
     ancillary_market: str = "FCR-cap"
     market_source: str= "swissgrid"
     max_alpha_error: float = 1.3
+    verbose: bool = False
+    first_stage_max_powered_flow_ratio: float= 0.75
     # volume_factor: float = 1e-6
     spilled_factor: float = 1e3
     solver_name: str = 'gurobi'
+    d_height: float = 0.01
+    seed: int = 42
     
     def __post_init__(self):
+        
+        self.rng: np.random.RandomState = np.random.RandomState(self.seed)
+        
         self.first_stage_solver= pyo.SolverFactory(self.solver_name)
         self.second_stage_solver= pyo.SolverFactory(self.solver_name)
         
@@ -33,15 +41,13 @@ class PipelineConfig:
         self.ancillary_nb_timestamp: int = self.second_stage_sim_horizon // self.ancillary_market_timestep
 
 @dataclass
-class NonLinearDeterministicConfig(PipelineConfig):
+class DeterministicConfig(PipelineConfig):
     
     year: int = 2024
     first_stage_max_powered_flow_ratio: float= 0.75
     second_stage_min_volume_ratio: float = 0.1
     second_stage_quantile: float = 0.15 
-    verbose: bool = False
     volume_buffer_ratio: float = 0.2
-    d_height: float = 0.01
     time_limit: float = 20
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     
@@ -51,4 +57,13 @@ class NonLinearDeterministicConfig(PipelineConfig):
         self.max_datetime: datetime = datetime(self.year + 1, 1, 1, tzinfo=UTC)
         
         self.second_stage_solver.options['TimeLimit'] = self.time_limit
+
+
+@dataclass
+class StochasticConfig(PipelineConfig):
     
+    nb_scenarios: int = 100
+    
+    def __post_init__(self):
+        super().__post_init__()
+        
