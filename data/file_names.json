@@ -1,5 +1,5 @@
 {
     "duckdb_input": ".cache/input/small_flex_input_data.db",
     "baseline": ".cache/output/baseline",
-    "input_data_plot": ".cache/plot/input_data"
+    "results_plot": ".cache/plot"
 }

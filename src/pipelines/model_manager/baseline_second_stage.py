@@ -11,15 +11,15 @@ from utility.data_preprocessing import (
 )
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager import PipelineDataManager
+from pipelines.data_manager import NonLinearDataManager
 from optimization_model.baseline.second_stage import second_stage_baseline_model
 
 
 log = generate_log(name=__name__)
 
-class BaselineSecondStage(PipelineDataManager):
+class BaselineSecondStage(NonLinearDataManager):
     def __init__(
-        self, pipeline_data_manager: PipelineDataManager, powered_volume_quota: pl.DataFrame
+        self, pipeline_data_manager: NonLinearDataManager, powered_volume_quota: pl.DataFrame
         ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
@@ -49,7 +49,6 @@ class BaselineSecondStage(PipelineDataManager):
         self.data["B"] = {None: self.water_basin["B"].to_list()}
         self.data["buffer"] = {None: self.volume_buffer}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
-        self.data["volume_factor"] = {None: self.volume_factor}
         self.data["spilled_factor"] = pl_to_dict(self.basin_spilled_factor["B", "spilled_factor"])
 
     def generate_model_instance(self):
@@ -184,7 +183,7 @@ class BaselineSecondStage(PipelineDataManager):
         hydro_power_min_volume = self.hydro_power_plant.select(
             "H", c("upstream_B").alias("B"), 
             (c("rated_flow") * self.second_stage_sim_horizon.total_seconds() * 
-            self.volume_factor * self.second_stage_min_volume_ratio).alias("min_volume")
+            self.second_stage_min_volume_ratio).alias("min_volume")
         )
         water_factor = self.water_flow_factor.with_columns(
             c("BH").cast(pl.List(pl.Utf8)).list.join("#")

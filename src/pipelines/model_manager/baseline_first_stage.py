@@ -6,17 +6,17 @@ import tqdm
 
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager import PipelineDataManager
+from pipelines.data_manager import NonLinearDataManager
 
 from optimization_model.baseline.first_stage import first_stage_baseline_model
 
 
 log = generate_log(name=__name__)
 
-class BaselineFirstStage(PipelineDataManager):
+class BaselineFirstStage(NonLinearDataManager):
     def __init__(
         self, 
-        pipeline_data_manager: PipelineDataManager,
+        pipeline_data_manager: NonLinearDataManager,
         ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
@@ -74,7 +74,6 @@ class BaselineFirstStage(PipelineDataManager):
 
         # Configuration parameters
         data["max_powered_flow_ratio"] = {None: self.first_stage_max_powered_flow_ratio}
-        data["volume_factor"] = {None: self.volume_factor}
 
         self.model_instance = self.model.create_instance({None: data}) # type: ignore
 

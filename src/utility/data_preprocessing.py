@@ -162,12 +162,12 @@ def generate_clean_timeseries(
     )
 
 def generate_basin_volume_table(
-    water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float
+    water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, d_height: float
     ) -> pl.DataFrame:
     """
     Generates a dictionary mapping water basin identifiers to interpolated height-volume tables.
     For each water basin in the provided index, this function filters the given basin_height_volume_table
-    to the relevant basin, scales the volume by the specified volume_factor, and interpolates the volume
+    to the relevant basin, scales the volume by the specified and interpolates the volume
     values over a range of heights with the specified step (d_height). The resulting table contains
     'height' and 'volume' columns, with missing values interpolated linearly. If no data is available
     for a basin, the corresponding value in the output dictionary is set to None.
@@ -175,7 +175,6 @@ def generate_basin_volume_table(
         index (dict[str, pl.DataFrame]): Dictionary containing water basin metadata, including unique identifiers
             and height bounds for each basin.
         basin_height_volume_table (pl.DataFrame): DataFrame containing height and volume data for all basins.
-        volume_factor (float): Factor by which to scale the volume values.
         d_height (float, optional): Step size for height interpolation. Defaults to 1.
     Returns:
         dict[int, Optional[pl.DataFrame]]: Dictionary mapping basin identifiers to their interpolated
@@ -187,10 +186,8 @@ def generate_basin_volume_table(
     for water_basin_index in water_basin.to_dicts():
 
         basin_height_volume_table = basin_height_volume_table\
-                .filter(c("water_basin_fk") == water_basin_index["uuid"])\
-                .with_columns(
-                    (c("volume") * volume_factor).alias("volume")
-                )
+                .filter(c("water_basin_fk") == water_basin_index["uuid"])
+                
         if basin_height_volume_table.is_empty():
             continue
         height_min: float= water_basin_index["height_min"] if water_basin_index["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore

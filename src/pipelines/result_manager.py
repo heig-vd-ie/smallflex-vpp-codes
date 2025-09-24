@@ -6,20 +6,20 @@ import pyomo.environ as pyo
 
 from general_function import pl_to_dict
 
-from pipelines.data_manager import PipelineDataManager
+from pipelines.data_manager import NonLinearDataManager
 
 from utility.data_preprocessing import (
     split_timestamps_per_sim, extract_result_table, pivot_result_table
 )
 
-class PipelineResultManager(PipelineDataManager):
+class PipelineResultManager(NonLinearDataManager):
     """
     A class to manage the results of a pipeline, including data processing and visualization.
     """
 
     def __init__(
         self,
-        pipeline_data_manager: PipelineDataManager
+        pipeline_data_manager: NonLinearDataManager
     ):
         # Retrieve attributes from pipeline_data_manager
         for key, value in vars(pipeline_data_manager).items():
@@ -40,8 +40,8 @@ class PipelineResultManager(PipelineDataManager):
 
         water_basin_index = self.water_basin
 
-        flow_to_vol_factor = 3600 * self.volume_factor
-        
+        flow_to_vol_factor = 3600
+
         if is_first_stage:
             nb_hours_mapping = pl_to_dict(extract_result_table(
                     model_instance=model_instance, var_name="nb_hours"
@@ -93,12 +93,12 @@ class PipelineResultManager(PipelineDataManager):
                 pl.all().exclude("F").map_elements(
                     lambda x: [x] * self.nb_timestamp_per_ancillary, return_dtype=pl.List(pl.Float64)
                 )
-            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F")
+            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F") # type: ignore
             ancillary_market_price = ancillary_market_price.with_columns(
                 pl.all().exclude("F").map_elements(
                     lambda x: [x] * self.nb_timestamp_per_ancillary, return_dtype=pl.List(pl.Float64)
                 )
-            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F")
+            ).explode(pl.all().exclude("F")).with_row_index(name="T").drop("F") # type: ignore
 
         optimization_results: pl.DataFrame =(
             market_price
@@ -166,7 +166,7 @@ class PipelineResultManager(PipelineDataManager):
     
     def extract_powered_volume_quota(self, model_instance: pyo.ConcreteModel) -> pl.DataFrame:
     
-        flow_to_vol_factor = 3600 * self.volume_factor
+        flow_to_vol_factor = 3600
 
         nb_hours_mapping = pl_to_dict(extract_result_table(
                         model_instance=model_instance, var_name="nb_hours"

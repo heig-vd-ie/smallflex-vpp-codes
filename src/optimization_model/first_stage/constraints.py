@@ -143,7 +143,7 @@ def first_stage_baseline_objective(model):
     spilled_penalty = sum(
         sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
         for b in model.B
-    ) / (model.nb_sec * model.volume_factor)
+    ) / (model.nb_sec)
         
     return market_price + ancillary_market_price - spilled_penalty
 
@@ -157,7 +157,7 @@ def basin_volume_evolution(model, t, b):
     else:
         return model.basin_volume[t, b] == (
             model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] +
-            model.nb_sec * model.volume_factor * model.nb_hours[t - 1] *
+            model.nb_sec * model.nb_hours[t - 1] *
             sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
         )
         
@@ -165,7 +165,7 @@ def basin_end_volume_constraint(model, b):
     t_max = model.T.last()
     return model.start_basin_volume[b] == (
         model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b] +
-        model.nb_sec * model.volume_factor * model.nb_hours[t_max] *
+        model.nb_sec * model.nb_hours[t_max] *
         sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
     )
 

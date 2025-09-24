@@ -18,7 +18,6 @@ def first_stage_parameters(model):
     model.discharge_volume = pyo.Param(model.T, model.B, default=0) # m^3
     
     model.water_factor = pyo.Param(model.B, model.H, default=0) # m^3
-    model.volume_factor = pyo.Param() 
     
     model.max_flow= pyo.Param(model.HS, default=0) #m^3/s 
     model.total_positive_flex_power = pyo.Param(model.S, default=0)
