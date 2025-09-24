@@ -7,7 +7,6 @@ class PipelineConfig:
     """Configuration for the Dig A Plan optimization pipeline"""
     
     year: int
-    year_list: list[int] = field(default_factory=lambda: [])
     first_stage_timestep: timedelta = timedelta(days=2)
     second_stage_timestep: timedelta = timedelta(hours=1)
     ancillary_market_timestep: timedelta = timedelta(hours=4)

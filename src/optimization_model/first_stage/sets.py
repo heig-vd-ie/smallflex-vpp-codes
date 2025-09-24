@@ -29,10 +29,8 @@ import pyomo.environ as pyo
 
 def first_stage_sets(model):
     model.T = pyo.Set()
-    model.Ω = pyo.Set()
     model.H = pyo.Set()
     model.B = pyo.Set()
-    
     # subset of hydro powerplants with discrete and continuous control
     model.DH = pyo.Set(within=model.H)
     model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])

@@ -129,29 +129,6 @@ def generate_datetime_index(
 
     return datetime_index
 
-def generate_clean_timeseries_scenarios(
-    data: pl.DataFrame, col_name : str,  timestep: timedelta, 
-    max_value: Optional[int] = None, min_value: Optional[int] = None,
-    agg_type: Literal["mean", "sum", "first"] = "first", grouping_columns: list[str] = ["year"]
-    ) -> pl.DataFrame:
-
-    if data.group_by(grouping_columns).agg(c(col_name).count()).n_unique(col_name) > 1:
-        raise ValueError(f"There is not same amount of timestamps per year method")
-        
-    cleaned_data = data.with_columns(
-            c(col_name).clip(lower_bound=min_value, upper_bound=max_value).alias(col_name)
-        )
-    
-    cleaned_data = cleaned_data.with_columns(
-        ((c("timestamp") - pl.datetime(c("year"),1,1,time_zone="UTC"))/timestep).floor().cast(pl.Int32).alias("T")
-    ).group_by(grouping_columns + ["T"]).agg(
-        c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first()
-    ).sort(grouping_columns + ["T"]).with_columns(
-        pl.concat_list("T", "year").alias("TΩ")
-    )
-        
-    return cleaned_data
-
 
 def generate_clean_timeseries(
     data: pl.DataFrame, col_name : str, min_datetime: datetime, max_datetime: datetime, timestep: timedelta, 
@@ -166,7 +143,7 @@ def generate_clean_timeseries(
         .filter(c(timestamp_col).ge(min_datetime).and_(c(timestamp_col).lt(max_datetime)))\
         .sort(timestamp_col)\
         .with_columns(
-            c(col_name).clip(lower_bound=min_value, upper_bound=max_value).alias(col_name)
+            c(col_name).pipe(limit_column, lower_bound=min_value, upper_bound=max_value).alias(col_name)
         )
     
     
@@ -185,7 +162,7 @@ def generate_clean_timeseries(
     )
 
 def generate_basin_volume_table(
-    water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, d_height: float
+    water_basin: pl.DataFrame, basin_height_volume_table: pl.DataFrame, volume_factor: float, d_height: float
     ) -> pl.DataFrame:
     """
     Generates a dictionary mapping water basin identifiers to interpolated height-volume tables.
@@ -198,6 +175,7 @@ def generate_basin_volume_table(
         index (dict[str, pl.DataFrame]): Dictionary containing water basin metadata, including unique identifiers
             and height bounds for each basin.
         basin_height_volume_table (pl.DataFrame): DataFrame containing height and volume data for all basins.
+        volume_factor (float): Factor by which to scale the volume values.
         d_height (float, optional): Step size for height interpolation. Defaults to 1.
     Returns:
         dict[int, Optional[pl.DataFrame]]: Dictionary mapping basin identifiers to their interpolated
@@ -210,7 +188,9 @@ def generate_basin_volume_table(
 
         basin_height_volume_table = basin_height_volume_table\
                 .filter(c("water_basin_fk") == water_basin_index["uuid"])\
-             
+                .with_columns(
+                    (c("volume") * volume_factor).alias("volume")
+                )
         if basin_height_volume_table.is_empty():
             continue
         height_min: float= water_basin_index["height_min"] if water_basin_index["height_min"] is not None else basin_height_volume_table["height"].min() # type: ignore

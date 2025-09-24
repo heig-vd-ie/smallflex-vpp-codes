@@ -126,146 +126,103 @@ r"""
     \end{align}
 
 """
-
 ########################################################################################################################
 # 1.5.1 Water basin volume evolution ###################################################################################
 ########################################################################################################################
 
-
 def first_stage_baseline_objective(model):
     market_price = sum(
-        sum(
-            model.market_price[t, ω]
-            * model.nb_hours[t]
-            * sum(model.hydro_power[t, ω, h] for h in model.H)
-            for t in model.T
-        )
-        for ω in model.Ω
+        model.market_price[t] * model.nb_hours[t] * 
+        sum(model.hydro_power[t, h] for h in model.H) for t in model.T
     )
     ancillary_market_price = sum(
-        sum(
-            model.ancillary_market_price[t, ω]
-            * model.nb_hours[t]
-            * model.ancillary_power[t, ω]
-            for t in model.T
-        )
-        for ω in model.Ω
+        model.ancillary_market_price[t] * model.nb_hours[t] *
+        model.ancillary_power[t]  for t in model.T
     )
-
-    return market_price + ancillary_market_price - model.spilled_volume_penalty + model.basin_volume_penalty
-
-def basin_volume_penalty_rule(model):
-    return model.basin_volume_penalty == sum(
-        sum(
-            model.end_basin_volume_overage[b, ω] * model.unpowered_factor_price_pos[ω, b]
-            - model.end_basin_volume_shortage[b, ω] * model.unpowered_factor_price_neg[ω, b]
-            for b in model.B
-        )/model.nb_sec
-        for ω in model.Ω
-    )
-def spilled_penalty_rule(model):
-    return model.spilled_volume_penalty == sum(
-        sum(
-            sum(model.spilled_volume[t, ω, b] * model.unpowered_factor_price_neg[ω, b] for t in model.T)
-            for b in model.B
-        )/model.nb_sec
-        for ω in model.Ω
-    )
-
+    
+    spilled_penalty = sum(
+        sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
+        for b in model.B
+    ) / (model.nb_sec * model.volume_factor)
+        
+    return market_price + ancillary_market_price - spilled_penalty
 
 ########################################################################################################################
 # 1.5.2 Water basin volume evolution ###################################################################################
 ########################################################################################################################
 
-
-def basin_volume_evolution(model, t, ω, b):
+def basin_volume_evolution(model, t, b):
     if t == model.T.first():
-        return model.basin_volume[t, ω, b] == model.start_basin_volume[b]
+        return model.basin_volume[t, b] == model.start_basin_volume[b]
     else:
-        return model.basin_volume[t, ω, b] == (
-            model.basin_volume[t - 1, ω, b]
-            + model.discharge_volume[t - 1, ω, b]
-            - model.spilled_volume[t - 1, ω, b]
-            + model.nb_sec
-            * model.nb_hours[t - 1]
-            * sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+        return model.basin_volume[t, b] == (
+            model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] +
+            model.nb_sec * model.volume_factor * model.nb_hours[t - 1] *
+            sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
         )
-
-
-def basin_end_volume_constraint(model, ω, b):
+        
+def basin_end_volume_constraint(model, b):
     t_max = model.T.last()
-    return model.start_basin_volume[b] + model.end_basin_volume_overage[b, ω] - model.end_basin_volume_shortage[b, ω] == (
-        model.basin_volume[t_max, ω, b]
-        + model.discharge_volume[t_max, ω, b]
-        - model.spilled_volume[t_max, ω, b]
-        + model.nb_sec
-        * model.nb_hours[t_max]
-        * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+    return model.start_basin_volume[b] == (
+        model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b] +
+        model.nb_sec * model.volume_factor * model.nb_hours[t_max] *
+        sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
     )
-
 
 ########################################################################################################################
 # 1.5.3. Water basin state #############################################################################################
 ########################################################################################################################
 
-
-def basin_max_state(model, t, ω, b, s):
+def basin_max_state(model, t, b, s):
     return (
-        model.basin_volume[t, ω, b] <= model.max_basin_volume[b, s] + 
-        model.max_basin_volume[b, model.S_B[b].last()] * (
-            1 - model.basin_state[t, ω, b, s]
-        )
+        model.basin_volume[t, b] <= model.max_basin_volume[b, s] +
+        model.max_basin_volume[b, model.S_B[b].last()] * 
+        (1 - model.basin_state[t, b, s])
     )
 
-def basin_min_state(model, t, ω, b, s):
-    return (
-        model.basin_volume[t, ω, b]
-        >= model.min_basin_volume[b, s] * model.basin_state[t, ω, b, s]
-    )
+def basin_min_state(model, t, b, s):
+    return model.basin_volume[t, b] >= model.min_basin_volume[b, s] * model.basin_state[t, b, s]
 
-
-def basin_state_total(model, t, ω, b):
-    return sum(model.basin_state[t, ω, b, s] for s in model.S_B[b]) == 1
-
+def basin_state_total(model, t, b):
+    return sum(model.basin_state[t, b, s] for s in model.S_B[b]) == 1
 
 ########################################################################################################################
 # 1.5.4. Hydropower plants #############################################################################################
 ########################################################################################################################
 
-
-def max_flow_by_state(model, t, ω, h, b, s):
+def max_flow_by_state(model, t, h, b, s):
     return (
-        model.flow_by_state[t, ω, h, s]
-        <= model.max_powered_flow_ratio
-        * model.max_flow[h, s]
-        * model.basin_state[t, ω, b, s]
+        model.flow_by_state[t, h, s] <=
+        model.max_powered_flow_ratio * model.max_flow[h, s] * model.basin_state[t, b, s]
     )
 
-
-def total_flow(model, t, ω, h):
-    return model.flow[t, h] == sum(
-        model.flow_by_state[t, ω, h, s] for s in model.S_H[h]
+def total_flow(model, t, h):
+    return (
+        model.flow[t, h] ==
+        sum(model.flow_by_state[t, h, s] for s in model.S_H[h])
     )
 
-
-def total_hydro_power(model, t, ω, h):
-    return model.hydro_power[t, ω, h] == sum(
-        model.flow_by_state[t, ω, h, s] * model.alpha[h, s] for s in model.S_H[h]
+def total_hydro_power(model, t, h):
+    return (
+        model.hydro_power[t, h] ==
+        sum(
+            model.flow_by_state[t, h, s] *  model.alpha[h, s]
+        for s in model.S_H[h])
     )
 
 
 ########################################################################################################################
 # 1.5.5. Ancillary services ############################################################################################
 ########################################################################################################################
-def positive_hydro_ancillary_power_constraint(model, t, ω):
-    return model.ancillary_power[t, ω] <= sum(
-        model.total_positive_flex_power[s] * model.basin_state[t, ω, b, s]
-        for b, s in model.BS
-    ) - sum(model.hydro_power[t, ω, h] for h in model.CH)
 
+def positive_hydro_ancillary_power_constraint(model, t):
+    return (
+        model.ancillary_power[t] <=
+        sum(model.total_positive_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) - sum(model.hydro_power[t, h] for h in model.CH)
+    ) 
 
-def negative_hydro_ancillary_power_constraint(model, t, ω):
-    return model.ancillary_power[t, ω] <= sum(
-        model.total_negative_flex_power[s] * model.basin_state[t, ω, b, s]
-        for b, s in model.BS
-    ) + sum(model.hydro_power[t, ω, h] for h in model.CH)
+def negative_hydro_ancillary_power_constraint(model, t):
+    return (
+        model.ancillary_power[t] <=
+        sum(model.total_negative_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) + sum(model.hydro_power[t, h] for h in model.CH)
+    ) 
