@@ -17,15 +17,24 @@ from utility.data_preprocessing import (
 from general_function import pl_to_dict
 from pipelines.data_configs import DeterministicConfig
 
+
 class DeterministicDataManager(DeterministicConfig):
     def __init__(
         self,
         pipeline_config: DeterministicConfig,
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
+        wind_power_mask: Optional[pl.Expr] = None,
+        pv_power_mask: Optional[pl.Expr] = None,
     ):
         if hydro_power_mask is None:
             hydro_power_mask = pl.lit(True)
+
+        if wind_power_mask is None:
+            wind_power_mask = pl.lit(True)
+
+        if pv_power_mask is None:
+            pv_power_mask = pl.lit(True)
 
         # Retrieve attributes from pipeline_config
         for key, value in vars(pipeline_config).items():
@@ -55,6 +64,8 @@ class DeterministicDataManager(DeterministicConfig):
         self.second_stage_market_price: pl.DataFrame
         self.first_stage_ancillary_market_price: pl.DataFrame
         self.second_stage_ancillary_market_price: pl.DataFrame
+        self.second_stage_wind_production: pl.DataFrame
+        self.second_stage_pv_production: pl.DataFrame
 
         self.__build_timestep_index()
         self.__build_hydro_power_plant_data(
@@ -64,10 +75,11 @@ class DeterministicDataManager(DeterministicConfig):
 
         self.__process_timeseries_input(
             smallflex_input_schema=smallflex_input_schema,
+            wind_power_mask=wind_power_mask,
+            pv_power_mask=pv_power_mask,
         )
-        # self.__calculate_power_volume_buffer()
-        
-        
+        self.__calculate_power_volume_buffer()
+
     def __build_timestep_index(self):
 
         self.first_stage_timestep_index = generate_datetime_index(
@@ -104,14 +116,12 @@ class DeterministicDataManager(DeterministicConfig):
             hydro_power_mask
         ).with_row_index(name="H")
 
-        self.water_basin = (
-            smallflex_input_schema.water_basin.filter(
-                c("uuid").is_in(
-                    self.hydro_power_plant["upstream_basin_fk"].to_list()
-                    + self.hydro_power_plant["downstream_basin_fk"].to_list()
-                )
-            ).with_row_index(name="B")
-        )
+        self.water_basin = smallflex_input_schema.water_basin.filter(
+            c("uuid").is_in(
+                self.hydro_power_plant["upstream_basin_fk"].to_list()
+                + self.hydro_power_plant["downstream_basin_fk"].to_list()
+            )
+        ).with_row_index(name="B")
 
         basin_index_mapping = pl_to_dict(self.water_basin[["uuid", "B"]])
 
@@ -202,7 +212,12 @@ class DeterministicDataManager(DeterministicConfig):
             )
         )
 
-    def __process_timeseries_input(self, smallflex_input_schema: SmallflexInputSchema):
+    def __process_timeseries_input(
+        self,
+        smallflex_input_schema: SmallflexInputSchema,
+        wind_power_mask: pl.Expr,
+        pv_power_mask: pl.Expr,
+    ):
 
         basin_index_mapping = pl_to_dict(self.water_basin[["uuid", "B"]])
 
@@ -215,10 +230,9 @@ class DeterministicDataManager(DeterministicConfig):
             .drop_nulls("B")
             .drop_nulls(subset="basin_fk")
             .with_columns(
-                (
-                    c("value")
-                    * self.second_stage_timestep.total_seconds()
-                ).alias("discharge_volume")
+                (c("value") * self.second_stage_timestep.total_seconds()).alias(
+                    "discharge_volume"
+                )
             )
         )
 
@@ -237,6 +251,22 @@ class DeterministicDataManager(DeterministicConfig):
             .sort("timestamp")
         )
 
+    
+        pv_production: pl.DataFrame  = smallflex_input_schema.weather_historical.filter(pv_power_mask)
+
+        pv_production = pv_production.with_columns(
+            (c("irradiation")/pv_production["irradiation"].max() * self.pv_power_rated_power).alias("pv_power")
+        )
+
+        wind_production: pl.DataFrame  = smallflex_input_schema.weather_historical.filter(wind_power_mask)
+
+        wind_production = wind_production.select(
+            c("timestamp"),
+            pl.when(c("wind").is_between(self.wind_speed_cut_in, self.wind_speed_cut_off))\
+            .then(
+                c("wind").pow(3)/(self.wind_speed_cut_off**3) * self.wind_turbine_rated_power
+            ).otherwise(0).alias("wind_power")
+)
         self.neg_unpowered_price = market_price["avg"].quantile(0.5 + self.second_stage_quantile)  # type: ignore
         self.pos_unpowered_price = market_price["avg"].quantile(0.5 - self.second_stage_quantile)  # type: ignore
         ### Discharge_flow ##############################################################################################
@@ -310,3 +340,34 @@ class DeterministicDataManager(DeterministicConfig):
             data=second_stage_ancillary_market_price,
             divisors=self.ancillary_nb_timestamp,
         ).rename({"T": "F"})
+
+        ### PV production ##############################################################################################$
+        
+        
+        second_stage_pv_production: pl.DataFrame = generate_clean_timeseries(
+                data=pv_production,
+                col_name="pv_power",
+                min_datetime=self.min_datetime,
+                max_datetime=self.max_datetime,
+                timestep=self.second_stage_timestep,
+                agg_type="sum",
+            )
+
+        self.second_stage_pv_production = split_timestamps_per_sim(
+                    data=second_stage_pv_production,
+                    divisors=self.second_stage_nb_timestamp,
+                )
+
+        ### Wind production ############################################################################################
+        second_stage_wind_production: pl.DataFrame = generate_clean_timeseries(
+                data=wind_production,
+                col_name="wind_power",
+                min_datetime=self.min_datetime,
+                max_datetime=self.max_datetime,
+                timestep=self.second_stage_timestep,
+                agg_type="sum",
+            )
+
+        self.second_stage_wind_production = split_timestamps_per_sim(
+            data=second_stage_wind_production, divisors=self.second_stage_nb_timestamp
+        )

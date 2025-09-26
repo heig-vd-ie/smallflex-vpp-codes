@@ -38,6 +38,7 @@ class DeterministicSecondStage(DeterministicDataManager):
         self.sim_start_basin_volume: dict[int, float] = pl_to_dict(self.water_basin["B", "start_volume"])
         self.powered_volume_overage: dict[int, float] = pl_to_dict(self.hydro_power_plant.select("H", pl.lit(0)))
         self.powered_volume_shortage: dict[int, float] = pl_to_dict(self.hydro_power_plant.select("H", pl.lit(0)))
+        self.sim_start_battery_soc: float = self.start_battery_soc
         self.generate_constant_parameters()
         self.non_optimal_solution_idx: list[int] = []
         self.unfeasible_solution: list[int] = []
@@ -47,9 +48,14 @@ class DeterministicSecondStage(DeterministicDataManager):
         self.data["H"] = {None: self.hydro_power_plant["H"].to_list()}
         self.data["DH"] = {None: self.hydro_power_plant.filter(c("control") == "discrete")["H"].to_list()}
         self.data["B"] = {None: self.water_basin["B"].to_list()}
-        self.data["buffer"] = {None: self.volume_buffer}
+        self.data["nb_timestamp_per_ancillary"] = {None: self.nb_timestamp_per_ancillary}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
         self.data["spilled_factor"] = pl_to_dict(self.basin_spilled_factor["B", "spilled_factor"])
+        self.data["battery_capacity"] = {None: self.battery_capacity}
+        self.data["battery_rated_power"] = {None: self.battery_rated_power}
+        self.data["battery_efficiency"] = {None: self.battery_efficiency}
+        self.data["pos_unpowered_price"] = {None: self.pos_unpowered_price}
+        self.data["neg_unpowered_price"] = {None: self.neg_unpowered_price}
 
     def generate_model_instance(self):
     
@@ -79,6 +85,7 @@ class DeterministicSecondStage(DeterministicDataManager):
             ))}
         
         self.data["start_basin_volume"] = self.sim_start_basin_volume
+        self.data["start_battery_soc"] = {None: self.sim_start_battery_soc}
         
         self.data["total_positive_flex_power"] = {None: self.hydro_flex_power["total_positive_flex_power"]}
         self.data["total_negative_flex_power"] = {None: self.hydro_flex_power["total_negative_flex_power"]}
@@ -91,9 +98,15 @@ class DeterministicSecondStage(DeterministicDataManager):
 
         self.data["discharge_volume"] = pl_to_dict_with_tuple(
             self.second_stage_discharge_volume.filter(c("sim_idx") == self.sim_idx)[["TB", "discharge_volume"]]
-        )  
+        ) 
         self.data["market_price"] = pl_to_dict(
             self.second_stage_market_price.filter(c("sim_idx") == self.sim_idx)[["T", "avg"]]
+        )
+        self.data["pv_power"] = pl_to_dict(
+            self.second_stage_pv_production.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]]
+        )
+        self.data["wind_power"] = pl_to_dict(
+            self.second_stage_wind_production.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]]
         )
         self.data["ancillary_market_price"] = pl_to_dict(
             self.second_stage_ancillary_market_price.filter(c("sim_idx") == self.sim_idx)[["F", "avg"]])
@@ -242,6 +255,10 @@ class DeterministicSecondStage(DeterministicDataManager):
             self.sim_start_basin_volume = self.model_instances[self.sim_idx].end_basin_volume.extract_values() # type: ignore
             self.powered_volume_shortage = self.model_instances[self.sim_idx].powered_volume_shortage.extract_values() # type: ignore
             self.powered_volume_overage = self.model_instances[self.sim_idx].powered_volume_overage.extract_values() # type: ignore
+            self.sim_start_battery_soc += (
+                self.model_instances[self.sim_idx].end_battery_soc_overage.extract_values()[None] - # type: ignore
+                self.model_instances[self.sim_idx].end_battery_soc_shortage.extract_values()[None] # type: ignore
+            )
 
     def solve_model(self):
         

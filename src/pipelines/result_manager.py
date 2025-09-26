@@ -7,6 +7,7 @@ import pyomo.environ as pyo
 from general_function import pl_to_dict
 
 
+from pipelines.model_manager import deterministic_second_stage
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
     extract_result_table,
@@ -19,15 +20,19 @@ class PipelineResultManager():
     A class to manage the results of a pipeline, including data processing and visualization.
     """
 
-    def __init__(self, is_stochastic: bool = False):
+    def __init__(self, is_stochastic: bool = False) -> None  :
 
         self.col_list =  ["T", "Ω"] if is_stochastic else ["T"]
 
         self.first_optimization_results: pl.DataFrame
         self.second_optimization_results: pl.DataFrame
 
+
     def extract_optimization_results(
-        self, model_instance: pyo.ConcreteModel, is_first_stage: int, nb_timestamp_per_ancillary: int = 1
+        self, model_instance: pyo.ConcreteModel, 
+        is_first_stage: int, 
+        nb_timestamp_per_ancillary: int = 1,
+        with_battery: bool = False
     ) -> pl.DataFrame:
 
         market_price = extract_result_table(
@@ -94,13 +99,32 @@ class PipelineResultManager():
             df=hydro_power, on="H", index=["T"], values="hydro_power"
         )
 
-        ancillary_power = extract_result_table(
-            model_instance=model_instance, var_name="ancillary_power"
+        hydro_ancillary_reserve = extract_result_table(
+            model_instance=model_instance, var_name="hydro_ancillary_reserve"
         )
+        
+        if with_battery:
+            battery_charging_power = extract_result_table(
+                model_instance=model_instance, var_name="battery_charging_power"
+            ).with_columns(
+                c("battery_charging_power") * -1
+            ) 
+
+            battery_discharging_power = extract_result_table(
+                model_instance=model_instance, var_name="battery_discharging_power"
+            )
+
+            battery_soc = extract_result_table(
+                model_instance=model_instance, var_name="battery_soc"
+            )
+
+            battery_ancillary_reserve = extract_result_table(
+                model_instance=model_instance, var_name="battery_ancillary_reserve"
+            )
 
         if not is_first_stage:
-            ancillary_power = (
-                ancillary_power.with_columns(
+            hydro_ancillary_reserve = (
+                hydro_ancillary_reserve.with_columns(
                     pl.all()
                     .exclude("F")
                     .map_elements(
@@ -125,6 +149,20 @@ class PipelineResultManager():
                 .with_row_index(name="T")
                 .drop("F")
             )  # type: ignore
+            if with_battery:
+                battery_ancillary_reserve = (
+                    battery_ancillary_reserve.with_columns(
+                        pl.all()
+                        .exclude("F")
+                        .map_elements(
+                            lambda x: [x] * nb_timestamp_per_ancillary,
+                            return_dtype=pl.List(pl.Float64),
+                        )
+                    )
+                    .explode(pl.all().exclude("F")) # type: ignore
+                    .with_row_index(name="T")
+                    .drop("F")
+                )  # type: ignore
 
         optimization_results: pl.DataFrame = (
             market_price
@@ -134,22 +172,29 @@ class PipelineResultManager():
             .join(spilled_volume, on=self.col_list, how="inner")
             .join(powered_volume, on="T", how="inner")
             .join(hydro_power, on="T", how="inner")
-            .join(ancillary_power, on="T", how="inner")
-            .with_columns(
-                (
-                    pl.sum_horizontal(cs.starts_with("hydro_power"))
-                    * c("T").replace_strict(nb_hours_mapping, default=1)
-                    * c("market_price")
-                    + pl.sum_horizontal(cs.starts_with("ancillary_power"))
-                    * c("T").replace_strict(nb_hours_mapping, default=1)
-                    * c("market_price")
-                ).alias("income")
-            )
+            .join(hydro_ancillary_reserve, on="T", how="inner")
         )
+        if with_battery:
+            optimization_results = (
+                optimization_results
+                .join(battery_charging_power, on="T", how="inner")
+                .join(battery_discharging_power, on="T", how="inner")
+                .join(battery_soc, on="T", how="inner")
+                .join(battery_ancillary_reserve, on="T", how="inner")
+            )
+            
+        optimization_results = optimization_results.with_columns(
+            (pl.sum_horizontal([
+                cs.starts_with("battery").and_(cs.ends_with("power")), 
+                cs.starts_with("hydro_power")]) * c("market_price")).alias("da_income"),
+            (pl.sum_horizontal(cs.ends_with("ancillary_reserve")) * c("ancillary_market_price")/ 4).alias("ancillary_income")
+        ).sum()
+
+    
         return optimization_results
 
     def extract_first_stage_optimization_results(
-        self, model_instance: pyo.ConcreteModel, first_stage_timestep_index: pl.DataFrame
+        self, model_instance: pyo.ConcreteModel, timestep_index: pl.DataFrame
     ) -> pl.DataFrame:
 
         optimization_results = self.extract_optimization_results(
@@ -157,12 +202,16 @@ class PipelineResultManager():
         )
         
         optimization_results = optimization_results.join(
-            first_stage_timestep_index["T", "timestamp"], on= "T", how="left")
+            timestep_index["T", "timestamp"], on= "T", how="left")
         
         return optimization_results
 
     def extract_second_stage_optimization_results(
-        self, model_instances: dict[int, pyo.ConcreteModel], nb_timestamp_per_ancillary: int = 1
+        self, 
+        model_instances: dict[int, pyo.ConcreteModel], 
+        timestep_index: pl.DataFrame,
+        nb_timestamp_per_ancillary: int = 1,
+        with_battery: bool = False
     ) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
 
         optimization_results: pl.DataFrame = pl.DataFrame()
@@ -174,7 +223,8 @@ class PipelineResultManager():
                     optimization_results,
                     self.extract_optimization_results(
                         model_instance=model_instance, is_first_stage=False, 
-                        nb_timestamp_per_ancillary=nb_timestamp_per_ancillary
+                        nb_timestamp_per_ancillary=nb_timestamp_per_ancillary,
+                        with_battery=with_battery
                     ).with_columns(pl.lit(key).alias("sim_idx")),
                 ],
                 how="diagonal_relaxed",
@@ -198,6 +248,10 @@ class PipelineResultManager():
                 ],
                 how="diagonal_relaxed",
             )
+            
+        optimization_results = optimization_results.join(
+            timestep_index[["T", "sim_idx", "timestamp"]], on=["T", "sim_idx"], how="left"
+        )
 
         powered_volume_overage = powered_volume_overage.pivot(
             on="H", values="powered_volume_overage", index="sim_idx"

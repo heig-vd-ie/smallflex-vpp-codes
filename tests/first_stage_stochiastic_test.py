@@ -62,7 +62,12 @@ optimization_results = result_manager.extract_first_stage_optimization_results(
 
 # %%
 max_volume_mapping = pl_to_dict(stochastic_first_stage.water_basin["B", "volume_max"])
-fig = plot_scenario_results(optimization_results=optimization_results, max_volume_mapping=max_volume_mapping)
+start_volume_mapping = pl_to_dict(stochastic_first_stage.water_basin["B", "start_volume"])
+fig = plot_scenario_results(
+    optimization_results=optimization_results, 
+    max_volume_mapping=max_volume_mapping,
+    start_volume_mapping=start_volume_mapping
+)
 
 plot_folder = file_names["results_plot"] + "/linear_stochastic"
 

@@ -44,12 +44,22 @@ class PipelineConfig:
 class DeterministicConfig(PipelineConfig):
     
     year: int = 2024
+    
+    battery_capacity: float = 4 # MWh
+    battery_rated_power: float = 1 # MW
+    battery_efficiency: float = 0.95
+    start_battery_soc: float = 0.5 # %
+    
     first_stage_max_powered_flow_ratio: float= 0.75
     second_stage_min_volume_ratio: float = 0.1
     second_stage_quantile: float = 0.15 
     volume_buffer_ratio: float = 0.2
     time_limit: float = 20
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
+    pv_power_rated_power = 9 # MW
+    wind_turbine_rated_power = 8 # m/
+    wind_speed_cut_in = 4 # m/s
+    wind_speed_cut_off = 25 # m/s
     
     def __post_init__(self):
         super().__post_init__()
