@@ -198,9 +198,8 @@ r"""
 ########################################################################################################################
 
 
-def second_stage_baseline_objective(model):
+def second_stage_baseline_objective_with_battery(model):
 
- 
     market_price = (
         model.nb_hours
         * sum(
@@ -248,6 +247,49 @@ def second_stage_baseline_objective(model):
         spilled_penalty + 
         powered_volume_penalty + 
         battery_capacity_penalty
+    )
+
+def second_stage_baseline_objective_without_battery(model):
+
+    market_price = (
+        model.nb_hours
+        * sum(
+            model.market_price[t] * 
+            (
+                model.pv_power[t] +
+                model.wind_power[t] - 
+                sum(model.hydro_power[t, h] for h in model.H)
+            ) 
+        for t in model.T)
+    )
+
+    ancillary_market_price = sum(
+        # model.nb_timestamp_per_ancillary * 
+        model.ancillary_market_price[f] * model.hydro_ancillary_reserve[f] 
+        for f in model.F
+    )
+    
+    
+    powered_volume_penalty = (
+        sum(
+            model.powered_volume_overage[h] * model.unpowered_factor_price_pos[h]
+            - model.powered_volume_shortage[h] * model.unpowered_factor_price_neg[h]
+            for h in model.H
+        )
+        / model.nb_sec
+    )
+    spilled_penalty = (
+        sum(
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            for b in model.B
+        )
+        / model.nb_sec
+    )
+    return (
+        market_price + 
+        ancillary_market_price - 
+        spilled_penalty + 
+        powered_volume_penalty
     )
 
 
@@ -334,7 +376,6 @@ def hydro_power_constraint(model, t, h):
     return model.hydro_power[t, h] == sum(
         model.flow_by_state[t, h, s] * model.alpha[h, s] for s in model.S_H[h]
     )
-
 
 def max_active_flow_by_state_constraint(model, t, h, s):
 

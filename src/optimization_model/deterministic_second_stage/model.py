@@ -4,9 +4,7 @@ from optimization_model.deterministic_second_stage.sets import *
 from optimization_model.deterministic_second_stage.parameters import *
 from optimization_model.deterministic_second_stage.variables import *
 
-def deterministic_second_stage_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
-    model.objective = pyo.Objective(rule=second_stage_baseline_objective, sense=pyo.maximize)
-
+def second_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
     ####################################################################################################################
     ### Basin volume evolution constraints #############################################################################  
     #################################################################################################################### 
@@ -23,19 +21,25 @@ def deterministic_second_stage_constraints(model: pyo.AbstractModel) -> pyo.Abst
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
-    # model.max_active_flow_by_state_constraint = pyo.Constraint(model.T, model.DHS, rule=max_active_flow_by_state_constraint)
-    # model.max_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.DHBS, rule=max_inactive_flow_by_state_constraint)
+    model.max_active_flow_by_state_constraint = pyo.Constraint(model.T, model.DHS, rule=max_active_flow_by_state_constraint)
+    model.max_inactive_flow_by_state_constraint = pyo.Constraint(model.T, model.DHBS, rule=max_inactive_flow_by_state_constraint)
     model.max_flow_by_state_constraint = pyo.Constraint(model.T, model.HBS, rule=max_flow_by_state_constraint)
     model.flow_constraint = pyo.Constraint(model.T, model.H, rule=flow_constraint)
     model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
     model.positive_hydro_ancillary_reserve_constraint = pyo.Constraint(model.TF, rule=positive_hydro_ancillary_reserve_constraint)
     model.negative_hydro_ancillary_reserve_constraint = pyo.Constraint(model.TF, rule=negative_hydro_ancillary_reserve_constraint)
+    
     ####################################################################################################################
     ### Hydropower volume quota constraints ############################################################################
     ####################################################################################################################
     model.max_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=max_powered_volume_quota_constraint)
     model.min_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=min_powered_volume_quota_constraint)
     model.diff_volume_constraint = pyo.Constraint(model.H, rule=diff_volume_constraint)
+    return model
+
+def deterministic_second_stage_constraints_with_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
+    model.objective = pyo.Objective(rule=second_stage_baseline_objective_with_battery, sense=pyo.maximize)
+    model = second_stage_common_constraints(model)
     #####################################################################################################################
     ### Battery constraints #############################################################################################
     #####################################################################################################################
@@ -49,14 +53,25 @@ def deterministic_second_stage_constraints(model: pyo.AbstractModel) -> pyo.Abst
     model.battery_negative_energy_reserve_constraint = pyo.Constraint(model.TF, rule=battery_negative_energy_reserve_constraint)
     model.battery_in_charge_constraint = pyo.Constraint(model.T, rule=battery_in_charge_constraint)
     model.battery_in_discharge_constraint = pyo.Constraint(model.T, rule=battery_in_discharge_constraint)
-    #####################################################################################################################
-    ### Other resources constraints #####################################################################################
     return model
 
-def deterministic_second_stage_model() -> pyo.AbstractModel:
+def deterministic_second_stage_constraints_without_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
+    model.objective = pyo.Objective(rule=second_stage_baseline_objective_without_battery, sense=pyo.maximize)
+    model = second_stage_common_constraints(model)
+    return model
+
+def deterministic_second_stage_model_with_battery() -> pyo.AbstractModel:
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = second_stage_sets(model)
     model = second_stage_parameters(model)
     model = second_stage_variables(model)
-    model = deterministic_second_stage_constraints(model)
+    model = deterministic_second_stage_constraints_with_battery(model)
+    return model
+
+def deterministic_second_stage_model_without_battery() -> pyo.AbstractModel:
+    model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
+    model = second_stage_sets(model)
+    model = second_stage_parameters(model)
+    model = second_stage_variables(model)
+    model = deterministic_second_stage_constraints_without_battery(model)
     return model

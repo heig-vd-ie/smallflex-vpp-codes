@@ -12,7 +12,9 @@ from utility.data_preprocessing import (
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
 from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
-from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model
+from optimization_model.deterministic_second_stage.model import (
+    deterministic_second_stage_model_with_battery, deterministic_second_stage_model_without_battery)
+
 
 
 log = generate_log(name=__name__)
@@ -27,7 +29,11 @@ class DeterministicSecondStage(DeterministicDataManager):
         
         
         self.powered_volume_quota = powered_volume_quota
-        self.model: pyo.AbstractModel = deterministic_second_stage_model()
+        if self.battery_capacity > 0:
+            self.model: pyo.AbstractModel = deterministic_second_stage_model_with_battery()
+        else:
+            self.model: pyo.AbstractModel = deterministic_second_stage_model_without_battery()
+            
         self.model_instances: dict[int, pyo.ConcreteModel] = {}
         self.infeasible_increment = 0
         self.sim_idx: int = 0
@@ -244,7 +250,8 @@ class DeterministicSecondStage(DeterministicDataManager):
             nb_sim_tot = self.second_stage_nb_sim
         for self.sim_idx in tqdm.tqdm(
             range(self.second_stage_nb_sim + 1), 
-            desc="Solving second stage optimization problem", ncols=150
+            desc="Solving second stage optimization problem", ncols=150,
+            position=1, leave=False
         ):
             self.infeasible_increment = 0
             self.calculate_second_stage_states()

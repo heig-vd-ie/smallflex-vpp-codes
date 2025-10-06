@@ -78,7 +78,10 @@ class DeterministicFirstStage(DeterministicDataManager):
         self.model_instance = self.model.create_instance({None: data}) # type: ignore
 
     def solve_model(self):
-        with tqdm.tqdm(total=1, desc="Solving first stage optimization problem", ncols=150) as pbar:
+        with tqdm.tqdm(
+            total=1, desc="Solving first stage optimization problem", ncols=150,
+            position=1, leave=False
+        ) as pbar:
             self.create_model_instance()
             _ = self.first_stage_solver.solve(self.model_instance, tee=self.verbose)
             pbar.update()
