@@ -18,14 +18,14 @@ class PipelineConfig:
     verbose: bool = False
     first_stage_max_powered_flow_ratio: float= 0.75
     # volume_factor: float = 1e-6
-    spilled_factor: float = 1e3
+    spilled_factor: float = 1e6
     solver_name: str = 'gurobi'
     d_height: float = 0.01
     seed: int = 42
     
     def __post_init__(self):
         
-        self.rng: np.random.RandomState = np.random.RandomState(self.seed)
+        self.rng: np.random.RandomState = np.random.RandomState(self.seed) # type: ignore
         
         self.first_stage_solver= pyo.SolverFactory(self.solver_name)
         self.second_stage_solver= pyo.SolverFactory(self.solver_name)
@@ -58,8 +58,8 @@ class DeterministicConfig(PipelineConfig):
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     pv_power_rated_power = 9 # MW
     wind_turbine_rated_power = 8 # m/
-    wind_speed_cut_in = 4 # m/s
-    wind_speed_cut_off = 25 # m/s
+    wind_speed_cut_in = 3 # m/s
+    wind_speed_cut_off = 15 # m/s
     
     def __post_init__(self):
         super().__post_init__()

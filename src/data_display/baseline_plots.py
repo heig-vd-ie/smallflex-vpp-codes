@@ -277,7 +277,7 @@ def plot_result(
     fig = plot_second_stage_market_price(results=optimization_results, fig=fig, row=1)
     fig = plot_basin_volume(results=optimization_results, fig=fig, row=2)
     fig = plot_hydro_power(results=optimization_results, fig=fig, row=3)
-    fig = plot_ancillary_reserve(results=optimization_results, fig=fig, row=4)
+    fig = plot_ancillary_reserve(results=optimization_results, fig=fig, row=4, with_battery=with_battery)
     if with_battery:
         fig = plot_battery_power(results=optimization_results, fig=fig, row=5)
         fig = plot_battery_soc(results=optimization_results, fig=fig, row=6)

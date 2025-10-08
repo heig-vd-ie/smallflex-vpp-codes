@@ -102,7 +102,8 @@ fig = plot_result(
 fig.write_html(f"{plot_folder}/first_stage_results.html")
 
 fig = plot_result(
-    results=second_stage_optimization_results,    
-    max_volume_mapping=max_volume_mapping,
-    start_volume_mapping=start_volume_mapping)
+        results=second_stage_optimization_results,    
+            max_volume_mapping=max_volume_mapping,
+                start_volume_mapping=start_volume_mapping)
+
 fig.write_html(f"{plot_folder}/second_stage_results.html")

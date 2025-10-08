@@ -6,6 +6,7 @@ from polars import col as c
 import pyomo.environ as pyo
 import tqdm
 
+from optimization_model import deterministic_second_stage
 from utility.data_preprocessing import (
     generate_hydro_power_state, generate_basin_state
 )
@@ -117,6 +118,7 @@ class DeterministicSecondStage(DeterministicDataManager):
         self.data["ancillary_market_price"] = pl_to_dict(
             self.second_stage_ancillary_market_price.filter(c("sim_idx") == self.sim_idx)[["F", "avg"]])
         
+        
         powered_volume_quota = self.powered_volume_quota.filter(c("sim_idx") == self.sim_idx)\
             .with_columns(
             (
@@ -126,12 +128,14 @@ class DeterministicSecondStage(DeterministicDataManager):
             ).alias("powered_volume_quota")
         )
         self.data["powered_volume_quota"] = pl_to_dict(powered_volume_quota[["H", "powered_volume_quota"]])
-        self.data["shortage_volume_buffer"] = dict(
-            Counter(self.volume_buffer) + Counter(dict(map(lambda x: (x[0], x[1]/3), self.powered_volume_shortage.items())))
-        ) 
-        self.data["overage_volume_buffer"] = dict(
-            Counter(self.volume_buffer) + Counter(dict(map(lambda x: (x[0], x[1]/3), self.powered_volume_overage.items())))
-        ) 
+        self.data["shortage_volume_buffer"] = {}
+        self.data["overage_volume_buffer"] = {}
+        for data in powered_volume_quota.to_dicts():
+            overage_volume_buffer = self.volume_buffer[data["H"]] + self.powered_volume_overage[data["H"]]/3
+            self.data["shortage_volume_buffer"][data["H"]] = self.volume_buffer[data["H"]] + self.powered_volume_shortage[data["H"]]/3
+            # The overage buffer should never be lower than the negative quota to avoid infeasibility
+            self.data["overage_volume_buffer"][data["H"]] = (max(overage_volume_buffer, - 1.1*data["powered_volume_quota"]))
+        
 
         self.data["max_flow"] = pl_to_dict_with_tuple(self.sim_hydro_power_state["HS", "flow"])  
         self.data["alpha"] = pl_to_dict_with_tuple(self.sim_hydro_power_state["HS", "alpha"])  
@@ -249,7 +253,7 @@ class DeterministicSecondStage(DeterministicDataManager):
         if not nb_sim_tot:
             nb_sim_tot = self.second_stage_nb_sim
         for self.sim_idx in tqdm.tqdm(
-            range(self.second_stage_nb_sim + 1), 
+            range(self.second_stage_nb_sim + 1),
             desc="Solving second stage optimization problem", ncols=150,
             position=1, leave=False
         ):

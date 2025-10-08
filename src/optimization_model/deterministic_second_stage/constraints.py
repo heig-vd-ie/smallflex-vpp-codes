@@ -206,7 +206,7 @@ def second_stage_baseline_objective_with_battery(model):
             model.market_price[t] * 
             (
                 model.pv_power[t] +
-                model.wind_power[t] - 
+                model.wind_power[t] -
                 model.battery_charging_power[t] + 
                 model.battery_discharging_power[t] + 
                 sum(model.hydro_power[t, h] for h in model.H)
@@ -215,7 +215,7 @@ def second_stage_baseline_objective_with_battery(model):
     )
 
     ancillary_market_price = sum(
-        # model.nb_timestamp_per_ancillary * 
+        model.nb_timestamp_per_ancillary * 
         model.ancillary_market_price[f] *
         (model.hydro_ancillary_reserve[f] + model.battery_ancillary_reserve[f])
         for f in model.F
@@ -242,10 +242,10 @@ def second_stage_baseline_objective_with_battery(model):
         / model.nb_sec
     )
     return (
-        market_price + 
-        ancillary_market_price - 
-        spilled_penalty + 
-        powered_volume_penalty + 
+        market_price +
+        ancillary_market_price -
+        spilled_penalty +
+        powered_volume_penalty +
         battery_capacity_penalty
     )
 
@@ -257,7 +257,7 @@ def second_stage_baseline_objective_without_battery(model):
             model.market_price[t] * 
             (
                 model.pv_power[t] +
-                model.wind_power[t] - 
+                model.wind_power[t] + 
                 sum(model.hydro_power[t, h] for h in model.H)
             ) 
         for t in model.T)
