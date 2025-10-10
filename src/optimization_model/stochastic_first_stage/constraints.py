@@ -146,7 +146,7 @@ def objective(model):
         sum(
             model.ancillary_market_price[t, ω]
             * model.nb_hours[t]
-            * model.ancillary_power[t]
+            * model.hydro_ancillary_reserve[t]
             for t in model.T
         )
         for ω in model.Ω
@@ -234,8 +234,8 @@ def hydro_power_constraint(model, t, h):
 ########################################################################################################################
 # 1.5.5. Ancillary services ############################################################################################
 ########################################################################################################################
-def positive_hydro_ancillary_power_constraint(model, t):
-    return model.ancillary_power[t] <= model.total_positive_flex_power - sum(model.hydro_power[t, h] for h in model.CH)
+def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
+    return model.hydro_ancillary_reserve[t] <= model.total_positive_flex_power - sum(model.hydro_power[t, h] for h in model.CH)
 
-def negative_hydro_ancillary_power_constraint(model, t):
-    return model.ancillary_power[t] <= model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH)
+def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
+    return model.hydro_ancillary_reserve[t] <= model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH)

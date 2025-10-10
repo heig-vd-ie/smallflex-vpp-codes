@@ -49,8 +49,6 @@ pipeline_data_manager: StochasticDataManager = StochasticDataManager(
 )
 result_manager:PipelineResultManager = PipelineResultManager(is_stochastic=True)
 # %%
-
-
 stochastic_first_stage: StochasticFirstStage = StochasticFirstStage(
     pipeline_data_manager=pipeline_data_manager
 )
@@ -58,7 +56,7 @@ stochastic_first_stage.solve_model()
 
 optimization_results = result_manager.extract_first_stage_optimization_results(
     model_instance=stochastic_first_stage.model_instance, 
-    first_stage_timestep_index=pipeline_data_manager.first_stage_timestep_index)
+    timestep_index=pipeline_data_manager.first_stage_timestep_index)
 
 # %%
 max_volume_mapping = pl_to_dict(stochastic_first_stage.water_basin["B", "volume_max"])

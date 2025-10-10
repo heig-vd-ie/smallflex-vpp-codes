@@ -6,23 +6,11 @@ from polars import col as c
 import numpy as np
 from polars import selectors as cs
 from plotly.subplots import make_subplots
-
+from numpy_function import clipped_cumsum
 import numpy as np
 
 COLORS = px.colors.qualitative.Plotly
 
-def cumsum_clip(a: np.ndarray, xmin=-np.inf, xmax=np.inf):
-    res = np.empty_like(a)
-    if a.ndim == 1:
-        a = a[:, np.newaxis]
-    res = np.empty_like(a)
-    c = np.zeros(a.shape[1])
-    for i in range(len(a)):
-        c = np.minimum(np.maximum(c + a[i, :], xmin), xmax)
-        res[i, :] = c
-    if a.ndim == 1:
-        res = res[:, 0]
-    return res
 
 def plot_second_stage_market_price(
     results: pl.DataFrame, fig: go.Figure, row: int

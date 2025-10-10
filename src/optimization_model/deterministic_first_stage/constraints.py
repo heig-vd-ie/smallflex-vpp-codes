@@ -137,7 +137,7 @@ def first_stage_baseline_objective(model):
     )
     ancillary_market_price = sum(
         model.ancillary_market_price[t] * model.nb_hours[t] *
-        model.ancillary_power[t]  for t in model.T
+        model.hydro_ancillary_reserve[t]  for t in model.T
     )
     
     spilled_penalty = sum(
@@ -215,14 +215,14 @@ def total_hydro_power(model, t, h):
 # 1.5.5. Ancillary services ############################################################################################
 ########################################################################################################################
 
-def positive_hydro_ancillary_power_constraint(model, t):
+def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
     return (
-        model.ancillary_power[t] <=
+        model.hydro_ancillary_reserve[t] <=
         sum(model.total_positive_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) - sum(model.hydro_power[t, h] for h in model.CH)
     ) 
 
-def negative_hydro_ancillary_power_constraint(model, t):
+def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
     return (
-        model.ancillary_power[t] <=
+        model.hydro_ancillary_reserve[t] <=
         sum(model.total_negative_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) + sum(model.hydro_power[t, h] for h in model.CH)
     ) 

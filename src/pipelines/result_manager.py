@@ -164,13 +164,13 @@ class PipelineResultManager():
                     .drop("F")
                 )  # type: ignore
                 
-        pv_power = extract_result_table(
-        model_instance=model_instance, var_name="pv_power"
-    )
-
-        wind_power = extract_result_table(
-                model_instance=model_instance, var_name="wind_power"
+            pv_power = extract_result_table(
+            model_instance=model_instance, var_name="pv_power"
             )
+
+            wind_power = extract_result_table(
+                    model_instance=model_instance, var_name="wind_power"
+                )
 
         optimization_results: pl.DataFrame = (
             market_price
@@ -181,9 +181,15 @@ class PipelineResultManager():
             .join(powered_volume, on="T", how="inner")
             .join(hydro_power, on="T", how="inner")
             .join(hydro_ancillary_reserve, on="T", how="inner")
-            .join(pv_power, on="T", how="inner")
-            .join(wind_power, on="T", how="inner") 
         )
+        
+        if not is_first_stage:
+            optimization_results = (
+                optimization_results
+                .join(pv_power, on="T", how="inner")
+                .join(wind_power, on="T", how="inner")
+            )
+        
         if with_battery:
             optimization_results = (
                 optimization_results
@@ -192,15 +198,23 @@ class PipelineResultManager():
                 .join(battery_soc, on="T", how="inner")
                 .join(battery_ancillary_reserve, on="T", how="inner")
             )
-            
-        optimization_results = optimization_results.with_columns(
-            (pl.sum_horizontal([
-                c("pv_power"),
-                c("wind_power"),
-                cs.starts_with("battery").and_(cs.ends_with("power")), 
-                cs.starts_with("hydro_power")]) * c("market_price")).alias("da_income"),
-            (pl.sum_horizontal(cs.ends_with("ancillary_reserve")) * c("ancillary_market_price")).alias("ancillary_income")
-        )
+        if not is_first_stage:   
+            optimization_results = optimization_results.with_columns(
+                (pl.sum_horizontal([
+                    c("pv_power"),
+                    c("wind_power"),
+                    cs.starts_with("battery").and_(cs.ends_with("power")), 
+                    cs.starts_with("hydro_power")]) * c("market_price")).alias("da_income"),
+                (pl.sum_horizontal(cs.ends_with("ancillary_reserve")) * c("ancillary_market_price")).alias("ancillary_income")
+            )
+        else:
+            optimization_results = optimization_results.with_columns(
+                (pl.sum_horizontal([
+                    cs.starts_with("battery").and_(cs.ends_with("power")), 
+                    cs.starts_with("hydro_power")
+                ]) * c("market_price")).alias("da_income"),
+                (pl.sum_horizontal(cs.ends_with("ancillary_reserve")) * c("ancillary_market_price")).alias("ancillary_income")
+            )
 
     
         return optimization_results

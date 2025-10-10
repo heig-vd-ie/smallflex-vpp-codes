@@ -8,14 +8,14 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12,<3.14"
-utility-functions = {path = "external-dist/utility_functions-0.1.0-py3-none-any.whl", optional = true}
+utility-functions = {path = "external-dist/utility_functions-0.1.1-py3-none-any.whl", optional = true}
 polars = "^1.32.3"
 sqlalchemy = "^2.0.43"
 scipy = "^1.16.1"
 matplotlib = "^3.10.5"
 pandas = "^2.3.2"
 pyomo = "^6.9.3"
-smallflex-data-schema = {path = "external-dist/smallflex_data_schema-0.1.3-py3-none-any.whl", optional = true}
+smallflex-data-schema = {path = "external-dist/smallflex_data_schema-0.1.5-py3-none-any.whl", optional = true}
 plotly = "^6.1.1"
 gurobipy = "^12.0.2"
 patito = "^0.8.3"

@@ -56,6 +56,7 @@ class DeterministicConfig(PipelineConfig):
     volume_buffer_ratio: float = 0.2
     time_limit: float = 20
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
+    start_basin_volume_ratio: dict[int, float] = field(default_factory=lambda: {})
     pv_power_rated_power = 9 # MW
     wind_turbine_rated_power = 8 # m/
     wind_speed_cut_in = 3 # m/s

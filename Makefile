@@ -3,11 +3,11 @@ include Makefile.common.mak
 
 UTILITY_FUNCTIONS_REPO := utility-functions
 UTILITY_FUNCTIONS_BRANCH := main
-UTILITY_FUNCTIONS_VERSION := 0.1.0
+UTILITY_FUNCTIONS_VERSION := 0.1.1
 
 SMALLFLEX_DATASCHEMA_REPO := smallflex-data-schema
 SMALLFLEX_DATASCHEMA_BRANCH := main
-SMALLFLEX_DATASCHEMA_VERSION := 0.1.3
+SMALLFLEX_DATASCHEMA_VERSION := 0.1.5
 
 vis:  ## Run Streamlit visualization
 	streamlit run d:/smallflex-vpp-codes/visualization/home.py

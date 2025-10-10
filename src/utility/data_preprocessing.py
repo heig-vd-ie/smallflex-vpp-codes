@@ -7,6 +7,7 @@ from datetime import datetime, date, timedelta
 import pyomo.environ as pyo
 
 from general_function import pl_to_dict, generate_log
+from numpy_function import clipped_cumsum
 
 
 log = generate_log(name=__name__)
@@ -140,7 +141,7 @@ def generate_clean_timeseries(
             min_datetime=min_datetime, max_datetime=max_datetime, real_timestep=timestep)
     
     cleaned_data: pl.DataFrame = data\
-        .filter(c(timestamp_col).ge(min_datetime).and_(c(timestamp_col).lt(max_datetime)))\
+        .filter(c(timestamp_col).is_between(min_datetime,max_datetime))\
         .sort(timestamp_col)\
         .with_columns(
             c(col_name).pipe(limit_column, lower_bound=min_value, upper_bound=max_value).alias(col_name)
@@ -427,3 +428,25 @@ def generate_basin_state(basin_volume_table: pl.DataFrame, nb_state: int, bounda
     )
     
     return basin_state
+
+
+def compute_battery_power(
+    power_difference: np.ndarray, 
+    battery_rated_power: float, 
+    battery_rated_capacity: float, 
+    battery_efficiency: float, 
+    start_soc: float) -> tuple[np.ndarray, np.ndarray]:
+
+    potential_discharging_power = power_difference.clip(min=-battery_rated_power, max=0) / battery_efficiency
+    potential_charging_power = power_difference.clip(max=battery_rated_power, min=0) * battery_efficiency
+    battery_soc_potential_diff = - (potential_charging_power + potential_discharging_power) / battery_rated_capacity
+
+    battery_soc_potential_diff = np.insert(battery_soc_potential_diff, 0, start_soc)
+    battery_soc = clipped_cumsum(battery_soc_potential_diff, 0, 1)
+
+    battery_charging_power = np.diff(battery_soc).clip(min=0) * battery_efficiency * battery_rated_capacity
+    battery_discharging_power = np.diff(battery_soc).clip(max=0) / battery_efficiency * battery_rated_capacity
+
+    battery_power = battery_charging_power + battery_discharging_power
+    
+    return battery_power, battery_soc

@@ -14,8 +14,8 @@ def stochastic_first_stage_constraints(model):
 
     model.max_flow_constraint = pyo.Constraint(model.T, model.H, rule=max_flow_constraint)
     model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
-    model.positive_hydro_ancillary_power_constraint = pyo.Constraint(model.T, rule=positive_hydro_ancillary_power_constraint)
-    model.negative_hydro_ancillary_power_constraint = pyo.Constraint(model.T, rule=negative_hydro_ancillary_power_constraint)
+    model.positive_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=positive_hydro_hydro_ancillary_reserve_constraint)
+    model.negative_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=negative_hydro_hydro_ancillary_reserve_constraint)
 
     return model
 
