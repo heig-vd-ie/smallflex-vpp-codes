@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 import polars as pl
 import polars.selectors as cs
 from datetime import timedelta
@@ -14,15 +14,16 @@ from utility.data_preprocessing import (
 )
 
 from general_function import pl_to_dict
-from pipelines.data_configs import DeterministicConfig
+from pipelines.data_configs import DeterministicConfig, StochasticConfig
 
 
 class HydroDataManager():
     def __init__(
         self,
-        data_config: DeterministicConfig,
+        data_config: Union[DeterministicConfig, StochasticConfig],
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
+        is_linear: bool = False,
     ):
         if hydro_power_mask is None:
             hydro_power_mask = pl.lit(True)
@@ -44,10 +45,13 @@ class HydroDataManager():
             smallflex_input_schema=smallflex_input_schema,
             hydro_power_mask=hydro_power_mask,
             data_config=data_config,
+            is_linear=is_linear
         )
 
     def __build_hydro_power_plant_data(
-        self, smallflex_input_schema: SmallflexInputSchema, hydro_power_mask: pl.Expr, data_config: DeterministicConfig
+        self, smallflex_input_schema: SmallflexInputSchema, 
+        hydro_power_mask: pl.Expr, data_config: Union[DeterministicConfig, StochasticConfig], 
+        is_linear: bool = False
     ):
 
         water_volume_mapping = {"upstream_basin_fk": -1, "downstream_basin_fk": 1}
@@ -116,6 +120,7 @@ class HydroDataManager():
             basin_volume_table=self.basin_volume_table,
             water_basin=self.water_basin,
             nb_state_dict=data_config.nb_state_dict,
+            is_linear=is_linear
         )
         self.first_stage_hydro_power_state = generate_hydro_power_state(
             power_performance_table=self.power_performance_table,

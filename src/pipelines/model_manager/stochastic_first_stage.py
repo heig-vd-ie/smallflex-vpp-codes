@@ -1,14 +1,16 @@
 from typing import Optional
 from polars import col as c
+from polars import selectors as cs
 import polars as pl
 import pyomo.environ as pyo
 from pyomo.environ import TransformationFactory
 import tqdm
 
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
+from smallflex_data_schema import SmallflexInputSchema
 
-# from pipelines.data_manager.stochastic_data_manager import StochasticDataManager
-
+from pipelines.data_manager import HydroDataManager
+from pipelines.data_configs import StochasticConfig
 from optimization_model.stochastic_first_stage.model import stochastic_first_stage_model
 
 
@@ -27,18 +29,82 @@ class StochasticFirstStage(HydroDataManager):
             data_config=data_config,
             smallflex_input_schema=smallflex_input_schema,
             hydro_power_mask=hydro_power_mask,
+            is_linear=True
         )
         self.data_config = data_config
         self.model: pyo.AbstractModel = stochastic_first_stage_model()
         self.model_instance: pyo.ConcreteModel
-        self.scaled_model_instance: pyo.ConcreteModel
-        self.model_scaler = TransformationFactory('core.scale_model')
+        
+        self.discharge_volume: pl.DataFrame
+        self.timeseries: pl.DataFrame
+        self.unpowered_factor_price : pl.DataFrame
+                
+        self.scenario_list = list(self.data_config.rng.choice(
+            smallflex_input_schema.discharge_volume_synthesized["scenario"].unique().to_numpy(), 
+            size=self.data_config.nb_scenarios, replace=False
+        ))
 
+    def set_timeseries(self, timeseries: pl.DataFrame):
+        min_timestamp = timeseries["timestamp"].min()
+        self.timeseries = (
+            timeseries.sort("timestamp", "Ω").group_by_dynamic(
+                index_column="timestamp", start_by="datapoint", every=self.data_config.first_stage_timestep, 
+                closed="left", group_by=["Ω"]
+            ).agg(
+                cs.starts_with("discharge_volume").sum(),
+                cs.contains("market_price").mean(),
+                c("timestamp").count().alias("nb_hours"),
+            ).sort("timestamp").with_columns(
+                ((c("timestamp") -  min_timestamp) / self.data_config.first_stage_timestep).cast(pl.Int64).alias("T")
+            ).with_columns(
+                pl.concat_list("T", "Ω").alias("TΩ")
+            )
+        )
+        
+        self.discharge_volume = (
+            self.timeseries.unpivot(
+                on=cs.starts_with("discharge_volume"),
+                index=["T", "Ω"],
+                variable_name="B",
+                value_name="discharge_volume",
+            )
+            .filter(~c("B").str.contains("forecast"))
+            .with_columns(
+                c("B").str.replace("discharge_volume_", "").cast(pl.UInt32).alias("B")
+            ).with_columns(
+                pl.concat_list(["T", "Ω", "B"]).alias("TΩB")
+            )
+        )
+        unpowered_price = self.timeseries.group_by("Ω").agg(
+            c("market_price")
+            .quantile(0.9)
+            .alias("neg_unpowered_price"),
+            c("market_price")
+            .quantile(0.10)
+            .alias("pos_unpowered_price"),
+        )
+        water_basin_alpha = self.first_stage_hydro_power_state.group_by("B").agg(
+                    c("alpha").abs().max().alias("max_alpha"),
+                    c("alpha").abs().min().alias("min_alpha"),
+                )
+        water_basin_alpha = (
+            self.water_basin[["B"]]
+            .join(water_basin_alpha, on="B", how="left")
+            .fill_null(0)
+        )
+
+        self.unpowered_factor_price = unpowered_price.join(
+            water_basin_alpha, how="cross"
+        ).select(
+            pl.concat_list("Ω", "B").alias("ΩB"),
+            (c("neg_unpowered_price") * c("max_alpha")).alias("unpowered_factor_price_neg"),
+            (c("pos_unpowered_price") * c("min_alpha")).alias("unpowered_factor_price_pos")
+        )
 
     def create_model_instance(self):
         data: dict = {}
         # index
-        data["T"] = {None: self.first_stage_timestep_index["T"].to_list()}
+        
         data["H"] = {None: self.first_stage_hydro_power_state["H"].to_list()}
         data["B"] = {None: self.water_basin["B"].to_list()}
         data["DH"] = {
@@ -48,7 +114,6 @@ class StochasticFirstStage(HydroDataManager):
         data["HB"] = {
             None: list(map(tuple, self.first_stage_hydro_power_state["HB"].to_list()))
         }
-        data["nb_hours"] = pl_to_dict(self.first_stage_timestep_index[["T", "n_index"]])
 
         # Water basin
         data["start_basin_volume"] = pl_to_dict(self.water_basin[["B", "start_volume"]])
@@ -73,24 +138,18 @@ class StochasticFirstStage(HydroDataManager):
             self.first_stage_hydro_power_state.select("H", "alpha")
         )
 
-        data["total_positive_flex_power"] = {
-            None: self.first_stage_hydro_flex_power["total_positive_flex_power"][0]
-        }
-        data["total_negative_flex_power"] = {
-            None: self.first_stage_hydro_flex_power["total_negative_flex_power"][0]
-        }
-
         # Timeseries
+        
+        data["T"] = {None: self.timeseries["T"].to_list()}
+        data["nb_hours"] = pl_to_dict(self.timeseries.filter(c("T").is_first_distinct())[["T", "nb_hours"]])
+
         data["discharge_volume"] = pl_to_dict_with_tuple(
-            self.first_stage_discharge_volume[["TΩB", "discharge_volume"]]
+            self.discharge_volume[["TΩB", "discharge_volume"]]
         )
         data["market_price"] = pl_to_dict_with_tuple(
-            self.first_stage_market_price[["TΩ", "market_price"]]
+            self.timeseries[["TΩ", "market_price"]]
         )
-        data["ancillary_market_price"] = pl_to_dict_with_tuple(
-            self.first_stage_ancillary_market_price[["TΩ", "market_price"]]
-        )
-
+    
         data["unpowered_factor_price_pos"] = pl_to_dict_with_tuple(
             self.unpowered_factor_price["ΩB", "unpowered_factor_price_pos"]
         )
@@ -99,24 +158,11 @@ class StochasticFirstStage(HydroDataManager):
         )
 
         # Configuration parameters
-        data["max_powered_flow_ratio"] = {None: self.first_stage_max_powered_flow_ratio}
+        data["max_powered_flow_ratio"] = {None: self.data_config.first_stage_max_powered_flow_ratio}
         
 
         self.model_instance = self.model.create_instance({None: data})  # type: ignore
     
-    # def model_scaling(self):
-
-    #     self.model_instance.scaling_factor = pyo.Suffix(direction=pyo.Suffix.EXPORT)
-    #     # Scale volumes
-    #     self.model_instance.scaling_factor[self.model_instance.basin_volume] = self.volume_factor
-    #     self.model_instance.scaling_factor[self.model_instance.spilled_volume] = self.volume_factor
-    #     self.model_instance.scaling_factor[self.model_instance.end_basin_volume_overage] = self.volume_factor
-    #     self.model_instance.scaling_factor[self.model_instance.end_basin_volume_shortage] = self.volume_factor
-        
-    #     self.scaled_model_instance = self.model_scaler.create_using(self.model_instance) # type: ignore
-        
-    def results_propagation(self):
-        self.model_scaler.propagate_solution(self.scaled_model_instance, self.model_instance) # type: ignore
 
     def solve_model(self):
         with tqdm.tqdm(
@@ -125,7 +171,7 @@ class StochasticFirstStage(HydroDataManager):
             self.create_model_instance()
             pbar.update()
             pbar.set_description("Solving first stage optimization problem")
-            _ = self.first_stage_solver.solve(self.model_instance, tee=self.verbose)
+            _ = self.data_config.first_stage_solver.solve(self.model_instance, tee=self.data_config.verbose)
             pbar.update()
     
             

@@ -38,6 +38,7 @@ class DeterministicFirstStage(HydroDataManager):
         self.data_config = data_config
         self.model: pyo.AbstractModel = deterministic_first_stage_model()
         self.timeseries: pl.DataFrame
+        self.discharge_volume: pl.DataFrame
         self.model_instance: pyo.ConcreteModel
 
     def create_model_instance(self):
@@ -120,23 +121,10 @@ class DeterministicFirstStage(HydroDataManager):
         data["T"] = {None: self.timeseries["T"].to_list()}
         data["nb_hours"] = pl_to_dict(self.timeseries[["T", "nb_hours"]])
 
-        discharge_volume = (
-            self.timeseries.unpivot(
-                on=cs.starts_with("discharge_volume"),
-                index="T",
-                variable_name="B",
-                value_name="discharge_volume",
-            )
-            .filter(~c("B").str.contains("forecast"))
-            .with_columns(
-                pl.concat_list(
-                    ["T", c("B").str.replace("discharge_volume_", "").cast(pl.UInt32)]
-                ).alias("TB")
-            )
-        )
+        
 
         data["discharge_volume"] = pl_to_dict_with_tuple(
-            discharge_volume[["TB", "discharge_volume"]]
+            self.discharge_volume[["TB", "discharge_volume"]]
         )
         data["market_price"] = pl_to_dict(self.timeseries[["T", "market_price"]])
         data["ancillary_market_price"] = pl_to_dict(
@@ -147,13 +135,29 @@ class DeterministicFirstStage(HydroDataManager):
 
     def set_timeseries(self, timeseries: pl.DataFrame):
         self.timeseries = (
-            timeseries.group_by(c("timestamp").dt.ordinal_day().alias("T"))
-            .agg(
+            timeseries.group_by_dynamic(
+                index_column="timestamp", start_by="datapoint", every=self.data_config.first_stage_timestep, 
+                closed="left"
+            ).agg(
                 cs.starts_with("discharge_volume").sum(),
-                c("market_price", "ancillary_market_price").mean(),
+                cs.contains("market_price").mean(),
                 c("timestamp").count().alias("nb_hours"),
+            ).sort("timestamp").with_row_index("T")
+        )
+        
+        self.discharge_volume = (
+            self.timeseries.unpivot(
+                on=cs.starts_with("discharge_volume"),
+                index="T",
+                variable_name="B",
+                value_name="discharge_volume",
             )
-            .sort("T")
+            .filter(~c("B").str.contains("forecast"))
+            .with_columns(
+                c("B").str.replace("discharge_volume_", "").cast(pl.UInt32).alias("B")
+            ).with_columns(
+                pl.concat_list(["T","B"]).alias("TB")
+            )
         )
 
     def solve_model(self):

@@ -164,22 +164,13 @@ def generate_clean_timeseries(
     
 def generate_clean_timeseries_scenarios(
     data: pl.DataFrame, col_name : str,  timestep: timedelta, 
-    timestamp_mapping: dict[datetime, int],
     agg_type: Literal["mean", "sum", "first"] = "first", grouping_columns: list[str] = ["Ω"],
     timestamp_col: str = "timestamp"
     ) -> pl.DataFrame:
-
-    col_list = ["T"] + grouping_columns
-    data = data.sort("timestamp").group_by_dynamic(
+    data = data.sort(timestamp_col).group_by_dynamic(
         index_column=timestamp_col, start_by="datapoint", every=timestep, closed="left", group_by=grouping_columns
     ).agg(
         c(col_name).mean() if agg_type=="mean" else c(col_name).sum() if agg_type=="sum" else c(col_name).first(),
-        c(col_name).max().name.prefix("max_"),
-        c(col_name).min().name.prefix("min_"),
-    ).with_columns(
-        c("timestamp").replace_strict(timestamp_mapping, default=None).alias("T"),
-    ).with_columns(
-        pl.concat_list(col_list).alias("".join(col_list))
     )
     return data
 
@@ -352,7 +343,8 @@ def split_timestamps_per_sim(data: pl.DataFrame, divisors: int, col_name: str = 
 def generate_first_stage_basin_state_table(
     basin_volume_table: pl.DataFrame, 
     water_basin: pl.DataFrame, 
-    nb_state_dict: dict[int, int] = {}
+    nb_state_dict: dict[int, int] = {},
+    is_linear: bool = False
     ) -> pl.DataFrame:
     """
     Generates a table of basin states based on the volume table in the baseline input.
@@ -369,8 +361,9 @@ def generate_first_stage_basin_state_table(
 
     for basin_index in basin_volume_table["B"].unique():
         data = basin_volume_table.filter(c("B") == basin_index)
-
-        if basin_index in nb_state_dict.keys():
+        if is_linear:
+            nb_state = 1
+        elif basin_index in nb_state_dict.keys():
             nb_state = nb_state_dict[basin_index] 
         else:
             nb_state = water_basin.filter(c("B")== basin_index)["n_state_min"][0]

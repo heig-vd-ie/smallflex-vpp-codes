@@ -3,7 +3,7 @@ import pyomo.environ as pyo
 def first_stage_parameters(model):
     
     model.market_price = pyo.Param(model.T, model.Ω)
-    model.ancillary_market_price = pyo.Param(model.T, model.Ω)
+    # model.ancillary_market_price = pyo.Param(model.T, model.Ω)
     model.discharge_volume = pyo.Param(model.T, model.Ω, model.B, default=0) # m^3
     
     model.nb_hours = pyo.Param(model.T)
@@ -21,8 +21,8 @@ def first_stage_parameters(model):
     model.volume_factor = pyo.Param() 
     
     model.max_flow= pyo.Param(model.H, default=0) #m^3/s 
-    model.total_positive_flex_power = pyo.Param(default=0)
-    model.total_negative_flex_power = pyo.Param(default=0)
+    # model.total_positive_flex_power = pyo.Param(default=0)
+    # model.total_negative_flex_power = pyo.Param(default=0)
     model.alpha = pyo.Param(model.H, default=0)  #MW/(m^3/s)
 
     model.unpowered_factor_price_pos= pyo.Param(model.Ω, model.B) # CHF/m3

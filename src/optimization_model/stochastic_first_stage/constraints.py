@@ -142,15 +142,15 @@ def objective(model):
         )
         for ω in model.Ω
     )
-    ancillary_market_price = sum(
-        sum(
-            model.ancillary_market_price[t, ω]
-            * model.nb_hours[t]
-            * model.hydro_ancillary_reserve[t]
-            for t in model.T
-        )
-        for ω in model.Ω
-    )
+    # ancillary_market_price = sum(
+    #     sum(
+    #         model.ancillary_market_price[t, ω]
+    #         * model.nb_hours[t]
+    #         * model.hydro_ancillary_reserve[t]
+    #         for t in model.T
+    #     )
+    #     for ω in model.Ω
+    # )
     basin_volume_penalty = sum(
         sum(
             model.end_basin_volume_overage[b, ω] * model.unpowered_factor_price_pos[ω, b]
@@ -167,7 +167,7 @@ def objective(model):
         for ω in model.Ω
     )
 
-    return market_price + ancillary_market_price - spilled_volume_penalty + basin_volume_penalty
+    return market_price - spilled_volume_penalty + basin_volume_penalty
 
 
 ########################################################################################################################
@@ -231,11 +231,11 @@ def hydro_power_constraint(model, t, h):
     return model.hydro_power[t, h] == model.flow[t, h] * model.alpha[h]
 
 
-########################################################################################################################
-# 1.5.5. Ancillary services ############################################################################################
-########################################################################################################################
-def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
-    return model.hydro_ancillary_reserve[t] <= model.total_positive_flex_power - sum(model.hydro_power[t, h] for h in model.CH)
+# ########################################################################################################################
+# # 1.5.5. Ancillary services ############################################################################################
+# ########################################################################################################################
+# def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
+#     return model.hydro_ancillary_reserve[t] <= model.total_positive_flex_power - sum(model.hydro_power[t, h] for h in model.CH)
 
-def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
-    return model.hydro_ancillary_reserve[t] <= model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH)
+# def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
+#     return model.hydro_ancillary_reserve[t] <= model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH)
