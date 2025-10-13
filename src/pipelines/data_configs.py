@@ -38,7 +38,7 @@ class PipelineConfig:
         self.first_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.first_stage_timestep
         self.second_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.second_stage_timestep
         self.nb_timestamp_per_ancillary: int = self.ancillary_market_timestep // self.second_stage_timestep
-        self.ancillary_nb_timestamp: int = self.second_stage_sim_horizon // self.ancillary_market_timestep
+        # self.ancillary_nb_timestamp: int = self.second_stage_sim_horizon // self.ancillary_market_timestep
 
 @dataclass
 class DeterministicConfig(PipelineConfig):

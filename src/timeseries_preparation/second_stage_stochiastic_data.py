@@ -5,30 +5,18 @@ from datetime import timedelta
 from polars import col as c
 
 from smallflex_data_schema import SmallflexInputSchema
-
-from utility.data_preprocessing import (
-    generate_basin_volume_table,
-    clean_hydro_power_performance_table,
-    split_timestamps_per_sim,
-    generate_hydro_power_state,
-    generate_first_stage_basin_state_table,
-    generate_clean_timeseries,
-    generate_datetime_index,
-)
-
-from general_function import pl_to_dict
-from pipelines.data_manager import DataManager
+from pipelines.data_configs import DeterministicConfig
 
 
-def process_second_stage_stochastic_data(
+def process_timeseries_data(
     smallflex_input_schema: SmallflexInputSchema,
-    data_manager: DataManager,
+    data_config: DeterministicConfig,
 ) -> pl.DataFrame:
     """Process the second stage stochastic data.
 
     Args:
         smallflex_input_schema (SmallflexInputSchema): The input data schema.
-        data_manager (DataManager): The data manager instance.
+        data_config (DataManager): The data manager instance.
         wind_power_mask (Optional[pl.Expr], optional): The mask to identify wind power plants. Defaults to None.
         pv_power_mask (Optional[pl.Expr], optional): The mask to identify PV power plants. Defaults to None.
         hydro_power_mask (Optional[pl.Expr], optional): The mask to identify hydro power plants. Defaults to None.
@@ -96,7 +84,7 @@ def process_second_stage_stochastic_data(
     )
     input_timeseries = (
         input_timeseries.with_columns(
-            (c(f"irradiation{col}") / pv_max * data_manager.pv_power_rated_power).alias(
+            (c(f"irradiation{col}") / pv_max * data_config.pv_power_rated_power).alias(
                 f"pv_power{col}"
             )
             for col in ("", "_mean_forecast")
@@ -104,13 +92,13 @@ def process_second_stage_stochastic_data(
         .with_columns(
             pl.when(
                 c(f"wind{col}").is_between(
-                    data_manager.wind_speed_cut_in, data_manager.wind_speed_cut_off
+                    data_config.wind_speed_cut_in, data_config.wind_speed_cut_off
                 )
             )
             .then(
                 c(f"wind{col}").pow(3)
-                / (data_manager.wind_speed_cut_off**3)
-                * data_manager.wind_turbine_rated_power
+                / (data_config.wind_speed_cut_off**3)
+                * data_config.wind_turbine_rated_power
             )
             .otherwise(0)
             .alias(f"wind_power{col}")
@@ -120,7 +108,7 @@ def process_second_stage_stochastic_data(
             (
                 cs.starts_with("discharge_volume_")
                 * 2.5
-                * data_manager.second_stage_timestep.total_seconds()
+                * data_config.second_stage_timestep.total_seconds()
             )  # discharge volume in one hour
         )
     ).filter(c("timestamp").is_first_distinct())
@@ -140,15 +128,15 @@ def process_second_stage_stochastic_data(
     ).sort("timestamp")
 
     market_price: pl.DataFrame = smallflex_input_schema.market_price_measurement.filter(
-        c("country") == data_manager.market_country
-    ).filter(c("market") == data_manager.market)
+        c("country") == data_config.market_country
+    ).filter(c("market") == data_config.market)
 
     ancillary_market_price: pl.DataFrame = (
         smallflex_input_schema.market_price_measurement.filter(
-            c("country") == data_manager.market_country
+            c("country") == data_config.market_country
         )
-        .filter(c("market") == data_manager.ancillary_market)
-        .filter(c("source") == data_manager.market_source)
+        .filter(c("market") == data_config.ancillary_market)
+        .filter(c("source") == data_config.market_source)
         .sort("timestamp")
     )
     imbalance_price: pl.DataFrame = (
@@ -179,7 +167,6 @@ def process_second_stage_stochastic_data(
         input_timeseries.join(market_price, on="timestamp", how="left")
         .join(ancillary_market_price, on="timestamp", how="left")
         .join(imbalance_price, on="timestamp", how="left")
-        .with_row_index(name="T")
         .with_columns(
             c(
                 "market_price",
@@ -190,6 +177,10 @@ def process_second_stage_stochastic_data(
             .forward_fill()
             .backward_fill()
         )
-    )
+    ).filter(
+        c("timestamp").is_between(
+            pl.datetime(data_config.year, 1, 1, time_zone="UTC"), 
+            pl.datetime(data_config.year+1, 1, 1, time_zone="UTC"), closed="left")
+    ).sort("timestamp")
 
     return input_timeseries

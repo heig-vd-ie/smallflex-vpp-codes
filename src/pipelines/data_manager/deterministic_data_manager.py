@@ -217,6 +217,7 @@ class DeterministicDataManager(DeterministicConfig):
         smallflex_input_schema: SmallflexInputSchema,
         wind_power_mask: pl.Expr,
         pv_power_mask: pl.Expr,
+        basin_index_mapping: dict[str, int],
     ):
 
         basin_index_mapping = pl_to_dict(self.water_basin[["uuid", "B"]])
@@ -266,7 +267,7 @@ class DeterministicDataManager(DeterministicConfig):
             .then(
                 c("wind").pow(3)/(self.wind_speed_cut_off**3) * self.wind_turbine_rated_power
             ).otherwise(0).alias("wind_power")
-)
+        )
         self.neg_unpowered_price = market_price["avg"].quantile(0.5 + self.second_stage_quantile)  # type: ignore
         self.pos_unpowered_price = market_price["avg"].quantile(0.5 - self.second_stage_quantile)  # type: ignore
         ### Discharge_flow ##############################################################################################

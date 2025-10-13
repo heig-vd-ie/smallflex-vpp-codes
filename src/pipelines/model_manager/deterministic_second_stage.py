@@ -3,75 +3,122 @@ from collections import Counter
 import logging
 import polars as pl
 from polars import col as c
+from polars import selectors as cs
 import pyomo.environ as pyo
 import tqdm
 
 from optimization_model import deterministic_second_stage
-from utility.data_preprocessing import (
-    generate_hydro_power_state, generate_basin_state
-)
+
+from smallflex_data_schema import SmallflexInputSchema
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
+
+from pipelines.data_configs import DeterministicConfig
+from pipelines.data_manager import HydroDataManager
+
+
 from optimization_model.deterministic_second_stage.model import (
     deterministic_second_stage_model_with_battery, deterministic_second_stage_model_without_battery)
-
+from utility.data_preprocessing import (
+    generate_hydro_power_state, generate_basin_state, split_timestamps_per_sim
+)
 
 
 log = generate_log(name=__name__)
 
-class DeterministicSecondStage(DeterministicDataManager):
+class DeterministicSecondStage(HydroDataManager):
     def __init__(
-        self, pipeline_data_manager: DeterministicDataManager, powered_volume_quota: pl.DataFrame
-        ):
-        # Retrieve attributes from pipeline_data_manager
-        for key, value in vars(pipeline_data_manager).items():
-            setattr(self, key, value)
+        self,
+        data_config: DeterministicConfig,
+        smallflex_input_schema: SmallflexInputSchema,
+        powered_volume_quota: pl.DataFrame,
+        hydro_power_mask: Optional[pl.Expr] = None,
         
+    ):
+    
+        super().__init__(
+            data_config=data_config,
+            smallflex_input_schema=smallflex_input_schema,
+            hydro_power_mask=hydro_power_mask,
+        )
+        self.data_config = data_config
         
-        self.powered_volume_quota = powered_volume_quota
-        if self.battery_capacity > 0:
+        if self.data_config.battery_capacity > 0:
             self.model: pyo.AbstractModel = deterministic_second_stage_model_with_battery()
         else:
             self.model: pyo.AbstractModel = deterministic_second_stage_model_without_battery()
             
         self.model_instances: dict[int, pyo.ConcreteModel] = {}
+        self.timeseries: pl.DataFrame
+        self.discharge_volume: pl.DataFrame
+        
         self.infeasible_increment = 0
         self.sim_idx: int = 0
+        self.nb_sims: int
+        self.neg_unpowered_price: float
+        self.pos_unpowered_price: float
         self.data: dict = {}
         self.hydro_flex_power: dict[str, float] = {}
         self.sim_basin_state: pl.DataFrame
         self.sim_hydro_power_state: pl.DataFrame
+        
+        self.powered_volume_quota: pl.DataFrame = powered_volume_quota
         self.sim_start_basin_volume: dict[int, float] = pl_to_dict(self.water_basin["B", "start_volume"])
         self.powered_volume_overage: dict[int, float] = pl_to_dict(self.hydro_power_plant.select("H", pl.lit(0)))
         self.powered_volume_shortage: dict[int, float] = pl_to_dict(self.hydro_power_plant.select("H", pl.lit(0)))
-        self.sim_start_battery_soc: float = self.start_battery_soc
-        self.generate_constant_parameters()
+        self.sim_start_battery_soc: float = self.data_config.start_battery_soc
         self.non_optimal_solution_idx: list[int] = []
         self.unfeasible_solution: list[int] = []
+
+
+
+    def set_timeseries(self, timeseries: pl.DataFrame):
+        self.timeseries = (
+            split_timestamps_per_sim(
+                data=timeseries.sort("timestamp").with_row_index(name="T"),
+                divisors=self.data_config.second_stage_nb_timestamp,
+            ).with_columns(
+                (c("T")//self.data_config.nb_timestamp_per_ancillary).alias("F")
+            ).with_columns(
+                pl.concat_list("T","F").alias("TF")
+            )
+        )
+        
+        self.neg_unpowered_price = self.timeseries["market_price"].quantile(0.5 + self.data_config.second_stage_quantile) # type: ignore
+        self.pos_unpowered_price = self.timeseries["market_price"].quantile(0.5 - self.data_config.second_stage_quantile) # type: ignore
+
+        self.nb_sims = self.timeseries["sim_idx"].max() # type: ignore
+        
+        self.discharge_volume = self.timeseries.unpivot(
+                on=cs.starts_with("discharge_volume"),
+                index=["T", "sim_idx"],
+                variable_name="B",
+                value_name="discharge_volume",
+            ).filter(~c("B").str.contains("forecast"))\
+            .with_columns(
+                c("B").str.replace("discharge_volume_", "").cast(pl.UInt32)
+            ).with_columns(
+                pl.concat_list(["T", "B"]).alias("TB")
+            )
+
 
     def generate_constant_parameters(self):
         
         self.data["H"] = {None: self.hydro_power_plant["H"].to_list()}
         self.data["DH"] = {None: self.hydro_power_plant.filter(c("control") == "discrete")["H"].to_list()}
         self.data["B"] = {None: self.water_basin["B"].to_list()}
-        self.data["nb_timestamp_per_ancillary"] = {None: self.nb_timestamp_per_ancillary}
+        self.data["nb_timestamp_per_ancillary"] = {None: self.data_config.nb_timestamp_per_ancillary}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
         self.data["spilled_factor"] = pl_to_dict(self.basin_spilled_factor["B", "spilled_factor"])
-        self.data["battery_capacity"] = {None: self.battery_capacity}
-        self.data["battery_rated_power"] = {None: self.battery_rated_power}
-        self.data["battery_efficiency"] = {None: self.battery_efficiency}
+        self.data["battery_capacity"] = {None: self.data_config.battery_capacity}
+        self.data["battery_rated_power"] = {None: self.data_config.battery_rated_power}
+        self.data["battery_efficiency"] = {None: self.data_config.battery_efficiency}
         self.data["pos_unpowered_price"] = {None: self.pos_unpowered_price}
         self.data["neg_unpowered_price"] = {None: self.neg_unpowered_price}
 
     def generate_model_instance(self):
     
-        self.data["T"] = {
-            None: self.second_stage_timestep_index.filter(c("sim_idx") == self.sim_idx)["T"].to_list()}
-        self.data["F"] = {
-            None: self.second_stage_timestep_index.filter(c("sim_idx") == self.sim_idx)["F"].unique().sort().to_list()}
-        self.data["TF"] = {
-            None: list(map(tuple, self.second_stage_timestep_index.filter(c("sim_idx") == self.sim_idx)["TF"].to_list()))}
+
         self.data["S_B"] = pl_to_dict(
             self.sim_basin_state
             .group_by("B", maintain_order=True).agg("S")
@@ -102,21 +149,30 @@ class DeterministicSecondStage(DeterministicDataManager):
                     self.sim_basin_state["BS", "volume_min"])
         self.data["max_basin_volume"] = pl_to_dict_with_tuple(
             self.sim_basin_state["BS", "volume_max"])
+        
+        self.data["T"] = {
+            None: self.timeseries.filter(c("sim_idx") == self.sim_idx)["T"].to_list()}
+        self.data["F"] = {
+            None: self.timeseries.filter(c("sim_idx") == self.sim_idx)["F"].unique().sort().to_list()}
+        self.data["TF"] = {
+            None: list(map(tuple, self.timeseries.filter(c("sim_idx") == self.sim_idx)["TF"].to_list()))}
 
         self.data["discharge_volume"] = pl_to_dict_with_tuple(
-            self.second_stage_discharge_volume.filter(c("sim_idx") == self.sim_idx)[["TB", "discharge_volume"]]
+            self.discharge_volume.filter(c("sim_idx") == self.sim_idx)[["TB", "discharge_volume"]]
         ) 
         self.data["market_price"] = pl_to_dict(
-            self.second_stage_market_price.filter(c("sim_idx") == self.sim_idx)[["T", "avg"]]
+            self.timeseries.filter(c("sim_idx") == self.sim_idx)[["T", "market_price"]]
         )
         self.data["pv_power"] = pl_to_dict(
-            self.second_stage_pv_production.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]]
+            self.timeseries.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]]
         )
         self.data["wind_power"] = pl_to_dict(
-            self.second_stage_wind_production.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]]
+            self.timeseries.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]]
         )
         self.data["ancillary_market_price"] = pl_to_dict(
-            self.second_stage_ancillary_market_price.filter(c("sim_idx") == self.sim_idx)[["F", "avg"]])
+            self.timeseries.filter(c("sim_idx") == self.sim_idx).filter(c("F").is_first_distinct())
+            [["F", "ancillary_market_price"]]
+        )
         
         
         powered_volume_quota = self.powered_volume_quota.filter(c("sim_idx") == self.sim_idx)\
@@ -148,7 +204,6 @@ class DeterministicSecondStage(DeterministicDataManager):
             pl.when(c("alpha_min")>0).then(c("alpha_min")* self.pos_unpowered_price).otherwise(c("alpha_min")* self.neg_unpowered_price).alias("positive"),
         )
 
-
         self.data["unpowered_factor_price_pos"] = pl_to_dict(unpowered_factor_price["H", "positive"])
         self.data["unpowered_factor_price_neg"] = pl_to_dict(unpowered_factor_price["H", "negative"])
 
@@ -162,8 +217,8 @@ class DeterministicSecondStage(DeterministicDataManager):
         second_stage_basin_state= pl.DataFrame()
 
         for data in basin_volume_boundaries.to_dicts():
-            if data["B"] in self.nb_state_dict.keys():
-                nb_state = self.nb_state_dict[data["B"]] 
+            if data["B"] in self.data_config.nb_state_dict.keys():
+                nb_state = self.data_config.nb_state_dict[data["B"]] 
             else:
                 nb_state = data["n_state_min"]
 
@@ -205,8 +260,8 @@ class DeterministicSecondStage(DeterministicDataManager):
         
         hydro_power_min_volume = self.hydro_power_plant.select(
             "H", c("upstream_B").alias("B"), 
-            (c("rated_flow") * self.second_stage_sim_horizon.total_seconds() * 
-            self.second_stage_min_volume_ratio).alias("min_volume")
+            (c("rated_flow") * self.data_config.second_stage_sim_horizon.total_seconds() * 
+            self.data_config.second_stage_min_volume_ratio).alias("min_volume")
         )
         water_factor = self.water_flow_factor.with_columns(
             c("BH").cast(pl.List(pl.Utf8)).list.join("#")
@@ -214,7 +269,7 @@ class DeterministicSecondStage(DeterministicDataManager):
 
         
         discharge_volume_tot= pl_to_dict(
-            self.second_stage_discharge_volume
+            self.discharge_volume
             .filter(c("sim_idx") == sim_idx)
             .group_by("B").agg(c("discharge_volume").sum())
             )
@@ -250,12 +305,15 @@ class DeterministicSecondStage(DeterministicDataManager):
 
     def solve_every_models(self, nb_sim_tot: Optional[int] = None):
         logging.getLogger('pyomo.core').setLevel(logging.ERROR)
+        
+        self.generate_constant_parameters()
+        
         if not nb_sim_tot:
-            nb_sim_tot = self.second_stage_nb_sim
+            nb_sim_tot = self.nb_sims
         for self.sim_idx in tqdm.tqdm(
-            range(self.second_stage_nb_sim + 1),
+            range(nb_sim_tot + 1),
             desc="Solving second stage optimization problem", ncols=150,
-            position=1, leave=False
+            position=0, leave=False
         ):
             self.infeasible_increment = 0
             self.calculate_second_stage_states()
@@ -272,9 +330,9 @@ class DeterministicSecondStage(DeterministicDataManager):
             )
 
     def solve_model(self):
-        
-        solution = self.second_stage_solver.solve(self.model_instances[self.sim_idx], tee=self.verbose)
-        
+
+        solution = self.data_config.second_stage_solver.solve(self.model_instances[self.sim_idx], tee=self.data_config.verbose)
+
         if solution["Solver"][0]["Status"] == "aborted":
             self.non_optimal_solution_idx.append(self.sim_idx)
         elif solution["Solver"][0]["Termination condition"] == "infeasibleOrUnbounded":

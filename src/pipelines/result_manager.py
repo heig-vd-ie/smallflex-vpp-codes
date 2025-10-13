@@ -6,8 +6,6 @@ import pyomo.environ as pyo
 
 from general_function import pl_to_dict
 
-
-from pipelines.model_manager import deterministic_second_stage
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
     extract_result_table,

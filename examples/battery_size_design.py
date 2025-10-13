@@ -1,5 +1,4 @@
 #%%
-
 import os
 import json
 import tqdm
@@ -13,10 +12,10 @@ from general_function import dict_to_duckdb, build_non_existing_dirs, pl_to_dict
 
 from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DeterministicConfig
-from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
 from pipelines.result_manager import PipelineResultManager
 from pipelines.model_manager.deterministic_first_stage import DeterministicFirstStage
 from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
+from timeseries_preparation.deterministic_data import process_timeseries_data
 from data_display.baseline_plots import plot_result
 
 from config import settings
@@ -26,7 +25,7 @@ os.environ["GRB_LICENSE_FILE"] = os.environ["HOME"] + "/gurobi_license/gurobi.li
 
 # %%
 YEAR_LIST = [
-    2021
+    2023
 ]
 
 PV_POWER_MASK = (c("sub_basin") == "Greisse_4") & (c("start_height") == 2050)
@@ -53,63 +52,85 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 )
 output_folder = file_names["battery_size_design"]
 build_non_existing_dirs(output_folder)
+
+data_config: DeterministicConfig = DeterministicConfig(
+        first_stage_timestep=timedelta(days=1),
+        second_stage_sim_horizon=timedelta(days=5),
+        nb_state_dict={0: 3},
+        second_stage_quantile=0.15,
+        battery_efficiency=0.95, 
+        battery_rated_power=0, 
+        battery_capacity=0,
+        verbose=False
+    )
+
+result_manager: PipelineResultManager = PipelineResultManager()
+
 # %%
 for year in YEAR_LIST:
-    
+    data_config.year = year
     plot_folder = f"{file_names["results_plot"]}/battery_size_design/{year}"
     build_non_existing_dirs(plot_folder)
     
     previous_hydro_power_mask = None
     powered_volume_quota: pl.DataFrame = pl.DataFrame()
     results_data = {}
-    result_manager: PipelineResultManager = PipelineResultManager()
 
     pbar = tqdm.tqdm(list(product(*[HYDROPOWER_MASK.keys(), BATTERY_SIZE.keys()])), ncols=150, position=0)
     for hydro_power_mask, battery_size in pbar:
         pbar.set_description(f"Optimization with {hydro_power_mask} with {battery_size} for year {year}")
         scenario_name = "_".join([hydro_power_mask, battery_size])
-        pipeline_config: DeterministicConfig = DeterministicConfig(
-            first_stage_timestep=timedelta(days=1),
-            second_stage_sim_horizon=timedelta(days=5),
-            year=year, nb_state_dict={0: 3},
-            second_stage_quantile=0.15,
-            battery_efficiency=0.95, 
-            battery_rated_power=BATTERY_SIZE[battery_size]["rated_power"], 
-            battery_capacity=BATTERY_SIZE[battery_size]["capacity"],
-            verbose=False
-        )
-        pipeline_data_manager: DeterministicDataManager = DeterministicDataManager(
-            smallflex_input_schema=smallflex_input_schema,
-            pipeline_config=pipeline_config,
-            hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
-            pv_power_mask=PV_POWER_MASK,
-            wind_power_mask=WIND_POWER_MASK,
-            )
+        
+        data_config.battery_rated_power = BATTERY_SIZE[battery_size]["rated_power"]
+        data_config.battery_capacity = BATTERY_SIZE[battery_size]["capacity"]
         
         if previous_hydro_power_mask != hydro_power_mask:
             previous_hydro_power_mask = hydro_power_mask
     
             deterministic_first_stage: DeterministicFirstStage = DeterministicFirstStage(
-                pipeline_data_manager=pipeline_data_manager
+                data_config=data_config,
+                smallflex_input_schema=smallflex_input_schema,
+                hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
+                
             )
+            timeseries = process_timeseries_data(
+                smallflex_input_schema=smallflex_input_schema,
+                basin_index_mapping=pl_to_dict(deterministic_first_stage.water_basin["uuid", "B"]),
+                data_config=data_config,
+                pv_power_mask=PV_POWER_MASK,
+                wind_power_mask=WIND_POWER_MASK
+            )
+            
+            deterministic_first_stage.set_timeseries(timeseries=timeseries)
             deterministic_first_stage.solve_model()
             powered_volume_quota: pl.DataFrame = result_manager.extract_powered_volume_quota(
                 model_instance=deterministic_first_stage.model_instance,
-                first_stage_nb_timestamp=deterministic_first_stage.first_stage_nb_timestamp,
+                first_stage_nb_timestamp=data_config.first_stage_nb_timestamp,
             )
+        
 
         deterministic_second_stage: DeterministicSecondStage = DeterministicSecondStage(
-            pipeline_data_manager=pipeline_data_manager,
-            powered_volume_quota=powered_volume_quota,
+            data_config=data_config,
+            smallflex_input_schema=smallflex_input_schema,
+            hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
+            powered_volume_quota=powered_volume_quota
         )
+        timeseries = process_timeseries_data(
+            smallflex_input_schema=smallflex_input_schema,
+            basin_index_mapping=pl_to_dict(deterministic_second_stage.water_basin["uuid", "B"]),
+            data_config=data_config,
+            pv_power_mask=PV_POWER_MASK,
+            wind_power_mask=WIND_POWER_MASK
+        )
+        deterministic_second_stage.set_timeseries(timeseries=timeseries)
         deterministic_second_stage.solve_every_models()
 
         second_stage_optimization_results, powered_volume_overage, powered_volume_shortage = (
             result_manager.extract_second_stage_optimization_results(
                 model_instances=deterministic_second_stage.model_instances,
-                timestep_index=deterministic_second_stage.second_stage_timestep_index,
-                nb_timestamp_per_ancillary=pipeline_config.nb_timestamp_per_ancillary,
-                with_battery=pipeline_config.battery_capacity > 0
+                timestep_index=deterministic_second_stage.timeseries,
+                nb_timestamp_per_ancillary=data_config.nb_timestamp_per_ancillary,
+                with_battery=data_config.battery_capacity > 0
             )
         )
 
@@ -121,7 +142,7 @@ for year in YEAR_LIST:
             results=second_stage_optimization_results,
             max_volume_mapping=max_volume_mapping,
             start_volume_mapping=start_volume_mapping,
-            with_battery=pipeline_config.battery_capacity > 0,
+            with_battery=data_config.battery_capacity > 0,
         )
         fig.write_html(f"{plot_folder}/{scenario_name}_results.html")
 
