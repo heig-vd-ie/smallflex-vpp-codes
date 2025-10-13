@@ -1,3 +1,4 @@
+from typing import Optional
 from polars import col as c
 import polars as pl
 import pyomo.environ as pyo
@@ -6,7 +7,7 @@ import tqdm
 
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_manager.stochastic_data_manager import StochasticDataManager
+# from pipelines.data_manager.stochastic_data_manager import StochasticDataManager
 
 from optimization_model.stochastic_first_stage.model import stochastic_first_stage_model
 
@@ -14,15 +15,20 @@ from optimization_model.stochastic_first_stage.model import stochastic_first_sta
 log = generate_log(name=__name__)
 
 
-class StochasticFirstStage(StochasticDataManager):
+class StochasticFirstStage(HydroDataManager):
     def __init__(
         self,
-        pipeline_data_manager: StochasticDataManager,
+        data_config: StochasticConfig,
+        smallflex_input_schema: SmallflexInputSchema,
+        hydro_power_mask: Optional[pl.Expr] = None,
     ):
         # Retrieve attributes from pipeline_data_manager
-        for key, value in vars(pipeline_data_manager).items():
-            setattr(self, key, value)
-
+        super().__init__(
+            data_config=data_config,
+            smallflex_input_schema=smallflex_input_schema,
+            hydro_power_mask=hydro_power_mask,
+        )
+        self.data_config = data_config
         self.model: pyo.AbstractModel = stochastic_first_stage_model()
         self.model_instance: pyo.ConcreteModel
         self.scaled_model_instance: pyo.ConcreteModel

@@ -231,7 +231,7 @@ def plot_result(
     basin_volume_df = optimization_results.select(cs.starts_with("basin_volume_"))
 
     new_basin_volume = pl.DataFrame(
-        cumsum_clip(basin_volume_df.to_numpy(), xmin=0, xmax=100),
+        clipped_cumsum(basin_volume_df.to_numpy(), xmin=0, xmax=100),
         schema=basin_volume_df.columns,
     ).with_columns(optimization_results["timestamp"])
     optimization_results = optimization_results.drop(
@@ -311,7 +311,7 @@ def plot_scenario_results(
 
         new_basin_volume_df = (
             pl.DataFrame(
-                cumsum_clip(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=100),
+                clipped_cumsum(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=100),
                 schema=basin_volume_df.drop("T").columns,
             )
             .with_columns(basin_volume_df["T"])
