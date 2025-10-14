@@ -12,7 +12,7 @@ from general_function import dict_to_duckdb, build_non_existing_dirs, pl_to_dict
 
 from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DeterministicConfig
-from pipelines.result_manager import PipelineResultManager
+from pipelines.result_manager import extract_powered_volume_quota, extract_first_stage_optimization_results, extract_second_stage_optimization_results
 from pipelines.model_manager.deterministic_first_stage import DeterministicFirstStage
 from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
 from timeseries_preparation.deterministic_data import process_timeseries_data
@@ -64,7 +64,6 @@ data_config: DeterministicConfig = DeterministicConfig(
         verbose=False
     )
 
-result_manager: PipelineResultManager = PipelineResultManager()
 
 # %%
 for year in YEAR_LIST:
@@ -103,11 +102,14 @@ for year in YEAR_LIST:
             
             deterministic_first_stage.set_timeseries(timeseries=timeseries)
             deterministic_first_stage.solve_model()
-            powered_volume_quota: pl.DataFrame = result_manager.extract_powered_volume_quota(
+            
+            powered_volume_quota: pl.DataFrame = extract_powered_volume_quota(
                 model_instance=deterministic_first_stage.model_instance,
                 first_stage_nb_timestamp=data_config.first_stage_nb_timestamp,
             )
-        
+            first_stage_optimization_results = extract_first_stage_optimization_results(
+                model_instance=deterministic_first_stage.model_instance,
+                timeseries=deterministic_first_stage.timeseries)
 
         deterministic_second_stage: DeterministicSecondStage = DeterministicSecondStage(
             data_config=data_config,
@@ -123,27 +125,30 @@ for year in YEAR_LIST:
             wind_power_mask=WIND_POWER_MASK
         )
         deterministic_second_stage.set_timeseries(timeseries=timeseries)
+        
+        
         deterministic_second_stage.solve_every_models()
 
         second_stage_optimization_results, powered_volume_overage, powered_volume_shortage = (
-            result_manager.extract_second_stage_optimization_results(
+            extract_second_stage_optimization_results(
                 model_instances=deterministic_second_stage.model_instances,
-                timestep_index=deterministic_second_stage.timeseries,
-                nb_timestamp_per_ancillary=data_config.nb_timestamp_per_ancillary,
-                with_battery=data_config.battery_capacity > 0
+                timeseries=deterministic_second_stage.timeseries,
             )
         )
+        
+        break
 
-        results_data[scenario_name] = second_stage_optimization_results
-        max_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "volume_max"])
-        start_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "start_volume"])
-        # Plot results
-        fig = plot_result(
-            results=second_stage_optimization_results,
-            max_volume_mapping=max_volume_mapping,
-            start_volume_mapping=start_volume_mapping,
-            with_battery=data_config.battery_capacity > 0,
-        )
-        fig.write_html(f"{plot_folder}/{scenario_name}_results.html")
+    #     results_data[scenario_name] = second_stage_optimization_results
+    #     max_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "volume_max"])
+    #     start_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "start_volume"])
+    #     # Plot results
+    #     fig = plot_result(
+    #         results=second_stage_optimization_results,
+    #         max_volume_mapping=max_volume_mapping,
+    #         start_volume_mapping=start_volume_mapping,
+    #         with_battery=data_config.battery_capacity > 0,
+    #     )
+    #     fig.write_html(f"{plot_folder}/{scenario_name}_results.html")
 
-    dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
+
+    # dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")

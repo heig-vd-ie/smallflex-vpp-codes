@@ -10,7 +10,7 @@ from general_function import build_non_existing_dirs, pl_to_dict
 
 from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DeterministicConfig
-from pipelines.data_manager.deterministic_data_manager import DeterministicDataManager
+
 from pipelines.result_manager import PipelineResultManager
 from pipelines.model_manager.deterministic_first_stage_old import DeterministicFirstStage
 from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
