@@ -48,12 +48,13 @@ class StochasticFirstStage(HydroDataManager):
         min_timestamp = timeseries["timestamp"].min()
         self.timeseries = (
             timeseries.sort("timestamp", "Ω").group_by_dynamic(
-                index_column="timestamp", start_by="datapoint", every=self.data_config.first_stage_timestep, 
+                index_column="timestamp", start_by="datapoint", 
+                every=self.data_config.first_stage_timestep, 
                 closed="left", group_by=["Ω"]
             ).agg(
                 cs.starts_with("discharge_volume").sum(),
                 cs.contains("market_price").mean(),
-                c("timestamp").count().alias("nb_hours"),
+                (24*c("timestamp").count()).alias("nb_hours"),
             ).sort("timestamp").with_columns(
                 ((c("timestamp") -  min_timestamp) / self.data_config.first_stage_timestep).cast(pl.Int64).alias("T")
             ).with_columns(

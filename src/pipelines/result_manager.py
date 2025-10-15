@@ -1,10 +1,12 @@
 import polars as pl
 from polars import col as c
-from typing import Tuple
+from typing import Tuple, Union
 from polars import selectors as cs
 import pyomo.environ as pyo
-
+from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
+from pipelines.data_configs import DataConfig
+
 
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
@@ -165,3 +167,87 @@ def extract_powered_volume_quota(
         .agg(c("powered_volume").sum())
     )
     return powered_volume_quota
+
+
+def extract_basin_volume_expectation(
+    optimization_results: pl.DataFrame,
+    water_basin: pl.DataFrame,
+    data_config: DataConfig
+) -> pl.DataFrame:
+
+    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
+    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+    start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
+    basin_idx = water_basin["B"].to_list()
+
+    optimization_results = optimization_results.sort(["Ω", "T"]).with_columns(
+            (
+                (
+                    c(f"spilled_volume_{col}").shift(1)
+                    + c(f"basin_volume_{col}").diff().over("Ω")
+                ).fill_null(start_volume_mapping[col])
+                / (max_volume_mapping[col] - min_volume_mapping[col])
+                * 100
+            ).alias(f"basin_volume_{col}")
+            for col in basin_idx
+    )
+    basin_volume = optimization_results["T", "Ω"]
+
+    for col in basin_idx:
+        basin_volume_df = optimization_results.pivot(
+            on="Ω", values=f"basin_volume_{col}", index="T"
+        )
+        
+        basin_volume_df = (
+            pl.DataFrame(
+                clipped_cumsum(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=100),
+                schema=basin_volume_df.drop("T").columns,
+            )
+            .with_columns(basin_volume_df["T"])
+            .unpivot(variable_name="Ω", value_name=f"basin_volume_{col}", index="T")
+            .with_columns(c("Ω").cast(pl.UInt32))
+        )
+        basin_volume = basin_volume.join(
+            basin_volume_df, on=["T", "Ω"], how="left"
+        )
+
+    col_list = ["median", "lower_quantile", "upper_quantile"]
+
+    stat_volume: pl.DataFrame = basin_volume\
+        .unpivot(
+            variable_name="B", value_name="basin_volume", 
+            on=cs.starts_with("basin_volume_"), index=["T", "Ω"]
+        ).with_columns(
+            c("B").str.replace("basin_volume_", "").cast(pl.Int32)
+        ).group_by("T", "B").agg(
+            c("basin_volume").median().alias("median"),
+            c("basin_volume").quantile(data_config.lower_quantile).alias("lower_quantile"),
+            c("basin_volume").quantile(0.9).alias("upper_quantile")
+        ).sort(["B", "T"])\
+        .with_columns(
+            c("lower_quantile").clip(upper_bound=c("median") - data_config.min_quantile_diff).clip(lower_bound=0),
+            c("upper_quantile").clip(lower_bound=c("median") + data_config.min_quantile_diff).clip(upper_bound=100)
+        )
+        
+    mean_stat_volume = stat_volume.with_columns(
+            c(col_list).rolling_mean(window_size=7).shift(-3).over("B")
+        )
+
+    mean_stat_volume = mean_stat_volume.join(
+        stat_volume.filter(c("T").is_in([stat_volume["T"].max(), stat_volume["T"].min()])),
+        on=["T", "B"],
+        how="left",
+        suffix="_raw"
+    ).select(
+        "T", "B", 
+        *[
+            pl.coalesce(cs.starts_with(col)).interpolate().alias(col) 
+            for col in col_list
+        ]
+    ).with_columns(
+        c(col_list) * 
+        (c("B").replace_strict(max_volume_mapping) - c("B").replace_strict(min_volume_mapping)) + 
+        c("B").replace_strict(min_volume_mapping)
+    )
+    return mean_stat_volume
+

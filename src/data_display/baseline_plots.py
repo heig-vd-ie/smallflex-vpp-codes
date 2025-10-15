@@ -7,7 +7,9 @@ import numpy as np
 from polars import selectors as cs
 from plotly.subplots import make_subplots
 from numpy_function import clipped_cumsum
+from general_function import pl_to_dict
 import numpy as np
+
 
 COLORS = px.colors.qualitative.Plotly
 
@@ -284,17 +286,19 @@ def plot_result(
 
 def plot_scenario_results(
     optimization_results: pl.DataFrame,
-    max_volume_mapping: dict[int, float],
-    start_volume_mapping: dict[int, float],
+    water_basin: pl.DataFrame
 ) -> go.Figure:
 
+    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
+    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+    start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     optimization_results = optimization_results.sort(["Ω", "T"]).with_columns(
         (
             (
                 c(f"spilled_volume_{col}").shift(1)
                 + c(f"basin_volume_{col}").diff().over("Ω")
             ).fill_null(start_volume_mapping[col])
-            / max_volume_mapping[col]
+            / (max_volume_mapping[col] - min_volume_mapping[col])
             * 100
         ).alias(f"basin_volume_{col}")
         for col in start_volume_mapping.keys()
@@ -361,22 +365,35 @@ def plot_scenario_results(
                 col=1,
             )
 
-        stat_data = data.drop("T").select(
-            pl.concat_list(pl.all())
-            .map_elements(lambda x: np.quantile(np.array(x), 0.9))
-            .alias("90-quantile"),
-            pl.concat_list(pl.all())
-            .map_elements(lambda x: np.quantile(np.array(x), 0.1))
-            .alias("10-quantile"),
-            pl.concat_list(pl.all())
-            .map_elements(lambda x: np.quantile(np.array(x), 0.5))
-            .alias("median"),
-        )
+        
+        stat_data = optimization_results.group_by("T")\
+        .agg(
+            c(col_name).median().alias("median"),
+            c(col_name).quantile(0.1).alias("10_quantile"),
+            c(col_name).quantile(0.9).alias("90_quantile")
+        ).sort("T")
 
-        for i in stat_data.columns:
+        if col_name == "basin_volume_0":
+            stat_data = stat_data.with_columns(
+                c("10_quantile").clip(upper_bound=c("median") - 10).clip(lower_bound=0),
+                c("90_quantile").clip(lower_bound=c("median") + 10).clip(upper_bound=100)
+            )
+
+            mean_stat_data = stat_data.with_columns(
+                c("median", "10_quantile", "90_quantile").rolling_mean(window_size=7).shift(-4)
+            )
+            
+            stat_data = pl.concat([
+                stat_data.slice(0,1), #first row
+                mean_stat_data.slice(1,mean_stat_data.height-2), #middle rows
+                stat_data.slice(-1, 1) #last row
+            ], how='diagonal_relaxed').interpolate()
+            
+
+        for i in stat_data.drop("T").columns:
             fig.add_trace(
                 go.Scatter(
-                    x=data["T"].to_list(),
+                    x=stat_data["T"].to_list(),
                     y=stat_data[i].to_list(),
                     mode="lines",
                     name=f"{i}",

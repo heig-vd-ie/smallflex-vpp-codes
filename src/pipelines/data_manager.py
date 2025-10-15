@@ -14,13 +14,13 @@ from utility.data_preprocessing import (
 )
 
 from general_function import pl_to_dict
-from pipelines.data_configs import DeterministicConfig, StochasticConfig
+from pipelines.data_configs import DataConfig
 
 
 class HydroDataManager():
     def __init__(
         self,
-        data_config: Union[DeterministicConfig, StochasticConfig],
+        data_config: DataConfig,
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
         is_linear: bool = False,
@@ -31,6 +31,7 @@ class HydroDataManager():
         # Index table
         self.hydro_power_plant: pl.DataFrame
         self.water_basin: pl.DataFrame
+        self.upstream_water_basin: pl.DataFrame
         # hydro power plant table
         self.basin_volume_table: pl.DataFrame
         self.basin_spilled_factor: pl.DataFrame
@@ -50,7 +51,7 @@ class HydroDataManager():
 
     def __build_hydro_power_plant_data(
         self, smallflex_input_schema: SmallflexInputSchema, 
-        hydro_power_mask: pl.Expr, data_config: Union[DeterministicConfig, StochasticConfig], 
+        hydro_power_mask: pl.Expr, data_config: DataConfig, 
         is_linear: bool = False
     ):
 
@@ -76,6 +77,10 @@ class HydroDataManager():
             .replace_strict(basin_index_mapping, default=None)
             .alias(f"{col}_B")
             for col in ["upstream", "downstream"]
+        )
+        
+        self.upstream_water_basin = self.water_basin.filter(
+            c("B").is_in(self.hydro_power_plant["upstream_B"])
         )
 
         water_flow_factor = self.hydro_power_plant.unpivot(

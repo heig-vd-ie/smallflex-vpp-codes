@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
 import pyomo.environ as pyo
 import numpy as np
+from typing import Optional, Union
 
 @dataclass
 class PipelineConfig:
@@ -23,6 +24,10 @@ class PipelineConfig:
     solver_name: str = 'gurobi'
     d_height: float = 0.01
     seed: int = 42
+    lower_quantile: float = 0.15
+    upper_quantile: float = 0.85
+    min_quantile_diff: float = 10
+
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     start_basin_volume_ratio: dict[int, float] = field(default_factory=lambda: {})
     
@@ -79,4 +84,5 @@ class StochasticConfig(PipelineConfig):
     def __post_init__(self):
         super().__post_init__()
         
-        
+
+DataConfig = Union[DeterministicConfig, StochasticConfig]
