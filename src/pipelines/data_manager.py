@@ -34,13 +34,12 @@ class HydroDataManager():
         self.upstream_water_basin: pl.DataFrame
         # hydro power plant table
         self.basin_volume_table: pl.DataFrame
-        self.basin_spilled_factor: pl.DataFrame
         self.power_performance_table: pl.DataFrame
         self.water_flow_factor: pl.DataFrame
         self.first_stage_basin_state: pl.DataFrame
         self.first_stage_hydro_power_state: pl.DataFrame
         self.first_stage_hydro_flex_power: pl.DataFrame
-        self.volume_buffer: dict[int, float]
+        # self.volume_buffer: dict[int, float]
 
         self.__build_hydro_power_plant_data(
             smallflex_input_schema=smallflex_input_schema,
@@ -98,12 +97,6 @@ class HydroDataManager():
             ).alias("water_factor"),
         )
 
-        self.basin_spilled_factor = (
-            water_flow_factor.filter(c("basin_type") == "upstream_basin_fk")
-            .select("B", pl.lit(data_config.spilled_factor).alias("spilled_factor"))
-            .unique(subset="B")
-        )
-
         self.water_flow_factor = water_flow_factor.select(
             "B", "H", pl.concat_list(["B", "H"]).alias("BH"), "water_factor"
         )
@@ -153,13 +146,13 @@ class HydroDataManager():
             )
         )
         
-        self.volume_buffer: dict[int, float] = pl_to_dict(
-                self.hydro_power_plant.select(
-                    c("H"),
-                    c("rated_flow")
-                    * data_config.second_stage_sim_horizon.total_seconds()
-                    * data_config.volume_buffer_ratio,
-                )
-        )
+        # self.volume_buffer: dict[int, float] = pl_to_dict(
+        #         self.hydro_power_plant.select(
+        #             c("H"),
+        #             c("rated_flow")
+        #             * data_config.second_stage_sim_horizon.total_seconds()
+        #             * data_config.volume_buffer_ratio,
+        #         )
+        # )
 
         

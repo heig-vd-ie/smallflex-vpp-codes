@@ -8,6 +8,7 @@ from general_function import pl_to_dict
 from pipelines.data_configs import DataConfig
 
 
+from pipelines.model_manager import stochastic_first_stage
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
     extract_result_table,
@@ -84,7 +85,7 @@ def extract_second_stage_optimization_results(
     model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
 
-) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+) ->  pl.DataFrame:
 
     timeseries = timeseries.select(
         "timestamp",
@@ -107,35 +108,35 @@ def extract_second_stage_optimization_results(
                 )
             ], how="diagonal_relaxed",
         )
-        powered_volume_overage = pl.concat(
-            [
-                powered_volume_overage,
-                extract_result_table(
-                    model_instance, "powered_volume_overage"
-                ).with_columns(pl.lit(key).alias("sim_idx")),
-            ],
-            how="diagonal_relaxed",
-        )
+        # powered_volume_overage = pl.concat(
+        #     [
+        #         powered_volume_overage,
+        #         extract_result_table(
+        #             model_instance, "powered_volume_overage"
+        #         ).with_columns(pl.lit(key).alias("sim_idx")),
+        #     ],
+        #     how="diagonal_relaxed",
+        # )
 
-        powered_volume_shortage = pl.concat(
-            [
-                powered_volume_shortage,
-                extract_result_table(
-                    model_instance, "powered_volume_shortage"
-                ).with_columns(pl.lit(key).alias("sim_idx")),
-            ],
-            how="diagonal_relaxed",
-        )
+        # powered_volume_shortage = pl.concat(
+        #     [
+        #         powered_volume_shortage,
+        #         extract_result_table(
+        #             model_instance, "powered_volume_shortage"
+        #         ).with_columns(pl.lit(key).alias("sim_idx")),
+        #     ],
+        #     how="diagonal_relaxed",
+        # )
         
 
-    powered_volume_overage = powered_volume_overage.pivot(
-        on="H", values="powered_volume_overage", index="sim_idx"
-    )
-    powered_volume_shortage = powered_volume_shortage.pivot(
-        on="H", values="powered_volume_shortage", index="sim_idx"
-    )
+    # powered_volume_overage = powered_volume_overage.pivot(
+    #     on="H", values="powered_volume_overage", index="sim_idx"
+    # )
+    # powered_volume_shortage = powered_volume_shortage.pivot(
+    #     on="H", values="powered_volume_shortage", index="sim_idx"
+    # )
 
-    return optimization_results, powered_volume_overage, powered_volume_shortage
+    return optimization_results
 
 def extract_powered_volume_quota(
     model_instance: pyo.ConcreteModel, first_stage_nb_timestamp: int
@@ -170,6 +171,7 @@ def extract_powered_volume_quota(
 
 
 def extract_basin_volume_expectation(
+    model_instance: pyo.ConcreteModel,
     optimization_results: pl.DataFrame,
     water_basin: pl.DataFrame,
     data_config: DataConfig
@@ -179,9 +181,26 @@ def extract_basin_volume_expectation(
     min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     basin_idx = water_basin["B"].to_list()
+    
+    basin_volume_raw = optimization_results.select(
+        "T", "Ω", cs.contains("basin_volume_"), cs.contains("spilled_volume_")
+        )
 
-    optimization_results = optimization_results.sort(["Ω", "T"]).with_columns(
-            (
+    end_basin_volume = extract_result_table(
+            model_instance=model_instance, var_name="end_basin_volume"
+        ).with_columns(
+            pl.lit(optimization_results["T"].max() + 1).alias("T"), # type: ignore
+            ("basin_volume_" + c("B").cast(pl.Utf8)).alias("B")
+        ).pivot(
+            index=["T", "Ω"],
+            on="B",
+            values="end_basin_volume"
+        )
+    basin_volume_raw = pl.concat([basin_volume_raw, end_basin_volume], how="diagonal_relaxed")
+
+    basin_volume_raw = basin_volume_raw.sort(["Ω", "T"]).select(
+            "Ω", "T",
+            *[(
                 (
                     c(f"spilled_volume_{col}").shift(1)
                     + c(f"basin_volume_{col}").diff().over("Ω")
@@ -189,44 +208,46 @@ def extract_basin_volume_expectation(
                 / (max_volume_mapping[col] - min_volume_mapping[col])
                 * 100
             ).alias(f"basin_volume_{col}")
-            for col in basin_idx
+            for col in basin_idx]
     )
-    basin_volume = optimization_results["T", "Ω"]
 
-    for col in basin_idx:
-        basin_volume_df = optimization_results.pivot(
-            on="Ω", values=f"basin_volume_{col}", index="T"
+    if basin_volume_raw.shape[1] == 3:
+        basin_name = basin_volume_raw.drop(["Ω", "T"]).columns[0]
+        basin_volume_raw = basin_volume_raw.pivot(
+            on="Ω", values=cs.starts_with("basin_volume"), index="T",
+        ).select(
+            "T",
+            pl.all().exclude("T").name.prefix(basin_name + "_")
         )
-        
-        basin_volume_df = (
+    else:
+        basin_volume_raw = basin_volume_raw.pivot(
+            on="Ω", values=cs.starts_with("basin_volume"), index="T",
+        )
+
+    cleaned_basin_volume = (
             pl.DataFrame(
-                clipped_cumsum(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=100),
-                schema=basin_volume_df.drop("T").columns,
-            )
-            .with_columns(basin_volume_df["T"])
-            .unpivot(variable_name="Ω", value_name=f"basin_volume_{col}", index="T")
-            .with_columns(c("Ω").cast(pl.UInt32))
-        )
-        basin_volume = basin_volume.join(
-            basin_volume_df, on=["T", "Ω"], how="left"
-        )
+                clipped_cumsum(basin_volume_raw.drop("T").to_numpy(), xmin=0, xmax=100),
+                schema=basin_volume_raw.drop("T").columns,
+            ).with_columns(basin_volume_raw["T"])
+            .unpivot(variable_name="BΩ", value_name=f"basin_volume", index="T")
+            .with_columns(
+                c("BΩ").str.split("_")
+                .list.slice(2).cast(pl.List(pl.UInt32))
+                .list.to_struct(fields=["B", "Ω"])
+            ).unnest("BΩ")
+    )
 
-    col_list = ["median", "lower_quantile", "upper_quantile"]
 
-    stat_volume: pl.DataFrame = basin_volume\
-        .unpivot(
-            variable_name="B", value_name="basin_volume", 
-            on=cs.starts_with("basin_volume_"), index=["T", "Ω"]
-        ).with_columns(
-            c("B").str.replace("basin_volume_", "").cast(pl.Int32)
-        ).group_by("T", "B").agg(
-            c("basin_volume").median().alias("median"),
+    col_list = ["mean", "lower_quantile", "upper_quantile"]
+
+    stat_volume: pl.DataFrame = cleaned_basin_volume.group_by("T", "B").agg(
+            c("basin_volume").mean().alias("mean"),
             c("basin_volume").quantile(data_config.lower_quantile).alias("lower_quantile"),
             c("basin_volume").quantile(0.9).alias("upper_quantile")
         ).sort(["B", "T"])\
         .with_columns(
-            c("lower_quantile").clip(upper_bound=c("median") - data_config.min_quantile_diff).clip(lower_bound=0),
-            c("upper_quantile").clip(lower_bound=c("median") + data_config.min_quantile_diff).clip(upper_bound=100)
+            c("lower_quantile").clip(upper_bound=c("mean") - data_config.min_quantile_diff).clip(lower_bound=0),
+            c("upper_quantile").clip(lower_bound=c("mean") + data_config.min_quantile_diff).clip(upper_bound=100)
         )
         
     mean_stat_volume = stat_volume.with_columns(
@@ -244,10 +265,15 @@ def extract_basin_volume_expectation(
             pl.coalesce(cs.starts_with(col)).interpolate().alias(col) 
             for col in col_list
         ]
-    ).with_columns(
-        c(col_list) * 
-        (c("B").replace_strict(max_volume_mapping) - c("B").replace_strict(min_volume_mapping)) + 
-        c("B").replace_strict(min_volume_mapping)
     )
+
+    mean_stat_volume = mean_stat_volume.with_columns(
+        c(col_list)/100 *
+        (c("B").replace_strict(max_volume_mapping) - c("B").replace_strict(min_volume_mapping)) +
+        c("B").replace_strict(min_volume_mapping)
+    ).with_columns(
+        c("mean").diff().shift(-1).alias("diff_volume")
+    )
+
     return mean_stat_volume
 

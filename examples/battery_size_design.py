@@ -129,7 +129,7 @@ for year in YEAR_LIST:
         
         deterministic_second_stage.solve_every_models()
 
-        second_stage_optimization_results, powered_volume_overage, powered_volume_shortage = (
+        second_stage_optimization_results = (
             extract_second_stage_optimization_results(
                 model_instances=deterministic_second_stage.model_instances,
                 timeseries=deterministic_second_stage.timeseries,

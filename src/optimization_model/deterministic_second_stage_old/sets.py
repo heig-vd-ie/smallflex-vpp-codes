@@ -7,7 +7,6 @@ def second_stage_sets(model):
     model.TF = pyo.Set(dimen=2, within=model.T * model.F) # type: ignore
     model.H = pyo.Set()
     model.B = pyo.Set()
-    model.UP_B = pyo.Set(within=model.B)
     
     model.DH = pyo.Set(within=model.H)
     model.CH = pyo.Set(initialize=lambda m: [h for h in m.H if h not in m.DH])

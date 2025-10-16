@@ -17,6 +17,7 @@ class PipelineConfig:
     market_source: str= "swissgrid"
     max_alpha_error: float = 1.3
     verbose: bool = False
+    bound_penalty_factor: float = 1
     first_stage_max_powered_flow_ratio: float= 0.75
     # volume_factor: float = 1e-6
     volume_buffer_ratio: float = 0.2
@@ -60,7 +61,9 @@ class DeterministicConfig(PipelineConfig):
     
     first_stage_max_powered_flow_ratio: float= 0.75
     second_stage_min_volume_ratio: float = 0.1
-    second_stage_quantile: float = 0.15 
+    market_price_lower_quantile: float = 0.35
+    market_price_upper_quantile: float = 0.65
+    market_price_window_size: int = 28 # 28 days
     volume_buffer_ratio: float = 0.2
     time_limit: float = 20
     pv_power_rated_power = 9 # MW

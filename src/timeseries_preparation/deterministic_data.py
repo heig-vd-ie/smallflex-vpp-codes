@@ -103,9 +103,20 @@ def process_timeseries_data(
         .join(pl.DataFrame(pv_production), on="timestamp", how="left")
         .join(pl.DataFrame(wind_production), on="timestamp", how="left")
         .with_columns(pl.all().forward_fill().backward_fill())
-        .filter(c("timestamp").is_between(
-            pl.datetime(data_config.year, 1, 1, time_zone="UTC"), 
-            pl.datetime(data_config.year+1, 1, 1, time_zone="UTC"), closed="left"
+    )
+    input_timeseries = input_timeseries.sort("timestamp").with_columns(
+        pl.col("market_price").rolling_quantile(
+            quantile=data_config.market_price_lower_quantile, 
+            window_size=data_config.market_price_window_size * 24).alias("market_price_lower_quantile"),
+        pl.col("market_price").rolling_quantile(
+            quantile=data_config.market_price_upper_quantile,
+            window_size=data_config.market_price_window_size  * 24).alias("market_price_upper_quantile"),
+    )
+    
+    input_timeseries = (
+        input_timeseries.filter(c("timestamp").is_between(
+        pl.datetime(data_config.year, 1, 1, time_zone="UTC"),
+        pl.datetime(data_config.year+1, 1, 1, time_zone="UTC"), closed="left"
         ))
     )
     return input_timeseries

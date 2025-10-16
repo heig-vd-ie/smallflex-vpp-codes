@@ -33,6 +33,7 @@ def first_stage_sets(model):
     model.Ω = pyo.Set()
     model.H = pyo.Set()
     model.B = pyo.Set()
+    model.UP_B = pyo.Set(within=model.B)
     
     # subset of hydro powerplants with discrete and continuous control
     model.DH = pyo.Set(within=model.H)

@@ -1,8 +1,8 @@
 import pyomo.environ as pyo
-from optimization_model.deterministic_second_stage.constraints import *
-from optimization_model.deterministic_second_stage.sets import *
-from optimization_model.deterministic_second_stage.parameters import *
-from optimization_model.deterministic_second_stage.variables import *
+from optimization_model.deterministic_second_stage_old.constraints import *
+from optimization_model.deterministic_second_stage_old.sets import *
+from optimization_model.deterministic_second_stage_old.parameters import *
+from optimization_model.deterministic_second_stage_old.variables import *
 
 def second_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
     ####################################################################################################################
@@ -18,9 +18,6 @@ def second_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMod
     model.basin_max_state_constraint = pyo.Constraint(model.T, model.BS, rule=basin_max_state_constraint)
     model.basin_min_state_constraint = pyo.Constraint(model.T, model.BS, rule=basin_min_state_constraint)
     model.basin_state_constraint = pyo.Constraint(model.T, model.B, rule=basin_state_constraint)
-    model.end_basin_volume_mean_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_mean_diff_constraint)
-    model.end_basin_volume_upper_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_upper_diff_constraint)
-    model.end_basin_volume_lower_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_lower_diff_constraint)
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################
@@ -32,6 +29,12 @@ def second_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMod
     model.positive_hydro_ancillary_reserve_constraint = pyo.Constraint(model.TF, rule=positive_hydro_ancillary_reserve_constraint)
     model.negative_hydro_ancillary_reserve_constraint = pyo.Constraint(model.TF, rule=negative_hydro_ancillary_reserve_constraint)
     
+    ####################################################################################################################
+    ### Hydropower volume quota constraints ############################################################################
+    ####################################################################################################################
+    model.max_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=max_powered_volume_quota_constraint)
+    model.min_powered_volume_quota_constraint = pyo.Constraint(model.H, rule=min_powered_volume_quota_constraint)
+    model.diff_volume_constraint = pyo.Constraint(model.H, rule=diff_volume_constraint)
     return model
 
 def deterministic_second_stage_constraints_with_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
@@ -66,7 +69,6 @@ def deterministic_second_stage_model_with_battery() -> pyo.AbstractModel:
     return model
 
 def deterministic_second_stage_model_without_battery() -> pyo.AbstractModel:
-
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = second_stage_sets(model)
     model = second_stage_parameters(model)

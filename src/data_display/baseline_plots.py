@@ -1,4 +1,5 @@
 from datetime import timedelta
+from matplotlib.pylab import f
 import plotly.graph_objs as go
 import plotly.express as px
 import polars as pl
@@ -15,8 +16,38 @@ COLORS = px.colors.qualitative.Plotly
 
 
 def plot_second_stage_market_price(
-    results: pl.DataFrame, fig: go.Figure, row: int
+    results: pl.DataFrame, market_price_quantiles: pl.DataFrame, fig: go.Figure, row: int
 ) -> go.Figure:
+    
+    fig.add_trace(
+        go.Scatter(
+            x=(market_price_quantiles["timestamp"]).to_list(),
+            y=market_price_quantiles["market_price_lower_quantile"].to_list(),
+            legendgroup="market_price",
+            name="quantiles",
+            mode="lines",
+            line=dict(color="purple"),
+            showlegend=True,
+            opacity=0.7,
+        ),
+        row=row,
+        col=1,
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=(market_price_quantiles["timestamp"]).to_list(),
+            y=market_price_quantiles["market_price_upper_quantile"].to_list(),
+            legendgroup="market_price",
+            name="upper_quantile",
+            mode="lines",
+            line=dict(color="purple"),
+            opacity=0.7,
+            showlegend=False,
+        ),
+        row=row,
+        col=1,
+    )
 
     fig.add_trace(
         go.Scatter(
@@ -31,13 +62,12 @@ def plot_second_stage_market_price(
         row=row,
         col=1,
     )
-
     fig.add_trace(
         go.Scatter(
             x=(results["timestamp"]).to_list(),
             y=results["ancillary_market_price"].to_list(),
             legendgroup="market_price",
-            name="Ancillary market_price price [EUR/MW]",
+            name="Ancillary market price [EUR/MWh]",
             mode="lines",
             line=dict(color=COLORS[1]),
             showlegend=True,
@@ -45,6 +75,8 @@ def plot_second_stage_market_price(
         row=row,
         col=1,
     )
+
+ 
 
     fig.update_traces(
         selector=dict(legendgroup="market_price"),
@@ -75,6 +107,107 @@ def plot_basin_volume(results: pl.DataFrame, fig: go.Figure, row: int) -> go.Fig
     )
     return fig
 
+def plot_second_stage_basin_volume(
+    results: pl.DataFrame, basin_volume_expectation: pl.DataFrame, 
+    water_basin: pl.DataFrame, fig: go.Figure, row: int) -> go.Figure:
+    
+    basin_idx = water_basin["B"].to_list()
+    
+    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
+    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+    start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
+    
+    basin_volume_expectation = basin_volume_expectation.join(
+        results.filter(c("sim_idx").is_first_distinct())["timestamp", "sim_idx"],
+        on="sim_idx", how="inner"
+    ).with_columns(
+        (c("mean", "lower_quantile", "upper_quantile") - c("B").replace(min_volume_mapping)) 
+        / (c("B").replace(max_volume_mapping) - c("B").replace(min_volume_mapping))* 100
+    ).sort("timestamp")
+    
+    
+    basin_volume_raw = results.select(
+        "timestamp", cs.contains("basin_volume_"), cs.contains("spilled_volume_")
+    )
+
+
+    basin_volume_raw = basin_volume_raw.sort(["timestamp"]).select(
+        "timestamp",
+        *[(
+            (
+                c(f"spilled_volume_{col}").shift(1)
+                + c(f"basin_volume_{col}").diff()
+            ).fill_null(start_volume_mapping[col])
+            / (max_volume_mapping[col] - min_volume_mapping[col])
+            * 100
+        ).alias(f"basin_volume_{col}")
+        for col in basin_idx]
+    )
+
+
+    cleaned_basin_volume = (
+        pl.DataFrame(
+            clipped_cumsum(basin_volume_raw.drop("timestamp").to_numpy(), xmin=0, xmax=100),
+            schema=basin_volume_raw.drop("timestamp").columns,
+        ).with_columns(basin_volume_raw["timestamp"])
+    )
+    
+    print(cleaned_basin_volume)
+
+    
+
+    fig.add_trace(
+        go.Scatter(
+            x=cleaned_basin_volume["timestamp"].to_list(),
+            y=cleaned_basin_volume["basin_volume_0"].to_list(),
+            mode="lines",
+            line=dict(color=COLORS[0]),
+            showlegend=True,
+            name="basin_volume",
+            legendgroup="basin_volume",
+        ),
+        row=row,
+        col=1,
+    )
+    
+    fig.add_trace(go.Scatter(
+        x=basin_volume_expectation["timestamp"],
+        y=basin_volume_expectation["mean"],
+        mode='lines',
+        line=dict(color='red'),
+        opacity=0.5,
+        name='Scheduled basin volume',
+        legendgroup="basin_volume",
+    ),row=row,
+    col=1)
+
+    fig.add_trace(go.Scatter(
+        x=basin_volume_expectation["timestamp"],
+        y=basin_volume_expectation["upper_quantile"],
+        mode='lines',
+        line=dict(width=0.5, color='red'),
+        name='Lower Bound',
+        showlegend=False,
+        legendgroup="basin_volume",
+    ), row=row,
+    col=1)
+    fig.add_trace(go.Scatter(
+        x=basin_volume_expectation["timestamp"],
+        y=basin_volume_expectation["lower_quantile"],
+        mode='lines',
+        fill='tonexty',
+        line=dict(width=0.5, color='red'),
+        fillcolor='rgba(255, 0, 0, 0.2)',
+        name='Scheduled bounds',
+        legendgroup="basin_volume",
+    ), row=row,
+    col=1)
+    
+    fig.update_traces(
+        selector=dict(legendgroup="basin_volume"),
+        legendgrouptitle_text="<b>Basin volume [%]<b>",
+    )
+    return fig
 
 def plot_hydro_power(results: pl.DataFrame, fig: go.Figure, row: int):
     hydro_name = results.select(cs.starts_with("hydro_power")).columns
@@ -430,4 +563,64 @@ def plot_scenario_results(
         width=1200,  # Set the width of the figure
         height=300 * 4,
     )
+    return fig
+
+
+def plot_second_stage_result(
+    results: pl.DataFrame,
+    water_basin: pl.DataFrame,
+    market_price_quantiles: pl.DataFrame,
+    basin_volume_expectation: pl.DataFrame,
+    with_battery: bool = False,
+) -> go.Figure:
+
+        
+    nb_subplot = 6 if with_battery else 4
+
+    row_titles = [
+        "<b>Price]<b>",
+        "<b>Basin level [%]<b>",
+        "<b>Hydro power [%]<b>",
+        "<b>Ancillary reserve [MW]<b>",
+    ]
+    if with_battery:
+        row_titles.append("<b>Battery power [MW]<b>")
+        row_titles.append("<b>Battery SOC [%]<b>")
+
+    fig = make_subplots(
+        rows=nb_subplot,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.02,
+        x_title="<b>Weeks<b>",
+        row_titles=[
+            "<b>Price<b>",
+            "<b>Basin water volume<b>",
+            "<b>Hydro power<b>",
+            "<b>Ancillary power<b>",
+        ],
+    )
+
+    fig = plot_second_stage_market_price(results=results, market_price_quantiles=market_price_quantiles, fig=fig, row=1)
+    fig = plot_second_stage_basin_volume(
+        results=results, 
+        basin_volume_expectation=basin_volume_expectation,
+        water_basin=water_basin, 
+        fig=fig, row=2)
+    
+    fig = plot_hydro_power(results=results, fig=fig, row=3)
+    fig = plot_ancillary_reserve(results=results, fig=fig, row=4, with_battery=with_battery)
+    if with_battery:
+        fig = plot_battery_power(results=results, fig=fig, row=5)
+        fig = plot_battery_soc(results=results, fig=fig, row=6)
+
+
+    fig.update_layout(
+        margin=dict(t=60, l=65, r=10, b=60),
+        width=1200,  # Set the width of the figure
+        height=300 * nb_subplot,
+        legend_tracegroupgap=215,
+        barmode = "overlay"
+    )
+
     return fig

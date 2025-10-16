@@ -200,7 +200,7 @@ r"""
 
 def second_stage_baseline_objective_with_battery(model):
 
-    market_income = (
+    market_price = (
         model.nb_hours
         * sum(
             model.market_price[t] * 
@@ -214,7 +214,7 @@ def second_stage_baseline_objective_with_battery(model):
         for t in model.T)
     )
 
-    ancillary_market_income = sum(
+    ancillary_market_price = sum(
         model.nb_timestamp_per_ancillary * 
         model.ancillary_market_price[f] *
         (model.hydro_ancillary_reserve[f] + model.battery_ancillary_reserve[f])
@@ -222,80 +222,74 @@ def second_stage_baseline_objective_with_battery(model):
     )
     
     battery_capacity_penalty = (
-        (model.end_battery_soc_overage * model.overage_market_price
-        - model.end_battery_soc_shortage * model.shortage_market_price)
-        * model.battery_capacity
+        model.end_battery_soc_overage * model.battery_capacity * model.pos_unpowered_price
+        - model.end_battery_soc_shortage * model.battery_capacity * model.neg_unpowered_price
     )
     
-    basin_volume_penalty = (
+    powered_volume_penalty = (
         sum(
-            (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price) 
-            * model.rated_alpha[b]
-            for b in model.UP_B
+            model.powered_volume_overage[h] * model.unpowered_factor_price_pos[h]
+            - model.powered_volume_shortage[h] * model.unpowered_factor_price_neg[h]
+            for h in model.H
         )
         / model.nb_sec
     )
-    
     spilled_penalty = (
         sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
             for b in model.B
-        ) / model.nb_sec 
+        )
+        / model.nb_sec
     )
     return (
-        market_income 
-        + ancillary_market_income
-        + spilled_penalty 
-        + basin_volume_penalty
-        + battery_capacity_penalty
+        market_price +
+        ancillary_market_price -
+        spilled_penalty +
+        powered_volume_penalty +
+        battery_capacity_penalty
     )
 
 def second_stage_baseline_objective_without_battery(model):
 
-    market_income = (
+    market_price = (
         model.nb_hours
         * sum(
             model.market_price[t] * 
             (
                 model.pv_power[t] +
-                model.wind_power[t] +
+                model.wind_power[t] + 
                 sum(model.hydro_power[t, h] for h in model.H)
             ) 
         for t in model.T)
     )
 
-    ancillary_market_income = sum(
-        model.nb_timestamp_per_ancillary * 
-        model.ancillary_market_price[f] *
-        (model.hydro_ancillary_reserve[f])
+    ancillary_market_price = sum(
+        # model.nb_timestamp_per_ancillary * 
+        model.ancillary_market_price[f] * model.hydro_ancillary_reserve[f] 
         for f in model.F
     )
     
-    basin_volume_penalty = (
+    
+    powered_volume_penalty = (
         sum(
-            (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
-            ) 
-            * model.rated_alpha[b]
-            for b in model.UP_B
+            model.powered_volume_overage[h] * model.unpowered_factor_price_pos[h]
+            - model.powered_volume_shortage[h] * model.unpowered_factor_price_neg[h]
+            for h in model.H
         )
         / model.nb_sec
     )
-    
     spilled_penalty = (
         sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
             for b in model.B
-        ) / model.nb_sec 
+        )
+        / model.nb_sec
     )
     return (
-        market_income 
-        + ancillary_market_income
-        + spilled_penalty 
-        + basin_volume_penalty
+        market_price + 
+        ancillary_market_price - 
+        spilled_penalty + 
+        powered_volume_penalty
     )
 
 
@@ -337,23 +331,6 @@ def basin_max_end_volume_constraint(model, b):
 def basin_min_end_volume_constraint(model, b):
     return model.end_basin_volume[b] >= model.min_basin_volume[b, model.S_B[b].first()]
 
-def end_basin_volume_mean_diff_constraint(model, b):
-    return (
-        model.end_basin_volume[b] - model.expected_end_basin_volume[b] == 
-        model.end_basin_volume_mean_overage[b] - model.end_basin_volume_mean_shortage[b]
-    )
-
-def end_basin_volume_upper_diff_constraint(model, b):
-    return (
-        model.end_basin_volume[b] - model.expected_upper_end_basin_volume[b] == 
-        model.end_basin_volume_upper_overage[b] - model.end_basin_volume_upper_shortage[b]
-    )
-
-def end_basin_volume_lower_diff_constraint(model, b):
-    return (
-        model.end_basin_volume[b] - model.expected_lower_end_basin_volume[b] == 
-        model.end_basin_volume_lower_overage[b] - model.end_basin_volume_lower_shortage[b]
-    )
 
 ########################################################################################################################
 # 2.5.3. Water basin state #############################################################################################
@@ -430,6 +407,27 @@ def negative_hydro_ancillary_reserve_constraint(model, t, f):
         model.hydro_power[t, h] for h in model.CH
     )
 
+
+########################################################################################################################
+# 2.5.6 Powered water quota ############################################################################################
+########################################################################################################################
+
+
+def diff_volume_constraint(model, h):
+    return (
+        model.powered_volume_overage[h] - model.powered_volume_shortage[h]
+        == sum(model.flow[t, h] for t in model.T) * model.nb_hours * model.nb_sec
+        - model.powered_volume_quota[h]
+    )
+
+
+def max_powered_volume_quota_constraint(model, h):
+    return model.powered_volume_overage[h] <= model.overage_volume_buffer[h]
+
+
+def min_powered_volume_quota_constraint(model, h):
+
+    return model.powered_volume_shortage[h] <= model.shortage_volume_buffer[h]
 
 
 ########################################################################################################################

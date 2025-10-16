@@ -1,7 +1,5 @@
 import pyomo.environ as pyo
 
-from optimization_model.deterministic_first_stage import model
-
 def second_stage_parameters(model):
     
     model.market_price = pyo.Param(model.T)
@@ -9,20 +7,20 @@ def second_stage_parameters(model):
     model.nb_hours = pyo.Param(default=1)
     model.nb_sec = pyo.Param(default=3600) # s
     model.nb_timestamp_per_ancillary = pyo.Param() # -
-    
-    model.rated_alpha = pyo.Param(model.UP_B) # MW/(m^3/s)
-    model.overage_market_price = pyo.Param()
-    model.shortage_market_price = pyo.Param()
-    model.bound_penalty_factor = pyo.Param(default=1) # -
+    model.volume_factor = pyo.Param()
+    # model.big_m = pyo.Param()  
+    model.powered_volume_enabled = pyo.Param(within=pyo.Binary, default=True)
 
+    model.unpowered_factor_price_pos = pyo.Param(model.H) # CHF/(m^3/s)
+    model.unpowered_factor_price_neg = pyo.Param(model.H) # CHF/(m^3/s)
+    model.powered_volume_quota = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.overage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
+    model.shortage_volume_buffer = pyo.Param(model.H, default=0) # MW/(m^3/s)
     
-    model.expected_end_basin_volume = pyo.Param(model.B) # MWh
-    model.expected_upper_end_basin_volume = pyo.Param(model.B) # MWh
-    model.expected_lower_end_basin_volume = pyo.Param(model.B) # MWh
+    model.neg_unpowered_price = pyo.Param(default=0) # CHF/(m^3/s)
+    model.pos_unpowered_price = pyo.Param(default=0) # CHF/(m^3/s)  
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
-    
-
     model.spilled_factor = pyo.Param(model.B, default=1) # m^3
     
     model.min_basin_volume = pyo.Param(model.BS, default=0) # m^3
@@ -33,6 +31,7 @@ def second_stage_parameters(model):
 
     model.max_flow = pyo.Param(model.HS, default=0) #m^3/s 
     model.alpha = pyo.Param(model.HS, default=0) #MW/(Mm^3/s)
+    
     
     model.big_m = pyo.Param(default=1e6)  # Big M value for constraints
     model.total_positive_flex_power = pyo.Param(default=0)

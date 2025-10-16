@@ -142,32 +142,8 @@ def objective(model):
         )
         for ω in model.Ω
     )
-    # ancillary_market_price = sum(
-    #     sum(
-    #         model.ancillary_market_price[t, ω]
-    #         * model.nb_hours[t]
-    #         * model.hydro_ancillary_reserve[t]
-    #         for t in model.T
-    #     )
-    #     for ω in model.Ω
-    # )
-    basin_volume_penalty = sum(
-        sum(
-            model.end_basin_volume_overage[b, ω] * model.unpowered_factor_price_pos[ω, b]
-            - model.end_basin_volume_shortage[b, ω] * model.unpowered_factor_price_neg[ω, b]
-            for b in model.B
-        )/model.nb_sec
-        for ω in model.Ω
-    )
-    spilled_volume_penalty = sum(
-        sum(
-            sum(model.spilled_volume[t, ω, b] * model.unpowered_factor_price_neg[ω, b] for t in model.T)
-            for b in model.B
-        )/model.nb_sec
-        for ω in model.Ω
-    )
 
-    return market_price - spilled_volume_penalty + basin_volume_penalty
+    return market_price
 
 
 ########################################################################################################################
@@ -191,7 +167,7 @@ def basin_volume_evolution(model, t, ω, b):
 
 def basin_end_volume_constraint(model, ω, b):
     t_max = model.T.last()
-    return model.start_basin_volume[b] + model.end_basin_volume_overage[b, ω] - model.end_basin_volume_shortage[b, ω] == (
+    return model.end_basin_volume[b, ω] == (
         model.basin_volume[t_max, ω, b]
         + model.discharge_volume[t_max, ω, b]
         - model.spilled_volume[t_max, ω, b]
@@ -200,6 +176,11 @@ def basin_end_volume_constraint(model, ω, b):
         * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
     )
 
+def max_diff_basin_end_volume_constraint(model, b):
+    return sum(model.end_basin_volume[b, ω] - model.start_basin_volume[b] for ω in model.Ω) <= model.max_basin_volume[b]/100
+
+def min_diff_basin_end_volume_constraint(model, b):
+    return sum(model.end_basin_volume[b, ω] - model.start_basin_volume[b] for ω in model.Ω) >= -model.max_basin_volume[b]/100
 
 ########################################################################################################################
 # 1.5.3. Water basin state #############################################################################################
@@ -239,3 +220,44 @@ def hydro_power_constraint(model, t, h):
 
 # def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
 #     return model.hydro_ancillary_reserve[t] <= model.total_negative_flex_power + sum(model.hydro_power[t, h] for h in model.CH)
+
+# def objective(model):
+#     market_price = sum(
+#         sum(
+#             model.market_price[t, ω]
+#             * model.nb_hours[t]
+#             * sum(model.hydro_power[t, h] for h in model.H)
+#             for t in model.T
+#         )
+#         for ω in model.Ω
+#     )
+#     # ancillary_market_price = sum(
+#     #     sum(
+#     #         model.ancillary_market_price[t, ω]
+#     #         * model.nb_hours[t]
+#     #         * model.hydro_ancillary_reserve[t]
+#     #         for t in model.T
+#     #     )
+#     #     for ω in model.Ω
+#     # )
+#     # basin_volume_penalty = sum(
+#     #     sum(
+#     #         model.end_basin_volume_overage[b, ω] * model.unpowered_factor_price_pos[ω, b]
+#     #         - model.end_basin_volume_shortage[b, ω] * model.unpowered_factor_price_neg[ω, b]
+#     #         for b in model.UP_B
+#     #     )/model.nb_sec
+#     #     for ω in model.Ω
+#     # )
+#     # spilled_volume_penalty = sum(
+#     #     sum(
+#     #         sum(model.spilled_volume[t, ω, b] * model.unpowered_factor_price_neg[ω, b] for t in model.T)
+#     #         for b in model.UP_B
+#     #     )/model.nb_sec
+#     #     for ω in model.Ω
+#     # )
+
+#     return (
+#         market_price 
+#         # - spilled_volume_penalty 
+#         # + basin_volume_penalty
+#     )
