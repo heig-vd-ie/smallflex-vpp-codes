@@ -14,7 +14,7 @@ from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DeterministicConfig
 from pipelines.result_manager import extract_powered_volume_quota, extract_first_stage_optimization_results, extract_second_stage_optimization_results
 from pipelines.model_manager.deterministic_first_stage import DeterministicFirstStage
-from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
+from pipelines.model_manager.deterministic_second_stage_old import DeterministicSecondStage
 from timeseries_preparation.deterministic_data import process_timeseries_data
 from data_display.baseline_plots import plot_result
 
@@ -138,17 +138,17 @@ for year in YEAR_LIST:
         
         break
 
-    #     results_data[scenario_name] = second_stage_optimization_results
-    #     max_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "volume_max"])
-    #     start_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "start_volume"])
-    #     # Plot results
-    #     fig = plot_result(
-    #         results=second_stage_optimization_results,
-    #         max_volume_mapping=max_volume_mapping,
-    #         start_volume_mapping=start_volume_mapping,
-    #         with_battery=data_config.battery_capacity > 0,
-    #     )
-    #     fig.write_html(f"{plot_folder}/{scenario_name}_results.html")
+        results_data[scenario_name] = second_stage_optimization_results
+        max_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "volume_max"])
+        start_volume_mapping = pl_to_dict(deterministic_first_stage.water_basin["B", "start_volume"])
+        # Plot results
+        fig = plot_result(
+            results=second_stage_optimization_results,
+            max_volume_mapping=max_volume_mapping,
+            start_volume_mapping=start_volume_mapping,
+            with_battery=data_config.battery_capacity > 0,
+        )
+        fig.write_html(f"{plot_folder}/{scenario_name}_results.html")
 
 
-    # dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
+    dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")

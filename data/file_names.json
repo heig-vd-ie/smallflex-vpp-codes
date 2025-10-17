@@ -1,6 +1,6 @@
 {
     "duckdb_input": ".cache/input/small_flex_input_data.db",
     "baseline": ".cache/output/baseline",
-    "battery_size_design": ".cache/output/battery_size_design",
+    "ancillary_market": ".cache/output/ancillary_market",
     "results_plot": ".cache/plot"
 }

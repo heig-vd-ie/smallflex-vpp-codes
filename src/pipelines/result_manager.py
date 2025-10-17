@@ -1,21 +1,16 @@
 import polars as pl
 from polars import col as c
-from typing import Tuple, Union
 from polars import selectors as cs
 import pyomo.environ as pyo
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
 from pipelines.data_configs import DataConfig
 
-
-from pipelines.model_manager import stochastic_first_stage
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
     extract_result_table,
     pivot_result_table,
 )
-
-
 
 
 
@@ -55,19 +50,6 @@ def extract_optimization_results(
             
             optimization_results = optimization_results.join(data, on=col_list, how="left")
 
-    optimization_results = optimization_results.with_columns(
-        (pl.sum_horizontal([
-            cs.contains("pv_power"),
-            cs.contains("wind_power"),
-            cs.starts_with("battery").and_(cs.ends_with("power")), 
-            cs.starts_with("hydro_power")]
-        ) * c("market_price")).alias("da_income"),
-    )
-    if optimization_results.select(cs.contains("ancillary_reserve")).shape[1] > 0:
-        optimization_results = optimization_results.with_columns(
-            (pl.sum_horizontal(cs.contains("ancillary_reserve")) * c("ancillary_market_price")).alias("ancillary_income")
-        )
-
     return optimization_results
 
 def extract_first_stage_optimization_results(
@@ -84,8 +66,9 @@ def extract_second_stage_optimization_results(
     
     model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
+    nb_timestamp_per_ancillary: int
 
-) ->  pl.DataFrame:
+) ->  tuple[pl.DataFrame, float]:
 
     timeseries = timeseries.select(
         "timestamp",
@@ -94,10 +77,8 @@ def extract_second_stage_optimization_results(
         cs.matches(r"^F$"),
         cs.matches(r"^Ω$")
     )
-
     optimization_results: pl.DataFrame = pl.DataFrame()
-    powered_volume_overage: pl.DataFrame = pl.DataFrame()
-    powered_volume_shortage: pl.DataFrame = pl.DataFrame()
+    
     for key, model_instance in model_instances.items():
         optimization_results = pl.concat(
             [
@@ -108,35 +89,36 @@ def extract_second_stage_optimization_results(
                 )
             ], how="diagonal_relaxed",
         )
-        # powered_volume_overage = pl.concat(
-        #     [
-        #         powered_volume_overage,
-        #         extract_result_table(
-        #             model_instance, "powered_volume_overage"
-        #         ).with_columns(pl.lit(key).alias("sim_idx")),
-        #     ],
-        #     how="diagonal_relaxed",
-        # )
 
-        # powered_volume_shortage = pl.concat(
-        #     [
-        #         powered_volume_shortage,
-        #         extract_result_table(
-        #             model_instance, "powered_volume_shortage"
-        #         ).with_columns(pl.lit(key).alias("sim_idx")),
-        #     ],
-        #     how="diagonal_relaxed",
-        # )
-        
+    optimization_results = optimization_results.with_columns(
+        (pl.sum_horizontal([
+            cs.contains("pv_power"),
+            cs.contains("wind_power"),
+            cs.starts_with("battery").and_(cs.ends_with("power")),
+            cs.starts_with("hydro_power")]
+        ) * c("market_price")).alias("da_income"),
+    )
+    if optimization_results.select(cs.contains("ancillary_reserve")).shape[1] > 0:
+        optimization_results = optimization_results.with_columns(
+            (pl.sum_horizontal(cs.contains("ancillary_reserve")) * c("ancillary_market_price") / nb_timestamp_per_ancillary).alias("ancillary_income")
+        )
 
-    # powered_volume_overage = powered_volume_overage.pivot(
-    #     on="H", values="powered_volume_overage", index="sim_idx"
-    # )
-    # powered_volume_shortage = powered_volume_shortage.pivot(
-    #     on="H", values="powered_volume_shortage", index="sim_idx"
-    # )
+    income = optimization_results.select(cs.contains("income")).to_numpy().sum()
+    mean_market_price = optimization_results["market_price"].median()
 
-    return optimization_results
+    rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
+    end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
+    start_basin_volume = extract_result_table(list(model_instances.values())[0], "start_basin_volume")
+    end_volume_penalty = start_basin_volume\
+        .join(end_basin_volume, on="B", how="inner")\
+        .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
+        .with_columns(
+            ((c("end_basin_volume") - c("start_basin_volume"))*c("rated_alpha") * mean_market_price / 3600).alias("end_volume_penalty")
+        )["end_volume_penalty"].to_numpy().sum()
+
+    adjusted_income = income + end_volume_penalty
+
+    return optimization_results, adjusted_income
 
 def extract_powered_volume_quota(
     model_instance: pyo.ConcreteModel, first_stage_nb_timestamp: int
@@ -242,12 +224,12 @@ def extract_basin_volume_expectation(
 
     stat_volume: pl.DataFrame = cleaned_basin_volume.group_by("T", "B").agg(
             c("basin_volume").mean().alias("mean"),
-            c("basin_volume").quantile(data_config.lower_quantile).alias("lower_quantile"),
-            c("basin_volume").quantile(0.9).alias("upper_quantile")
+            c("basin_volume").quantile(data_config.basin_volume_lower_quantile).alias("lower_quantile"),
+            c("basin_volume").quantile(data_config.basin_volume_upper_quantile).alias("upper_quantile")
         ).sort(["B", "T"])\
         .with_columns(
-            c("lower_quantile").clip(upper_bound=c("mean") - data_config.min_quantile_diff).clip(lower_bound=0),
-            c("upper_quantile").clip(lower_bound=c("mean") + data_config.min_quantile_diff).clip(upper_bound=100)
+            c("lower_quantile").clip(upper_bound=c("mean") - data_config.basin_volume_min_quantile_diff).clip(lower_bound=0),
+            c("upper_quantile").clip(lower_bound=c("mean") + data_config.basin_volume_min_quantile_diff).clip(upper_bound=100)
         )
         
     mean_stat_volume = stat_volume.with_columns(

@@ -11,7 +11,7 @@ from smallflex_data_schema import SmallflexInputSchema
 
 from optimization_model import stochastic_first_stage
 from pipelines.data_manager import HydroDataManager
-from pipelines.data_configs import StochasticConfig
+from pipelines.data_configs import DataConfig
 from optimization_model.stochastic_first_stage.model import stochastic_first_stage_model
 
 
@@ -21,7 +21,7 @@ log = generate_log(name=__name__)
 class StochasticFirstStage(HydroDataManager):
     def __init__(
         self,
-        data_config: StochasticConfig,
+        data_config: DataConfig,
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
     ):

@@ -5,12 +5,12 @@ from datetime import timedelta
 from polars import col as c
 
 from smallflex_data_schema import SmallflexInputSchema
-from pipelines.data_configs import StochasticConfig
+from pipelines.data_configs import DataConfig
 
 
 def process_first_stage_timeseries_data(
     smallflex_input_schema: SmallflexInputSchema,
-    data_config: StochasticConfig,
+    data_config: DataConfig,
     scenario_list: list[str],
     water_basin_mapping: dict[str, int],
 ) -> pl.DataFrame:

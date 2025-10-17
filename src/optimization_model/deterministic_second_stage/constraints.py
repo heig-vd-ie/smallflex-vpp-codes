@@ -215,7 +215,6 @@ def second_stage_baseline_objective_with_battery(model):
     )
 
     ancillary_market_income = sum(
-        model.nb_timestamp_per_ancillary * 
         model.ancillary_market_price[f] *
         (model.hydro_ancillary_reserve[f] + model.battery_ancillary_reserve[f])
         for f in model.F
@@ -266,7 +265,6 @@ def second_stage_baseline_objective_without_battery(model):
     )
 
     ancillary_market_income = sum(
-        model.nb_timestamp_per_ancillary * 
         model.ancillary_market_price[f] *
         (model.hydro_ancillary_reserve[f])
         for f in model.F

@@ -3,11 +3,11 @@ import polars as pl
 from polars import col as c
 
 from smallflex_data_schema import SmallflexInputSchema
-from pipelines.data_configs import DeterministicConfig
+from pipelines.data_configs import DataConfig
 
 def process_timeseries_data(
     smallflex_input_schema: SmallflexInputSchema,
-    data_config: DeterministicConfig,
+    data_config: DataConfig,
     basin_index_mapping: dict[str, int],
     pv_power_mask: Optional[pl.Expr] = None,
     wind_power_mask: Optional[pl.Expr] = None,

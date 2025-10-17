@@ -13,7 +13,7 @@ from pipelines.data_configs import DeterministicConfig
 
 from pipelines.result_manager import PipelineResultManager
 from pipelines.model_manager.deterministic_first_stage_old import DeterministicFirstStage
-from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
+from pipelines.model_manager.deterministic_second_stage_old import DeterministicSecondStage
 from data_display.baseline_plots import plot_result
 
 
