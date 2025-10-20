@@ -1,7 +1,7 @@
 import pyomo.environ as pyo
 
 
-def second_stage_sets(model):
+def third_stage_sets(model):
     model.T = pyo.Set()
     model.F = pyo.Set()
     model.TF = pyo.Set(dimen=2, within=model.T * model.F) # type: ignore

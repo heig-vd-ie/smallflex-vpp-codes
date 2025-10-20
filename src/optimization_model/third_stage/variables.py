@@ -1,12 +1,9 @@
 import pyomo.environ as pyo
 
-def second_stage_variables(model):
+def third_stage_variables(model):
     
     model.basin_volume = pyo.Var(model.T, model.B, within=pyo.NonNegativeReals)
     model.spilled_volume = pyo.Var(model.T, model.B, within=pyo.NonNegativeReals)
-    # model.basin_volume_penalty = pyo.Var(within=pyo.Reals)  # MWh
-    # model.market_income = pyo.Var(within=pyo.Reals)  # MWh
-    # model.ancillary_market_income = pyo.Var(within=pyo.Reals)  # MWh
 
     model.end_basin_volume = pyo.Var(model.B, within=pyo.NonNegativeReals)
     model.end_basin_volume_mean_overage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3

@@ -2,7 +2,7 @@ import pyomo.environ as pyo
 
 from optimization_model.deterministic_first_stage import model
 
-def second_stage_parameters(model):
+def third_stage_parameters(model):
     
     model.market_price = pyo.Param(model.T)
     model.ancillary_market_price = pyo.Param(model.F)

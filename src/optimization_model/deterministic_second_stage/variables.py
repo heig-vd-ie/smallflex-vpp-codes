@@ -1,6 +1,6 @@
 import pyomo.environ as pyo
 
-def second_stage_variables(model):
+def third_stage_variables(model):
     
     model.basin_volume = pyo.Var(model.T, model.B, within=pyo.NonNegativeReals)
     model.spilled_volume = pyo.Var(model.T, model.B, within=pyo.NonNegativeReals)

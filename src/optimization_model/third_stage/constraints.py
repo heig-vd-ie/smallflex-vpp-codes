@@ -220,7 +220,29 @@ def third_stage_objective_with_battery(model):
     )
     return power_deviation + 0.01 * hydro_power_deviation + spilled_penalty
 
+
+def third_stage_objective_without_battery(model):
+
+    power_deviation = sum(
+        model.power_deviation_positive[t] + model.power_deviation_negative[t]
+        for t in model.T
+    )
     
+
+    hydro_power_deviation = sum(
+        sum(model.hydro_power_deviation_positive[t, h]  + model.hydro_power_deviation_negative[t, h] 
+        for h in model.H)
+        for t in model.T
+    )
+
+    spilled_penalty = (
+        sum(
+            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            for b in model.B
+        ) / model.nb_sec 
+    )
+    return power_deviation + 0.01 * hydro_power_deviation + spilled_penalty
+ 
 ########################################################################################################################
 # 2.5.2 Power deviation constraint  ####################################################################################
 ########################################################################################################################
