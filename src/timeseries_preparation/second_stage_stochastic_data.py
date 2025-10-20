@@ -5,13 +5,13 @@ from datetime import timedelta
 from polars import col as c
 
 from smallflex_data_schema import SmallflexInputSchema
-from pipelines.data_configs import DeterministicConfig
+from pipelines.data_configs import DataConfig
 
 
-def process_timeseries_data(
+def process_second_stage_timeseries_stochastic_data(
     smallflex_input_schema: SmallflexInputSchema,
-    data_config: DeterministicConfig,
-) -> pl.DataFrame:
+    data_config: DataConfig,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Process the second stage stochastic data.
 
     Args:
@@ -72,12 +72,25 @@ def process_timeseries_data(
             df.join(measurement[key], on="timestamp", how="inner", coalesce=True)
             .sort("timestamp")
             .upsample(every=timedelta(hours=1), time_column="timestamp")
-            .fill_null(0)
         )
+        
+        days = df.filter(c(key).is_null()).with_columns(c("timestamp").dt.date())["timestamp"].unique()
+        df = df.filter(~c("timestamp").dt.date().is_in(days.to_list()))
+
+        df = df.with_columns(
+            pl.datetime_range(
+                start=df["timestamp"][0], 
+                end=df["timestamp"][-1],
+                interval=timedelta(hours=1),
+                time_zone="UTC", eager=True
+            ).slice(0, df.height).alias("timestamp")
+        )
+        
         if input_timeseries.is_empty():
             input_timeseries = df
         else:
             input_timeseries = input_timeseries.join(df, on="timestamp", how="inner")
+        
 
     pv_max = (
         input_timeseries["irradiation", "irradiation_mean_forecast"].to_numpy().max()
@@ -108,10 +121,11 @@ def process_timeseries_data(
             (
                 cs.starts_with("discharge_volume_")
                 * 2.5
-                * data_config.second_stage_timestep.total_seconds()
-            )  # discharge volume in one hour
+                * data_config.second_stage_timestep.total_seconds() # discharge volume in one hour
+            )  
         )
     ).filter(c("timestamp").is_first_distinct())
+
 
     start_date = input_timeseries.filter(c("timestamp").dt.hour() == 0)[
         "timestamp"
@@ -127,9 +141,19 @@ def process_timeseries_data(
         .otherwise(c("timestamp"))
     ).sort("timestamp")
 
+
     market_price: pl.DataFrame = smallflex_input_schema.market_price_measurement.filter(
         c("country") == data_config.market_country
-    ).filter(c("market") == data_config.market)
+    ).filter(c("market") == data_config.market)\
+    .select(c("timestamp"), c("avg").alias("market_price"))\
+    .with_columns(
+        pl.col("market_price").rolling_quantile(
+            quantile=data_config.market_price_lower_quantile, 
+            window_size=data_config.market_price_window_size * 24).alias("market_price_lower_quantile"),
+        pl.col("market_price").rolling_quantile(
+            quantile=data_config.market_price_upper_quantile,
+            window_size=data_config.market_price_window_size  * 24).alias("market_price_upper_quantile"),
+    )
 
     ancillary_market_price: pl.DataFrame = (
         smallflex_input_schema.market_price_measurement.filter(
@@ -156,12 +180,14 @@ def process_timeseries_data(
     )
 
     market_price = market_price.select(
-        c("timestamp") + pl.duration(days=2 * 366), c("avg").alias("market_price")
+        c("timestamp") + pl.duration(days=2 * 366), 
+        "market_price", "market_price_lower_quantile", "market_price_upper_quantile"
     )
     ancillary_market_price = ancillary_market_price.select(
         c("timestamp") + pl.duration(days=2 * 366),
         c("avg").alias("ancillary_market_price"),
     )
+
 
     input_timeseries = (
         input_timeseries.join(market_price, on="timestamp", how="left")
@@ -177,10 +203,14 @@ def process_timeseries_data(
             .forward_fill()
             .backward_fill()
         )
-    ).filter(
-        c("timestamp").is_between(
-            pl.datetime(data_config.year, 1, 1, time_zone="UTC"), 
-            pl.datetime(data_config.year+1, 1, 1, time_zone="UTC"), closed="left")
-    ).sort("timestamp")
+    )
+    timeseries_forecast = input_timeseries.select(
+        "timestamp",
+        cs.ends_with("_mean_forecast").name.map(lambda c: c.removesuffix("_mean_forecast").lower()),
+        cs.contains("market_price")
+    )
 
-    return input_timeseries
+    timeseries_measurement = input_timeseries.select(
+        ~cs.ends_with("_mean_forecast")
+    )
+    return timeseries_forecast, timeseries_measurement
