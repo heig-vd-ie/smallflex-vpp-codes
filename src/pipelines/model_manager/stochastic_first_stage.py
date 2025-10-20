@@ -106,6 +106,9 @@ class StochasticFirstStage(HydroDataManager):
         data["max_basin_volume"] = pl_to_dict(
             self.first_stage_basin_state.select("B", "volume_max")
         )
+        data["basin_volume_range"] = pl_to_dict(
+            self.water_basin.select("B", "volume_range")
+        )
         # Hydro power plant
         data["max_flow"] = pl_to_dict(
             self.first_stage_hydro_power_state.select("H", "flow")

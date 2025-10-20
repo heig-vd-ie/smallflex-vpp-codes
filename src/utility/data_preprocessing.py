@@ -216,7 +216,8 @@ def generate_basin_volume_table(
             ).drop_nulls("height")[["height", "volume"]]\
             .filter(c("height").ge(height_min).and_(c("height").le(height_max)))\
             .with_columns(
-                pl.lit(water_basin_index["B"]).alias("B")
+                pl.lit(water_basin_index["B"]).alias("B"),
+                ((c("volume") - water_basin_index["volume_min"]) / water_basin_index["volume_range"]).alias("volume")
             )
         basin_volume_table = pl.concat([basin_volume_table, new_volume_table], how="diagonal_relaxed")    
             

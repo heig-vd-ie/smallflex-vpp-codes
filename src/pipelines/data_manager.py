@@ -39,7 +39,6 @@ class HydroDataManager():
         self.first_stage_basin_state: pl.DataFrame
         self.first_stage_hydro_power_state: pl.DataFrame
         self.first_stage_hydro_flex_power: pl.DataFrame
-        # self.volume_buffer: dict[int, float]
 
         self.__build_hydro_power_plant_data(
             smallflex_input_schema=smallflex_input_schema,
@@ -67,6 +66,8 @@ class HydroDataManager():
                 self.hydro_power_plant["upstream_basin_fk"].to_list()
                 + self.hydro_power_plant["downstream_basin_fk"].to_list()
             )
+        ).with_columns(
+            (c("volume_max") - c("volume_min")).alias("volume_range")
         ).with_row_index(name="B")
 
         basin_index_mapping = pl_to_dict(self.water_basin[["uuid", "B"]])

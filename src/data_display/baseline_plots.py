@@ -9,6 +9,7 @@ from polars import selectors as cs
 from plotly.subplots import make_subplots
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
+from pipelines.data_configs import DataConfig
 import numpy as np
 
 
@@ -109,20 +110,17 @@ def plot_basin_volume(results: pl.DataFrame, fig: go.Figure, row: int) -> go.Fig
 
 def plot_second_stage_basin_volume(
     results: pl.DataFrame, basin_volume_expectation: pl.DataFrame, 
-    water_basin: pl.DataFrame, fig: go.Figure, row: int) -> go.Figure:
-    
+    water_basin: pl.DataFrame, fig: go.Figure, row: int
+) -> go.Figure:
+
     basin_idx = water_basin["B"].to_list()
     
-    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
-    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+    volume_range = pl_to_dict(water_basin["B", "volume_range"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     
     basin_volume_expectation = basin_volume_expectation.join(
         results.filter(c("sim_idx").is_first_distinct())["timestamp", "sim_idx"],
         on="sim_idx", how="inner"
-    ).with_columns(
-        (c("mean", "lower_quantile", "upper_quantile") - c("B").replace(min_volume_mapping)) 
-        / (c("B").replace(max_volume_mapping) - c("B").replace(min_volume_mapping))* 100
     ).sort("timestamp")
     
     
@@ -135,11 +133,9 @@ def plot_second_stage_basin_volume(
         "timestamp",
         *[(
             (
-                c(f"spilled_volume_{col}").shift(1)
-                + c(f"basin_volume_{col}").diff()
+                (c(f"spilled_volume_{col}")/volume_range[col]).shift(1) + 
+                c(f"basin_volume_{col}").diff()
             ).fill_null(start_volume_mapping[col])
-            / (max_volume_mapping[col] - min_volume_mapping[col])
-            * 100
         ).alias(f"basin_volume_{col}")
         for col in basin_idx]
     )
@@ -147,7 +143,7 @@ def plot_second_stage_basin_volume(
 
     cleaned_basin_volume = (
         pl.DataFrame(
-            clipped_cumsum(basin_volume_raw.drop("timestamp").to_numpy(), xmin=0, xmax=100),
+            clipped_cumsum(basin_volume_raw.drop("timestamp").to_numpy(), xmin=0, xmax=1),
             schema=basin_volume_raw.drop("timestamp").columns,
         ).with_columns(basin_volume_raw["timestamp"])
     )
@@ -415,20 +411,19 @@ def plot_battery_power(results: pl.DataFrame, fig: go.Figure, row: int) -> go.Fi
 
 def plot_scenario_results(
     optimization_results: pl.DataFrame,
-    water_basin: pl.DataFrame
+    water_basin: pl.DataFrame,
+    data_config: DataConfig
 ) -> go.Figure:
 
-    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
-    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+    
+    volume_range = pl_to_dict(water_basin["B", "volume_range"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     optimization_results = optimization_results.sort(["Ω", "T"]).with_columns(
         (
             (
-                c(f"spilled_volume_{col}").shift(1)
-                + c(f"basin_volume_{col}").diff().over("Ω")
+                (c(f"spilled_volume_{col}")/volume_range[col]).shift(1) + 
+                c(f"basin_volume_{col}").diff().over("Ω")
             ).fill_null(start_volume_mapping[col])
-            / (max_volume_mapping[col] - min_volume_mapping[col])
-            * 100
         ).alias(f"basin_volume_{col}")
         for col in start_volume_mapping.keys()
     )
@@ -444,7 +439,7 @@ def plot_scenario_results(
 
         new_basin_volume_df = (
             pl.DataFrame(
-                clipped_cumsum(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=100),
+                clipped_cumsum(basin_volume_df.drop("T").to_numpy(), xmin=0, xmax=1),
                 schema=basin_volume_df.drop("T").columns,
             )
             .with_columns(basin_volume_df["T"])
@@ -498,18 +493,18 @@ def plot_scenario_results(
         stat_data = optimization_results.group_by("T")\
         .agg(
             c(col_name).median().alias("median"),
-            c(col_name).quantile(0.1).alias("10_quantile"),
-            c(col_name).quantile(0.9).alias("90_quantile")
+            c(col_name).quantile(data_config.basin_volume_lower_quantile).alias("lower_quantile"),
+            c(col_name).quantile(data_config.basin_volume_upper_quantile).alias("upper_quantile")
         ).sort("T")
 
         if col_name == "basin_volume_0":
             stat_data = stat_data.with_columns(
-                c("10_quantile").clip(upper_bound=c("median") - 10).clip(lower_bound=0),
-                c("90_quantile").clip(lower_bound=c("median") + 10).clip(upper_bound=100)
+                c("lower_quantile").clip(upper_bound=c("median") - data_config.basin_volume_min_quantile_diff).clip(lower_bound=0),
+                c("upper_quantile").clip(lower_bound=c("median") + data_config.basin_volume_min_quantile_diff).clip(upper_bound=1)
             )
 
             mean_stat_data = stat_data.with_columns(
-                c("median", "10_quantile", "90_quantile").rolling_mean(window_size=7).shift(-4)
+                c("median", "lower_quantile", "upper_quantile").rolling_mean(window_size=7).shift(-4)
             )
             
             stat_data = pl.concat([

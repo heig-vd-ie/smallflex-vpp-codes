@@ -15,7 +15,7 @@ class BatteryConfig:
 class HydroConfig:
     basin_volume_lower_quantile: float = 0.15
     basin_volume_upper_quantile: float = 0.85
-    basin_volume_min_quantile_diff: float = 10
+    basin_volume_min_quantile_diff: float = 0.1
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     start_basin_volume_ratio: dict[int, float] = field(default_factory=lambda: {})
     # volume_buffer_ratio: float = 0.2

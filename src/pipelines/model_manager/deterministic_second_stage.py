@@ -124,7 +124,9 @@ class DeterministicSecondStage(HydroDataManager):
         self.data["battery_rated_power"] = {None: self.data_config.battery_rated_power}
         self.data["battery_efficiency"] = {None: self.data_config.battery_efficiency}
 
-        
+        self.data["basin_volume_range"] = pl_to_dict(
+            self.water_basin.select("B", "volume_range")
+        )
         self.data["rated_alpha"] = pl_to_dict(
             self.hydro_power_plant.with_columns(
                 (c("rated_power")/c("rated_flow")).alias("rated_alpha")

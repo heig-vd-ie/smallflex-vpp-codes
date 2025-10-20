@@ -229,8 +229,11 @@ def second_stage_baseline_objective_with_battery(model):
     basin_volume_penalty = (
         sum(
             (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price) 
-            * model.rated_alpha[b]
+             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
+             - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
+             - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
+            ) 
+            * model.rated_alpha[b] * model.basin_volume_range[b]
             for b in model.UP_B
         )
         / model.nb_sec
@@ -277,7 +280,7 @@ def second_stage_baseline_objective_without_battery(model):
              - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
              - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
             ) 
-            * model.rated_alpha[b]
+            * model.rated_alpha[b] * model.basin_volume_range[b]
             for b in model.UP_B
         )
         / model.nb_sec
@@ -307,24 +310,24 @@ def basin_volume_evolution(model, t, b):
         return model.basin_volume[t, b] == model.start_basin_volume[b]
     else:
         return model.basin_volume[t, b] == (
-            model.basin_volume[t - 1, b]
-            + model.discharge_volume[t - 1, b]
-            - model.spilled_volume[t - 1, b]
-            + model.nb_hours
-            * model.nb_sec
-            * sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+            model.basin_volume[t - 1, b] + (
+                model.discharge_volume[t - 1, b]
+                - model.spilled_volume[t - 1, b]
+                + model.nb_hours * model.nb_sec
+                * sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+            ) / model.basin_volume_range[b]
         )
 
 
 def basin_end_volume_constraint(model, b):
     t_max = model.T.last()
     return model.end_basin_volume[b] == (
-        model.basin_volume[t_max, b]
-        + model.discharge_volume[t_max, b]
-        - model.spilled_volume[t_max, b]
-        + model.nb_hours
-        * model.nb_sec
-        * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+        model.basin_volume[t_max, b] + (
+            model.discharge_volume[t_max, b]
+            - model.spilled_volume[t_max, b]
+            + model.nb_hours * model.nb_sec
+            * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+        )/ model.basin_volume_range[b]
     )
 
 

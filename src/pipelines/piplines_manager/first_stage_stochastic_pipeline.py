@@ -11,7 +11,7 @@ from pipelines.model_manager.stochastic_first_stage import StochasticFirstStage
 
 from pipelines.result_manager import extract_first_stage_optimization_results, extract_basin_volume_expectation
 
-from timeseries_preparation.first_stage_stochiastic_data import process_first_stage_timeseries_data
+from timeseries_preparation.first_stage_stochastic_data import process_first_stage_timeseries_data
 
 from data_display.baseline_plots import plot_scenario_results, plot_second_stage_result
 
@@ -52,9 +52,10 @@ def first_stage_stochastic_pipeline(
     )
     if plot_result:
         fig = plot_scenario_results(
-                    optimization_results=optimization_results, 
-                    water_basin=stochastic_first_stage.upstream_water_basin,
-                )
+            optimization_results=optimization_results, 
+            water_basin=stochastic_first_stage.upstream_water_basin,
+            data_config=data_config
+        )
     else: 
         fig = None
             

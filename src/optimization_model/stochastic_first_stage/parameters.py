@@ -16,6 +16,7 @@ def first_stage_parameters(model):
     
     model.min_basin_volume = pyo.Param(model.B, default=0) # m^3
     model.max_basin_volume = pyo.Param(model.B, default=0) # m^3 
+    model.basin_volume_range = pyo.Param(model.B, default=0) # m^3
 
     model.water_factor = pyo.Param(model.B, model.H, default=0) # m^3
     model.volume_factor = pyo.Param() 

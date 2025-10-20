@@ -14,7 +14,7 @@ def second_stage_parameters(model):
     model.overage_market_price = pyo.Param()
     model.shortage_market_price = pyo.Param()
     model.bound_penalty_factor = pyo.Param(default=1) # -
-
+    model.basin_volume_range = pyo.Param(model.B) # m^3
     
     model.expected_end_basin_volume = pyo.Param(model.B) # MWh
     model.expected_upper_end_basin_volume = pyo.Param(model.B) # MWh

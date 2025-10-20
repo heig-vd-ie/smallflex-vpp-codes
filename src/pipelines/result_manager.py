@@ -109,11 +109,14 @@ def extract_second_stage_optimization_results(
     rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
     end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
     start_basin_volume = extract_result_table(list(model_instances.values())[0], "start_basin_volume")
+    basin_volume_range = extract_result_table(list(model_instances.values())[0], "basin_volume_range")
     end_volume_penalty = start_basin_volume\
         .join(end_basin_volume, on="B", how="inner")\
         .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
+        .join(basin_volume_range, on="B", how="inner")\
         .with_columns(
-            ((c("end_basin_volume") - c("start_basin_volume"))*c("rated_alpha") * mean_market_price / 3600).alias("end_volume_penalty")
+            ((c("end_basin_volume") - c("start_basin_volume")) *
+             c("rated_alpha") * c("basin_volume_range") * mean_market_price / 3600).alias("end_volume_penalty")
         )["end_volume_penalty"].to_numpy().sum()
 
     adjusted_income = income + end_volume_penalty
@@ -159,8 +162,8 @@ def extract_basin_volume_expectation(
     data_config: DataConfig
 ) -> pl.DataFrame:
 
-    max_volume_mapping = pl_to_dict(water_basin["B", "volume_max"])
-    min_volume_mapping = pl_to_dict(water_basin["B", "volume_min"])
+
+    volume_range = pl_to_dict(water_basin["B", "volume_range"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     basin_idx = water_basin["B"].to_list()
     
@@ -184,13 +187,12 @@ def extract_basin_volume_expectation(
             "Ω", "T",
             *[(
                 (
-                    c(f"spilled_volume_{col}").shift(1)
-                    + c(f"basin_volume_{col}").diff().over("Ω")
+                    (c(f"spilled_volume_{col}")/volume_range[col]).shift(1) + 
+                    c(f"basin_volume_{col}").diff().over("Ω")
                 ).fill_null(start_volume_mapping[col])
-                / (max_volume_mapping[col] - min_volume_mapping[col])
-                * 100
-            ).alias(f"basin_volume_{col}")
-            for col in basin_idx]
+                ).alias(f"basin_volume_{col}")
+                for col in basin_idx
+            ]
     )
 
     if basin_volume_raw.shape[1] == 3:
@@ -208,7 +210,7 @@ def extract_basin_volume_expectation(
 
     cleaned_basin_volume = (
             pl.DataFrame(
-                clipped_cumsum(basin_volume_raw.drop("T").to_numpy(), xmin=0, xmax=100),
+                clipped_cumsum(basin_volume_raw.drop("T").to_numpy(), xmin=0, xmax=1),
                 schema=basin_volume_raw.drop("T").columns,
             ).with_columns(basin_volume_raw["T"])
             .unpivot(variable_name="BΩ", value_name=f"basin_volume", index="T")
@@ -249,13 +251,10 @@ def extract_basin_volume_expectation(
         ]
     )
 
-    mean_stat_volume = mean_stat_volume.with_columns(
-        c(col_list)/100 *
-        (c("B").replace_strict(max_volume_mapping) - c("B").replace_strict(min_volume_mapping)) +
-        c("B").replace_strict(min_volume_mapping)
-    ).with_columns(
-        c("mean").diff().shift(-1).alias("diff_volume")
-    )
+    mean_stat_volume = mean_stat_volume.\
+        with_columns(
+            c("mean").diff().shift(-1).alias("diff_volume")
+        )
 
     return mean_stat_volume
 
