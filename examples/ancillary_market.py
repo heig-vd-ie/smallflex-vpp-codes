@@ -35,8 +35,8 @@ for year in YEAR_LIST:
     results_data = {}
     basin_volume_expectation: pl.DataFrame = pl.DataFrame()
     income_list: list = []
-    pbar = tqdm.tqdm(list(product(*[HYDROPOWER_MASK.keys(), BATTERY_SIZE.keys()])), ncols=150, position=0)
-    
+    scenario_list = list(product(*[HYDROPOWER_MASK.keys(), BATTERY_SIZE.keys()]))
+    pbar = tqdm(scenario_list, desc=f"Year {year} scenarios", position=0)
     for hydro_power_mask, battery_size in pbar:
         pbar.set_description(f"Optimization with {hydro_power_mask} with {battery_size} for year {year}")
         scenario_name = "_".join([hydro_power_mask, battery_size])
@@ -74,8 +74,8 @@ for year in YEAR_LIST:
     results_data["adjusted_income"] = pl.DataFrame(
         income_list, schema=["hydro_power_mask", "battery_size", "adjusted_income [kEUR]"]
     )
-    with pl_display:
-        print(results_data["adjusted_income"])
+    
+    print_pl(results_data["adjusted_income"])
         
     dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
     

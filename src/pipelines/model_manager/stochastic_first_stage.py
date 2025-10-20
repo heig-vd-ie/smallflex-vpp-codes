@@ -3,13 +3,12 @@ from polars import col as c
 from polars import selectors as cs
 import polars as pl
 import pyomo.environ as pyo
-from pyomo.environ import TransformationFactory
-import tqdm
+
+from tqdm.auto import tqdm
 
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 from smallflex_data_schema import SmallflexInputSchema
 
-from optimization_model import stochastic_first_stage
 from pipelines.data_manager import HydroDataManager
 from pipelines.data_configs import DataConfig
 from optimization_model.stochastic_first_stage.model import stochastic_first_stage_model
@@ -77,42 +76,6 @@ class StochasticFirstStage(HydroDataManager):
                 pl.concat_list(["T", "Ω", "B"]).alias("TΩB")
             )
         )
-        # unpowered_price = self.timeseries.group_by("Ω").agg(
-        #     c("market_price")
-        #     .quantile(0.9)
-        #     .alias("neg_unpowered_price"),
-        #     c("market_price")
-        #     .quantile(0.10)
-        #     .alias("pos_unpowered_price"),
-        # )
-        # water_basin_alpha = self.first_stage_hydro_power_state.group_by("B").agg(
-        #             c("alpha").abs().max().alias("max_alpha"),
-        #             c("alpha").abs().min().alias("min_alpha"),
-        #         )
-        # water_basin_alpha = (
-        #     self.water_basin[["B"]]
-        #     .join(water_basin_alpha, on="B", how="left")
-        #     .fill_null(0)
-        # )
-
-        # self.unpowered_factor_price = unpowered_price.join(
-        #     water_basin_alpha, how="cross"
-        # ).select(
-        #     pl.concat_list("Ω", "B").alias("ΩB"),
-        #     (c("neg_unpowered_price") * c("max_alpha")).alias("unpowered_factor_price_neg"),
-        #     (c("neg_unpowered_price") * c("max_alpha")).alias("unpowered_factor_price_pos"),
-        #     # (c("pos_unpowered_price") * c("min_alpha")).alias("unpowered_factor_price_pos")
-        # )
-        # self.unpowered_factor_price = self.timeseries[["Ω"]].unique().join(
-        #     self.first_stage_hydro_power_state.group_by("B").agg(
-        #         (c("alpha").abs().max()*self.timeseries["market_price"].quantile(0.9)).alias("mean"),
-        #     ),
-        #     how="cross"
-        # ).select(
-        #             pl.concat_list("Ω", "B").alias("ΩB"),
-        #             (c("mean")).alias("unpowered_factor_price_neg"),
-        #             (c("mean")).alias("unpowered_factor_price_pos")
-        #         )
 
     def create_model_instance(self):
         data: dict = {}
@@ -162,13 +125,6 @@ class StochasticFirstStage(HydroDataManager):
         data["market_price"] = pl_to_dict_with_tuple(
             self.timeseries[["TΩ", "market_price"]]
         )
-    
-        # data["unpowered_factor_price_pos"] = pl_to_dict_with_tuple(
-        #     self.unpowered_factor_price["ΩB", "unpowered_factor_price_pos"]
-        # )
-        # data["unpowered_factor_price_neg"] = pl_to_dict_with_tuple(
-        #     self.unpowered_factor_price["ΩB", "unpowered_factor_price_neg"]
-        # )
 
         # Configuration parameters
         data["max_powered_flow_ratio"] = {None: self.data_config.first_stage_max_powered_flow_ratio}
@@ -178,8 +134,8 @@ class StochasticFirstStage(HydroDataManager):
     
 
     def solve_model(self):
-        with tqdm.tqdm(
-            total=2, desc="Instantiating first stage optimization problem", ncols=150
+        with tqdm(
+            total=2, desc="Instantiating first stage optimization problem", position=1, leave=False
         ) as pbar:
             self.create_model_instance()
             pbar.update()
@@ -188,18 +144,3 @@ class StochasticFirstStage(HydroDataManager):
             pbar.update()
     
             
-    # def solve_scaled_model(self):
-    #     with tqdm.tqdm(
-    #         total=4, desc="Instantiating first stage optimization problem", ncols=150
-    #     ) as pbar:
-    #         self.create_model_instance()
-    #         pbar.set_description("Scaling first stage optimization problem")
-    #         pbar.update()
-    #         self.model_scaling()
-    #         pbar.set_description("Solving first stage optimization problem")
-    #         pbar.update()
-    #         _ = self.first_stage_solver.solve(self.scaled_model_instance, tee=self.verbose)
-    #         pbar.set_description("Propagating first stage optimization results")
-    #         pbar.update()
-    #         self.results_propagation()
-    #         pbar.update()

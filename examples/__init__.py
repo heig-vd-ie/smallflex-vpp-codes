@@ -8,7 +8,8 @@ from polars import selectors as cs
 import pyomo.environ as pyo
 from datetime import timedelta
 from itertools import product
-import tqdm
+from tqdm.auto import tqdm
+
 from general_function import pl_to_dict, build_non_existing_dirs, dict_to_duckdb
 from numpy_function import clipped_cumsum
 
@@ -63,13 +64,16 @@ BATTERY_SIZE = {
     "battery_5_MW_20MWh": {"rated_power": 5, "capacity": 20},
 }
 
-pl_display = pl.Config(
+def print_pl(data: pl.DataFrame) -> None:
+    with pl.Config(
         set_tbl_rows=10000,
         set_thousands_separator="'",
         set_float_precision=0,
         set_tbl_hide_column_data_types=True,
     
-    )
+    ):
+        print(data)
+
 
 os.chdir(os.getcwd().replace("/src", ""))
 os.environ["GRB_LICENSE_FILE"] = os.environ["HOME"] + "/gurobi_license/gurobi.lic"

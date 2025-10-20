@@ -19,6 +19,8 @@ smallflex-data-schema = {path = "external-dist/smallflex_data_schema-0.1.5-py3-n
 plotly = "^6.1.1"
 gurobipy = "^12.0.2"
 patito = "^0.8.3"
+ipywidgets = "^8.1.7"
+rich = "10.13.0"
 
 
 [build-system]

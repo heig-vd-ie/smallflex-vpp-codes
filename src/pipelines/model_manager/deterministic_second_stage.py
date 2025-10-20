@@ -1,3 +1,4 @@
+from operator import le
 from typing import Optional
 from collections import Counter
 import logging
@@ -5,7 +6,7 @@ import polars as pl
 from polars import col as c
 from polars import selectors as cs
 import pyomo.environ as pyo
-import tqdm
+from tqdm.auto import tqdm
 
 from optimization_model import deterministic_second_stage_old
 
@@ -257,12 +258,14 @@ class DeterministicSecondStage(HydroDataManager):
         
         if not nb_sim_tot:
             nb_sim_tot = self.nb_sims
-        for self.sim_idx in tqdm.tqdm(
+            
+        for self.sim_idx in tqdm(
             range(nb_sim_tot),
-            desc="Solving second stage optimization problem", ncols=150,
-            position=0, leave=False
+            desc="Solving second stage optimization problem", 
+            position=1,
+            leave=False
         ):
-            self.infeasible_increment = 0
+
             self.calculate_second_stage_states()
             self.generate_model_instance()
         
@@ -289,16 +292,6 @@ class DeterministicSecondStage(HydroDataManager):
 
         if solution["Solver"][0]["Status"] == "aborted":
             self.non_optimal_solution_idx.append(self.sim_idx)
-        elif solution["Solver"][0]["Termination condition"] == "infeasibleOrUnbounded":
-            if self.infeasible_increment == 3:
-                raise ValueError('Infeasible model')
-            else:
-                self.infeasible_increment += 1
-                self.data["shortage_volume_buffer"] = dict(map(lambda x: (x[0], x[1]*2), self.data["shortage_volume_buffer"].items()))
-                self.data["overage_volume_buffer"] = dict(map(lambda x: (x[0], x[1]*2), self.data["overage_volume_buffer"].items()))
-                self.model_instances[self.sim_idx] = self.model.create_instance({None: self.data}) # type: ignore
-                self.unfeasible_solution.append(self.sim_idx)
-                self.solve_model()
 
                 
     

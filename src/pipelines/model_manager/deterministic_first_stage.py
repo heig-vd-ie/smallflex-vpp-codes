@@ -9,7 +9,7 @@ import tqdm
 from smallflex_data_schema import SmallflexInputSchema
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
-from pipelines.data_configs import DeterministicConfig
+from pipelines.data_configs import DataConfig
 from pipelines.data_manager import HydroDataManager
 
 
@@ -24,7 +24,7 @@ log = generate_log(name=__name__)
 class DeterministicFirstStage(HydroDataManager):
     def __init__(
         self,
-        data_config: DeterministicConfig,
+        data_config: DataConfig,
         smallflex_input_schema: SmallflexInputSchema,
         hydro_power_mask: Optional[pl.Expr] = None,
     ):
