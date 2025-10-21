@@ -194,72 +194,11 @@ r"""
 """
 
 ########################################################################################################################
-# 2.5.1 Water basin volume evolution ###################################################################################
-########################################################################################################################
-
-
-def third_stage_objective_with_battery(model):
-
-    power_deviation = sum(
-        model.total_power_deviation_positive[t] + model.total_power_deviation_negative[t]
-        for t in model.T
-    )
-    
-
-    hydro_power_deviation = sum(
-        sum(model.hydro_power_deviation_positive[t, h]  + model.hydro_power_deviation_negative[t, h]
-        for h in model.H)
-        for t in model.T
-    )
-
-    spilled_penalty = (
-        sum(
-            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
-            for b in model.B
-        ) / model.nb_sec
-    )
-    
-    battery_power= sum(
-        model.battery_charging_power[t] + model.battery_discharging_power[t]
-        for t in model.T
-    )
-    
-    return (
-        power_deviation + 
-        spilled_penalty 
-        + 0.05 * battery_power
-        + 0.5 * hydro_power_deviation 
-    )
-
-
-def third_stage_objective_without_battery(model):
-
-    power_deviation = sum(
-        model.total_power_deviation_positive[t] + model.total_power_deviation_negative[t]
-        for t in model.T    
-    )
-    
-
-    hydro_power_deviation = sum(
-        sum(model.hydro_power_deviation_positive[t, h]  + model.hydro_power_deviation_negative[t, h] 
-        for h in model.H)
-        for t in model.T
-    )
-
-    spilled_penalty = (
-        sum(
-            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
-            for b in model.B
-        ) / model.nb_sec 
-    )
-    return power_deviation + 0.1 * hydro_power_deviation + spilled_penalty
-
-########################################################################################################################
 # 2.5.2 Power deviation constraint  ####################################################################################
 ########################################################################################################################
 
 
-def total_power_deviation_constraint(model, t):
+def total_power_deviation_constraint_with_battery(model, t):
     return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
         model.total_power_forecast[t] -
         (   
@@ -267,6 +206,17 @@ def total_power_deviation_constraint(model, t):
             model.wind_power_measured[t] -
             model.battery_charging_power[t] +
             model.battery_discharging_power[t] +
+            sum(model.hydro_power[t, h] for h in model.H)
+        )
+    )
+
+
+def total_power_deviation_constraint_without_battery(model, t):
+    return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
+        model.total_power_forecast[t] -
+        (   
+            model.pv_power_measured[t] +
+            model.wind_power_measured[t] -
             sum(model.hydro_power[t, h] for h in model.H)
         )
     )
@@ -361,8 +311,6 @@ def max_inactive_flow_by_state_constraint(model, t, h, b, s):
     return model.flow_by_state[t, h, s] >= model.max_flow[h, s] * model.basin_state[
         t, b, s
     ] - model.big_m * (1 - model.discrete_hydro_on[t, h])
-
-
 
 
 ########################################################################################################################

@@ -1,4 +1,5 @@
 import pyomo.environ as pyo
+from optimization_model.third_stage.objective_functions import *
 from optimization_model.third_stage.constraints import *
 from optimization_model.third_stage.sets import *
 from optimization_model.third_stage.parameters import *
@@ -8,7 +9,6 @@ def third_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMode
     ####################################################################################################################
     ### Basin volume evolution constraints #############################################################################  
     #################################################################################################################### 
-    model.total_power_deviation_constraint = pyo.Constraint(model.T, rule=total_power_deviation_constraint)
     model.hydro_power_deviation_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_deviation_constraint)
     ####################################################################################################################
     ### Basin volume evolution constraints #############################################################################  
@@ -32,7 +32,7 @@ def third_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMode
 
     return model
 
-def third_stage_constraints_with_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
+def third_stage_battery_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
     model.objective = pyo.Objective(rule=third_stage_objective_with_battery, sense=pyo.minimize)
     model = third_stage_common_constraints(model)
     #####################################################################################################################
@@ -47,23 +47,21 @@ def third_stage_constraints_with_battery(model: pyo.AbstractModel) -> pyo.Abstra
     return model
 
 def third_stage_constraints_without_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
-    model.objective = pyo.Objective(rule=third_stage_objective_without_battery, sense=pyo.minimize)
     model = third_stage_common_constraints(model)
     return model
 
-def third_stage_model_with_battery() -> pyo.AbstractModel:
+def third_stage_model(with_battery: bool) -> pyo.AbstractModel:
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = third_stage_sets(model)
     model = third_stage_parameters(model)
-    model = third_stage_variables(model)
-    model = third_stage_constraints_with_battery(model)
+    model = third_stage_variables(model, with_battery=with_battery)
+    if with_battery:
+        model.objective = pyo.Objective(rule=third_stage_objective_with_battery, sense=pyo.minimize)
+        model = third_stage_battery_constraints(model)
+        model.total_power_deviation_constraint = pyo.Constraint(model.T, rule=total_power_deviation_constraint_with_battery)
+    else:
+        model.objective = pyo.Objective(rule=third_stage_objective_without_battery, sense=pyo.minimize)
+        model.total_power_deviation_constraint = pyo.Constraint(model.T, rule=total_power_deviation_constraint_without_battery)
     return model
 
-def third_stage_model_without_battery() -> pyo.AbstractModel:
 
-    model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
-    model = third_stage_sets(model)
-    model = third_stage_parameters(model)
-    model = third_stage_variables(model)
-    model = third_stage_constraints_without_battery(model)
-    return model

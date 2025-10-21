@@ -3,8 +3,6 @@ import pyomo.environ as pyo
 
 def third_stage_sets(model):
     model.T = pyo.Set()
-    model.F = pyo.Set()
-    model.TF = pyo.Set(dimen=2, within=model.T * model.F) # type: ignore
     model.H = pyo.Set()
     model.B = pyo.Set()
     model.UP_B = pyo.Set(within=model.B)
