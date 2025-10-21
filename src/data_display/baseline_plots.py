@@ -600,7 +600,7 @@ def plot_second_stage_result(
         fig=fig, row=2)
     
     fig = plot_hydro_power(results=results, fig=fig, row=3)
-    fig = plot_ancillary_reserve(results=results, fig=fig, row=4, with_battery=with_battery)
+    # fig = plot_ancillary_reserve(results=results, fig=fig, row=4, with_battery=with_battery)
     if with_battery:
         fig = plot_battery_power(results=results, fig=fig, row=5)
         fig = plot_battery_soc(results=results, fig=fig, row=6)

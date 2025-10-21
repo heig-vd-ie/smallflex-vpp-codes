@@ -201,31 +201,42 @@ r"""
 def third_stage_objective_with_battery(model):
 
     power_deviation = sum(
-        model.power_deviation_positive[t] + model.power_deviation_negative[t]
+        model.total_power_deviation_positive[t] + model.total_power_deviation_negative[t]
         for t in model.T
     )
     
 
     hydro_power_deviation = sum(
-        sum(model.hydro_power_deviation_positive[t, h]  + model.hydro_power_deviation_negative[t, h] 
+        sum(model.hydro_power_deviation_positive[t, h]  + model.hydro_power_deviation_negative[t, h]
         for h in model.H)
         for t in model.T
     )
 
     spilled_penalty = (
         sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
             for b in model.B
-        ) / model.nb_sec 
+        ) / model.nb_sec
     )
-    return power_deviation + 0.01 * hydro_power_deviation + spilled_penalty
+    
+    battery_power= sum(
+        model.battery_charging_power[t] + model.battery_discharging_power[t]
+        for t in model.T
+    )
+    
+    return (
+        power_deviation + 
+        spilled_penalty 
+        + 0.05 * battery_power
+        + 0.5 * hydro_power_deviation 
+    )
 
 
 def third_stage_objective_without_battery(model):
 
     power_deviation = sum(
-        model.power_deviation_positive[t] + model.power_deviation_negative[t]
-        for t in model.T
+        model.total_power_deviation_positive[t] + model.total_power_deviation_negative[t]
+        for t in model.T    
     )
     
 
@@ -237,25 +248,25 @@ def third_stage_objective_without_battery(model):
 
     spilled_penalty = (
         sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
+            sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
             for b in model.B
         ) / model.nb_sec 
     )
-    return power_deviation + 0.01 * hydro_power_deviation + spilled_penalty
- 
+    return power_deviation + 0.1 * hydro_power_deviation + spilled_penalty
+
 ########################################################################################################################
 # 2.5.2 Power deviation constraint  ####################################################################################
 ########################################################################################################################
 
 
-def power_deviation_constraint(model, t):
+def total_power_deviation_constraint(model, t):
     return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
-        model.total_power_forecast[t] - 
+        model.total_power_forecast[t] -
         (   
-            model.pv_power[t] +
-            model.wind_power[t] -
-            model.battery_charging_power[t] + 
-            model.battery_discharging_power[t] + 
+            model.pv_power_measured[t] +
+            model.wind_power_measured[t] -
+            model.battery_charging_power[t] +
+            model.battery_discharging_power[t] +
             sum(model.hydro_power[t, h] for h in model.H)
         )
     )
@@ -276,7 +287,7 @@ def basin_volume_evolution(model, t, b):
     else:
         return model.basin_volume[t, b] == (
             model.basin_volume[t - 1, b] + (
-                model.discharge_volume[t - 1, b]
+                model.discharge_volume_measured[t - 1, b]
                 - model.spilled_volume[t - 1, b]
                 + model.nb_hours * model.nb_sec
                 * sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
@@ -288,7 +299,7 @@ def basin_end_volume_constraint(model, b):
     t_max = model.T.last()
     return model.end_basin_volume[b] == (
         model.basin_volume[t_max, b] + (
-            model.discharge_volume[t_max, b]
+            model.discharge_volume_measured[t_max, b]
             - model.spilled_volume[t_max, b]
             + model.nb_hours * model.nb_sec
             * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
@@ -324,12 +335,12 @@ def basin_state_constraint(model, t, b):
 ########################################################################################################################
 
 
+
 def max_flow_by_state_constraint(model, t, h, b, s):
     return (
-        model.flow[t, h, s]
-        <= (model.max_flow[h, s] - model.flow[t, h])  * model.basin_state[t, b, s]
+        model.flow_by_state[t, h, s]
+        <= model.max_flow[h, s] * model.basin_state[t, b, s]
     )
-
 
 def flow_constraint(model, t, h):
     return model.flow[t, h] == sum(model.flow_by_state[t, h, s] for s in model.S_H[h])
@@ -372,11 +383,11 @@ def battery_soc_evolution_constraint(model, t):
             )
             * model.nb_hours / model.battery_capacity
         )
-        
+
 def end_battery_soc_constraint(model):
     t_max = model.T.last()
     return (
-        model.start_battery_soc + model.end_battery_soc_overage - model.end_battery_soc_shortage == 
+        model.end_battery_soc ==
         model.battery_soc[t_max] + (
                 model.battery_charging_power[t_max] * model.battery_efficiency
                 - model.battery_discharging_power[t_max] / model.battery_efficiency
@@ -384,26 +395,13 @@ def end_battery_soc_constraint(model):
             * model.nb_hours
             / model.battery_capacity
         )
-    
-def end_battery_soc_overage_constraint(model):
-    return model.start_battery_soc  + model.end_battery_soc_overage <= 1
 
-def end_battery_soc_shortage_constraint(model):
-    return model.start_battery_soc - model.end_battery_soc_shortage >= 0
-    
-def battery_max_charging_power_constraint(model, t, f):
-    return model.battery_charging_power[t] + model.battery_ancillary_reserve[f] <= model.battery_rated_power
+def battery_max_charging_power_constraint(model, t):
+    return model.battery_charging_power[t] <= model.battery_rated_power
 
-def battery_max_discharging_power_constraint(model, t, f):
-    return model.battery_discharging_power[t] + model.battery_ancillary_reserve[f] <= model.battery_rated_power
+def battery_max_discharging_power_constraint(model, t):
+    return model.battery_discharging_power[t] <= model.battery_rated_power
 
-def battery_positive_energy_reserve_constraint(model, t, f):
-    nb_hours = model.nb_timestamp_per_ancillary - t + model.nb_timestamp_per_ancillary * f
-    return (1 - model.battery_soc[t]) * model.battery_capacity >= nb_hours * model.battery_ancillary_reserve[f]
-
-def battery_negative_energy_reserve_constraint(model, t, f):
-    nb_hours = model.nb_timestamp_per_ancillary - t + model.nb_timestamp_per_ancillary * f
-    return model.battery_soc[t] * model.battery_capacity >= nb_hours * model.battery_ancillary_reserve[f]
 
 def battery_in_charge_constraint(model, t):
     return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]

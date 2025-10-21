@@ -5,6 +5,7 @@ from optimization_model.deterministic_second_stage.parameters import *
 from optimization_model.deterministic_second_stage.variables import *
 
 def second_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
+    model.total_power_constraint = pyo.Constraint(model.T, rule=total_power_constraint)
     ####################################################################################################################
     ### Basin volume evolution constraints #############################################################################  
     #################################################################################################################### 

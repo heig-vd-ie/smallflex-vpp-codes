@@ -8,7 +8,17 @@ def second_stage_parameters(model):
     model.ancillary_market_price = pyo.Param(model.F)
     model.nb_hours = pyo.Param(default=1)
     model.nb_sec = pyo.Param(default=3600) # s
-
+    model.nb_timestamp_per_ancillary = pyo.Param() # -
+    
+    model.rated_alpha = pyo.Param(model.UP_B) # MW/(m^3/s)
+    model.overage_market_price = pyo.Param()
+    model.shortage_market_price = pyo.Param()
+    model.bound_penalty_factor = pyo.Param(default=1) # -
+    model.basin_volume_range = pyo.Param(model.B) # m^3
+    
+    model.expected_end_basin_volume = pyo.Param(model.B) # MWh
+    model.expected_upper_end_basin_volume = pyo.Param(model.B) # MWh
+    model.expected_lower_end_basin_volume = pyo.Param(model.B) # MWh
     
     model.start_basin_volume = pyo.Param(model.B, default=0) # m^3
     
@@ -25,13 +35,11 @@ def second_stage_parameters(model):
     model.alpha = pyo.Param(model.HS, default=0) #MW/(Mm^3/s)
     
     model.big_m = pyo.Param(default=1e6)  # Big M value for constraints
-
+    model.total_positive_flex_power = pyo.Param(default=0)
+    model.total_negative_flex_power = pyo.Param(default=0)
     
     model.pv_power = pyo.Param(model.T, default=0) # MW
-    model.wind_power = pyo.Param(model.T, default=0) # M
-    model.total_power_forecast = pyo.Param(model.T, default=0) # MW
-    model.hydro_power_forecast = pyo.Param(model.T, model.H, default=0) # MW
-
+    model.wind_power = pyo.Param(model.T, default=0) # MW
     
     model.battery_capacity = pyo.Param() # MWh
     model.battery_rated_power = pyo.Param() # MW

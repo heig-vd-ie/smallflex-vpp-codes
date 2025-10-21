@@ -5,6 +5,7 @@ import pyomo.environ as pyo
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
 from pipelines.data_configs import DataConfig
+from tqdm.auto import tqdm
 
 from utility.data_preprocessing import (
     split_timestamps_per_sim,
@@ -19,10 +20,10 @@ def extract_optimization_results(
     optimization_results: pl.DataFrame,
 ) -> pl.DataFrame:
     attribute_list = [
-        "market_price", "ancillary_market_price", "basin_volume", "discharge_volume", 
-        "spilled_volume", "flow", "hydro_power", "hydro_ancillary_reserve",
+        "total_power_forecast", "basin_volume", "discharge_volume", 
+        "spilled_volume", "flow", "hydro_power_forecast", "hydro_power", "hydro_ancillary_reserve",
         "battery_charging_power", "battery_discharging_power", "battery_soc", 
-        "battery_ancillary_reserve", "pv_power", "wind_power"
+        "battery_ancillary_reserve", "pv_power","pv_power_measured", "wind_power", "wind_power_measured"
     ]
     for attribute in attribute_list:
         if hasattr(model_instance, attribute):
@@ -39,7 +40,7 @@ def extract_optimization_results(
                 data = pivot_result_table(
                         df=data, on="B", index=col_list, values=attribute
                     )
-            elif attribute in ["flow", "hydro_power"]:
+            elif attribute in ["flow", "hydro_power", "hydro_power_forecast"]:
                 data = pivot_result_table(
                     df=data, on="H", index=["T"], values=attribute
                 )
@@ -75,11 +76,13 @@ def extract_second_stage_optimization_results(
         cs.matches(r"^sim_idx$"),
         cs.matches(r"^T$"),
         cs.matches(r"^F$"),
-        cs.matches(r"^Ω$")
+        cs.matches(r"^Ω$"),
+        cs.contains("market_price"),
+        cs.contains("imbalance")
     )
     optimization_results: pl.DataFrame = pl.DataFrame()
-    
-    for key, model_instance in model_instances.items():
+
+    for key, model_instance in tqdm(model_instances.items(), desc="Extracting second stage results"):
         optimization_results = pl.concat(
             [
                 optimization_results,
@@ -122,6 +125,68 @@ def extract_second_stage_optimization_results(
     adjusted_income = income + end_volume_penalty
 
     return optimization_results, adjusted_income
+
+def extract_third_stage_optimization_results(
+    
+    model_instances: dict[int, pyo.ConcreteModel],
+    timeseries: pl.DataFrame,
+
+) ->  tuple[pl.DataFrame, float, float]:
+
+    timeseries = timeseries.select(
+        "timestamp",
+        cs.matches(r"^sim_idx$"),
+        cs.matches(r"^T$"),
+        cs.matches(r"^F$"),
+        cs.matches(r"^Ω$"),
+        cs.contains("market_price"),
+        cs.contains("imbalance")
+    )
+    optimization_results: pl.DataFrame = pl.DataFrame()
+    
+    for key, model_instance in tqdm(model_instances.items(), desc="Extracting third stage results"):
+        optimization_results = pl.concat(
+            [
+                optimization_results,
+                extract_optimization_results(
+                    model_instance=model_instance,
+                    optimization_results=timeseries.filter(c("sim_idx") == key),
+                )
+            ], how="diagonal_relaxed",
+        )
+
+    optimization_results = (
+        optimization_results
+        .with_columns(
+            pl.sum_horizontal(cs.contains("power").and_(~cs.contains("forecast"))).alias("total_power_real"),
+        ).with_columns(
+            (c("market_price") * c("total_power_real")).alias("da_income"),
+            pl.when(c("total_power_real") > c("total_power_forecast"))
+            .then((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance"))
+            .otherwise((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance")).alias("imbalance_penalty")
+        )
+    )
+
+    income = optimization_results.select(cs.contains("income")).to_numpy().sum()
+    mean_market_price = optimization_results["market_price"].median()
+
+    rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
+    end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
+    start_basin_volume = extract_result_table(list(model_instances.values())[0], "start_basin_volume")
+    basin_volume_range = extract_result_table(list(model_instances.values())[0], "basin_volume_range")
+    end_volume_penalty = start_basin_volume\
+        .join(end_basin_volume, on="B", how="inner")\
+        .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
+        .join(basin_volume_range, on="B", how="inner")\
+        .with_columns(
+            ((c("end_basin_volume") - c("start_basin_volume")) *
+             c("rated_alpha") * c("basin_volume_range") * mean_market_price / 3600).alias("end_volume_penalty")
+        )["end_volume_penalty"].to_numpy().sum()
+
+    adjusted_income = income + end_volume_penalty
+    imbalance_penalty = optimization_results["imbalance_penalty"].sum()
+    return optimization_results, adjusted_income, imbalance_penalty
+
 
 def extract_powered_volume_quota(
     model_instance: pyo.ConcreteModel, first_stage_nb_timestamp: int

@@ -203,15 +203,13 @@ def second_stage_baseline_objective_with_battery(model):
     market_income = (
         model.nb_hours
         * sum(
-            model.market_price[t] * 
-            (
-                model.pv_power[t] +
-                model.wind_power[t] -
-                model.battery_charging_power[t] + 
-                model.battery_discharging_power[t] + 
-                sum(model.hydro_power[t, h] for h in model.H)
-            ) 
-        for t in model.T)
+            model.market_price[t] * (
+                model.total_power[t]
+                - model.battery_charging_power[t] 
+                + model.battery_discharging_power[t] 
+            )
+            for t in model.T
+        )
     )
 
     ancillary_market_income = sum(
@@ -258,13 +256,9 @@ def second_stage_baseline_objective_without_battery(model):
     market_income = (
         model.nb_hours
         * sum(
-            model.market_price[t] * 
-            (
-                model.pv_power[t] +
-                model.wind_power[t] +
-                sum(model.hydro_power[t, h] for h in model.H)
-            ) 
-        for t in model.T)
+            model.market_price[t] * model.total_power[t]
+            for t in model.T
+        )
     )
 
     ancillary_market_income = sum(
@@ -303,7 +297,13 @@ def second_stage_baseline_objective_without_battery(model):
 ########################################################################################################################
 # 2.5.2 Water basin volume evolution ###################################################################################
 ########################################################################################################################
-
+def total_power_constraint(model, t):
+    return (
+        model.total_power[t] ==
+        model.pv_power[t] +
+        model.wind_power[t] +
+        sum(model.hydro_power[t, h] for h in model.H)
+    )
 
 def basin_volume_evolution(model, t, b):
     if t == model.T.first():

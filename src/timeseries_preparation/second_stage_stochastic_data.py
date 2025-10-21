@@ -171,7 +171,7 @@ def process_second_stage_timeseries_stochastic_data(
             c("direction").replace_strict(
                 {"neg": "short_imbalance", "pos": "long_imbalance"}
             )
-        )
+        ).filter(pl.struct(["timestamp", "direction"]).is_first_distinct())
         .pivot(on="direction", values="avg", index="timestamp")
         .sort("timestamp")
         .with_columns(

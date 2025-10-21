@@ -9,6 +9,7 @@ import pyomo.environ as pyo
 from datetime import timedelta
 from itertools import product
 from tqdm.auto import tqdm
+from typing import Optional
 
 from general_function import pl_to_dict, build_non_existing_dirs, dict_to_duckdb
 from numpy_function import clipped_cumsum
@@ -19,7 +20,11 @@ from pipelines.model_manager.stochastic_first_stage import StochasticFirstStage
 from pipelines.model_manager.deterministic_second_stage_old import DeterministicSecondStage
 from pipelines.model_manager.stochastic_second_stage import StochasticSecondStage
 
-from pipelines.result_manager import extract_first_stage_optimization_results, extract_basin_volume_expectation, extract_second_stage_optimization_results
+from pipelines.result_manager import (
+    extract_first_stage_optimization_results, 
+    extract_basin_volume_expectation, 
+    extract_second_stage_optimization_results, 
+    extract_third_stage_optimization_results)
 
 from timeseries_preparation.first_stage_stochastic_data import process_first_stage_timeseries_data
 from timeseries_preparation.deterministic_data import process_timeseries_data
@@ -67,11 +72,13 @@ BATTERY_SIZE = {
     "battery_5_MW_20MWh": {"rated_power": 5, "capacity": 20},
 }
 
-def print_pl(data: pl.DataFrame) -> None:
+def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
     with pl.Config(
         set_tbl_rows=10000,
+        set_tbl_cols=500,
+        set_tbl_width_chars=50000,
         set_thousands_separator="'",
-        set_float_precision=0,
+        set_float_precision=float_precision,
         set_tbl_hide_column_data_types=True,
     
     ):
