@@ -17,7 +17,7 @@ from numpy_function import clipped_cumsum
 from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DataConfig
 from pipelines.model_manager.stochastic_first_stage import StochasticFirstStage
-from pipelines.model_manager.deterministic_second_stage_old import DeterministicSecondStage
+from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
 from pipelines.model_manager.stochastic_second_stage import StochasticSecondStage
 
 from pipelines.result_manager import (

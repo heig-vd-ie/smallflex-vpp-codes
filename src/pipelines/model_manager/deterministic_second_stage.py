@@ -8,8 +8,6 @@ from polars import selectors as cs
 import pyomo.environ as pyo
 from tqdm.auto import tqdm
 
-from optimization_model import deterministic_second_stage_old
-
 from smallflex_data_schema import SmallflexInputSchema
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
 
@@ -18,8 +16,7 @@ from pipelines.data_configs import DataConfig
 from pipelines.data_manager import HydroDataManager
 
 
-from optimization_model.deterministic_second_stage.model import (
-    deterministic_second_stage_model_with_battery, deterministic_second_stage_model_without_battery)
+from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model
 from utility.data_preprocessing import (
     generate_hydro_power_state, generate_basin_state, split_timestamps_per_sim
 )
@@ -48,10 +45,10 @@ class DeterministicSecondStage(HydroDataManager):
         )
         self.data_config = data_config
         
-        if self.data_config.battery_capacity > 0:
-            self.model: pyo.AbstractModel = deterministic_second_stage_model_with_battery()
-        else:
-            self.model: pyo.AbstractModel = deterministic_second_stage_model_without_battery()
+        self.model: pyo.AbstractModel = deterministic_second_stage_model(
+            with_ancillary=data_config.with_ancillary,
+            with_battery=self.data_config.battery_capacity > 0
+        )
             
         self.model_instances: dict[int, pyo.ConcreteModel] = {}
         self.timeseries: pl.DataFrame
@@ -271,30 +268,17 @@ class DeterministicSecondStage(HydroDataManager):
             self.calculate_second_stage_states()
             self.generate_model_instance()
         
-            self.solve_model()
+            solution = self.data_config.second_stage_solver.solve(self.model_instances[self.sim_idx], tee=self.data_config.verbose)
+
+            if solution["Solver"][0]["Status"] == "aborted":
+                self.non_optimal_solution_idx.append(self.sim_idx)
+
             
             self.start_basin_volume = extract_result_table(self.model_instances[self.sim_idx], "end_basin_volume").rename({"end_basin_volume": "start_volume"})
-            self.sim_start_battery_soc += (
-                self.model_instances[self.sim_idx].end_battery_soc_overage.extract_values()[None] - # type: ignore
-                self.model_instances[self.sim_idx].end_battery_soc_shortage.extract_values()[None] # type: ignore
-            )
             
-            # self.volume_deviation = extract_result_table(self.model_instances[self.sim_idx], "end_basin_volume_mean_overage").join(
-            #     extract_result_table(self.model_instances[self.sim_idx], "end_basin_volume_mean_shortage"),
-            #     on="UP_B"
-            # ).select(
-            #     c("UP_B").alias("B"),
-            #     (c("end_basin_volume_mean_overage") - c("end_basin_volume_mean_shortage")).alias("volume_deviation")
-            # )
-
-
-    def solve_model(self):
-
-        solution = self.data_config.second_stage_solver.solve(self.model_instances[self.sim_idx], tee=self.data_config.verbose)
-
-        if solution["Solver"][0]["Status"] == "aborted":
-            self.non_optimal_solution_idx.append(self.sim_idx)
-
-                
-    
-    
+            if self.data_config.battery_capacity > 0:
+                self.sim_start_battery_soc += (
+                    self.model_instances[self.sim_idx].end_battery_soc_overage.extract_values()[None] - # type: ignore
+                    self.model_instances[self.sim_idx].end_battery_soc_shortage.extract_values()[None] # type: ignore
+                )
+            

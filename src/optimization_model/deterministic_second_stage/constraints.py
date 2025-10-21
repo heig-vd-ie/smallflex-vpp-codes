@@ -197,113 +197,30 @@ r"""
 # 2.5.1 Water basin volume evolution ###################################################################################
 ########################################################################################################################
 
-
-def second_stage_baseline_objective_with_battery(model):
-
-    market_income = (
-        model.nb_hours
-        * sum(
-            model.market_price[t] * (
-                model.total_power[t]
-                - model.battery_charging_power[t] 
-                + model.battery_discharging_power[t] 
-            )
-            for t in model.T
-        )
-    )
-
-    ancillary_market_income = sum(
-        model.ancillary_market_price[f] *
-        (model.hydro_ancillary_reserve[f] + model.battery_ancillary_reserve[f])
-        for f in model.F
-    )
-    
-    battery_capacity_penalty = (
-        (model.end_battery_soc_overage * model.overage_market_price
-        - model.end_battery_soc_shortage * model.shortage_market_price)
-        * model.battery_capacity
-    )
-    
-    basin_volume_penalty = (
-        sum(
-            (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
-            ) 
-            * model.rated_alpha[b] * model.basin_volume_range[b]
-            for b in model.UP_B
-        )
-        / model.nb_sec
-    )
-    
-    spilled_penalty = (
-        sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
-            for b in model.B
-        ) / model.nb_sec 
-    )
+def total_power_constraint_with_battery(model, t):
     return (
-        market_income 
-        + ancillary_market_income
-        + spilled_penalty 
-        + basin_volume_penalty
-        + battery_capacity_penalty
-    )
-
-def second_stage_baseline_objective_without_battery(model):
-
-    market_income = (
-        model.nb_hours
-        * sum(
-            model.market_price[t] * model.total_power[t]
-            for t in model.T
-        )
-    )
-
-    ancillary_market_income = sum(
-        model.ancillary_market_price[f] *
-        (model.hydro_ancillary_reserve[f])
-        for f in model.F
-    )
-    
-    basin_volume_penalty = (
-        sum(
-            (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
-            ) 
-            * model.rated_alpha[b] * model.basin_volume_range[b]
-            for b in model.UP_B
-        )
-        / model.nb_sec
-    )
-    
-    spilled_penalty = (
-        sum(
-            - sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b]
-            for b in model.B
-        ) / model.nb_sec 
-    )
-    return (
-        market_income 
-        + ancillary_market_income
-        + spilled_penalty 
-        + basin_volume_penalty
+        model.total_power[t] ==
+        model.pv_power[t] +
+        model.wind_power[t] -
+        model.battery_charging_power[t] +
+        model.battery_discharging_power[t] +
+        sum(model.hydro_power[t, h] for h in model.H)
     )
 
 
-########################################################################################################################
-# 2.5.2 Water basin volume evolution ###################################################################################
-########################################################################################################################
-def total_power_constraint(model, t):
+def total_power_constraint_without_battery(model, t):
     return (
         model.total_power[t] ==
         model.pv_power[t] +
         model.wind_power[t] +
         sum(model.hydro_power[t, h] for h in model.H)
     )
+
+
+########################################################################################################################
+# 2.5.2 Water basin volume evolution ###################################################################################
+########################################################################################################################
+
 
 def basin_volume_evolution(model, t, b):
     if t == model.T.first():
@@ -470,10 +387,29 @@ def end_battery_soc_overage_constraint(model):
 def end_battery_soc_shortage_constraint(model):
     return model.start_battery_soc - model.end_battery_soc_shortage >= 0
     
-def battery_max_charging_power_constraint(model, t, f):
+
+def battery_in_charge_constraint(model, t):
+    return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
+
+def battery_in_discharge_constraint(model, t):
+    return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
+
+
+def battery_max_charging_power_constraint(model, t):
+    return model.battery_charging_power[t] <= model.battery_rated_power
+
+def battery_max_discharging_power_constraint(model, t):
+    return model.battery_discharging_power[t] <= model.battery_rated_power
+
+
+########################################################################################################################
+# 2.5.6 Battery ancillary services #####################################################################################
+########################################################################################################################
+
+def battery_max_charging_power_with_ancillary_constraint(model, t, f):
     return model.battery_charging_power[t] + model.battery_ancillary_reserve[f] <= model.battery_rated_power
 
-def battery_max_discharging_power_constraint(model, t, f):
+def battery_max_discharging_power_with_ancillary_constraint(model, t, f):
     return model.battery_discharging_power[t] + model.battery_ancillary_reserve[f] <= model.battery_rated_power
 
 def battery_positive_energy_reserve_constraint(model, t, f):
@@ -483,13 +419,5 @@ def battery_positive_energy_reserve_constraint(model, t, f):
 def battery_negative_energy_reserve_constraint(model, t, f):
     nb_hours = model.nb_timestamp_per_ancillary - t + model.nb_timestamp_per_ancillary * f
     return model.battery_soc[t] * model.battery_capacity >= nb_hours * model.battery_ancillary_reserve[f]
-
-def battery_in_charge_constraint(model, t):
-    return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
-
-def battery_in_discharge_constraint(model, t):
-    return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
-
-
 
     

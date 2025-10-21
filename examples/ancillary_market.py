@@ -18,7 +18,8 @@ data_config: DataConfig = DataConfig(
     bound_penalty_factor=0.25,
     nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
-    market_price_window_size=56
+    market_price_window_size=56,
+    with_ancillary=True
 )
 
 output_folder = file_names["ancillary_market"]

@@ -41,6 +41,7 @@ class MarketConfig:
     market_price_upper_quantile: float = 0.65
     market_price_window_size: int = 28 # 28 days
     bound_penalty_factor: float = 1
+    with_ancillary: bool = True
 
 @dataclass
 class DataConfig(BatteryConfig, HydroConfig, MarketConfig, DgrConfig):

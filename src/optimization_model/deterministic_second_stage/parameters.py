@@ -1,11 +1,9 @@
 import pyomo.environ as pyo
 
-from optimization_model.deterministic_first_stage import model
 
-def second_stage_parameters(model):
+def second_stage_parameters(model: pyo.AbstractModel, with_ancillary: bool) -> pyo.AbstractModel:
     
     model.market_price = pyo.Param(model.T)
-    model.ancillary_market_price = pyo.Param(model.F)
     model.nb_hours = pyo.Param(default=1)
     model.nb_sec = pyo.Param(default=3600) # s
     model.nb_timestamp_per_ancillary = pyo.Param() # -
@@ -45,5 +43,8 @@ def second_stage_parameters(model):
     model.battery_rated_power = pyo.Param() # MW
     model.battery_efficiency = pyo.Param() # -
     model.start_battery_soc = pyo.Param() # %
+    
+    if with_ancillary:
+        model.ancillary_market_price = pyo.Param(model.F)
     
     return model

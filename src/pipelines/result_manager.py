@@ -56,7 +56,11 @@ def extract_optimization_results(
 def extract_first_stage_optimization_results(
     model_instance: pyo.ConcreteModel, timeseries: pl.DataFrame,
 ) -> pl.DataFrame:
-    optimization_results = timeseries = timeseries.select("timestamp", "T", cs.matches(r"^Ω$"))
+    optimization_results = timeseries.select(
+        "timestamp", "T", 
+        cs.matches(r"^Ω$"), 
+        cs.contains("market_price")
+    )
     optimization_results = extract_optimization_results(
         model_instance=model_instance,
         optimization_results=optimization_results
@@ -82,7 +86,7 @@ def extract_second_stage_optimization_results(
     )
     optimization_results: pl.DataFrame = pl.DataFrame()
 
-    for key, model_instance in tqdm(model_instances.items(), desc="Extracting second stage results"):
+    for key, model_instance in tqdm(model_instances.items(), desc="Extracting second stage results", leave=False):
         optimization_results = pl.concat(
             [
                 optimization_results,
@@ -144,7 +148,7 @@ def extract_third_stage_optimization_results(
     )
     optimization_results: pl.DataFrame = pl.DataFrame()
     
-    for key, model_instance in tqdm(model_instances.items(), desc="Extracting third stage results"):
+    for key, model_instance in tqdm(model_instances.items(), desc="Extracting third stage results", leave=False):
         optimization_results = pl.concat(
             [
                 optimization_results,

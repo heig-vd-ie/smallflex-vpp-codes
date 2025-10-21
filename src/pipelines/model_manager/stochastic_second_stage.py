@@ -1,14 +1,10 @@
-from operator import le
 from typing import Optional
-from collections import Counter
 import logging
 import polars as pl
 from polars import col as c
 from polars import selectors as cs
 import pyomo.environ as pyo
 from tqdm.auto import tqdm
-
-from optimization_model import deterministic_second_stage_old
 
 from smallflex_data_schema import SmallflexInputSchema
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
@@ -18,7 +14,7 @@ from pipelines.data_configs import DataConfig
 from pipelines.data_manager import HydroDataManager
 
 
-from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model_without_battery
+from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model
 from optimization_model.third_stage.model import (
     third_stage_model_without_battery, third_stage_model_with_battery
 )
@@ -51,7 +47,7 @@ class StochasticSecondStage(HydroDataManager):
         )
         self.data_config = data_config
 
-        self.second_stage_model: pyo.AbstractModel = deterministic_second_stage_model_without_battery()
+        self.second_stage_model: pyo.AbstractModel = deterministic_second_stage_model(with_battery=False, with_ancillary=False)
         if data_config.battery_capacity == 0:
             self.third_stage_model: pyo.AbstractModel = third_stage_model_without_battery()
         else:
