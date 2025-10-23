@@ -11,12 +11,12 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 
 data_config: DataConfig = DataConfig(
     bound_penalty_factor=0.25,
-    nb_scenarios=200,
+    nb_scenarios=20,
     first_stage_max_powered_flow_ratio=0.75,
     market_price_window_size=56,
     with_ancillary=True
 )
-hydro_power_mask = HYDROPOWER_MASK["medium"]
+hydro_power_mask = HYDROPOWER_MASK["continuous_turbine_pump"]
 output_folder = f"{file_names["output"]}/imbalance"
 plot_folder = f"{file_names["results_plot"]}/imbalance"
 build_non_existing_dirs(output_folder)
@@ -33,7 +33,6 @@ if fig_1 is not None:
 
 # %%
 results_data = {}
-basin_volume_expectation: pl.DataFrame = pl.DataFrame()
 income_list: list = []
 scenario_list = list(product(*[IMBALANCE_PARTICIPATION.keys(), BATTERY_SIZE.keys()]))
 pbar = tqdm(scenario_list, desc=f"Optimization", position=0)
@@ -44,10 +43,6 @@ for imbalance_participation, battery_size in pbar:
     data_config.battery_rated_power = BATTERY_SIZE[battery_size]["rated_power"]
     data_config.battery_capacity = BATTERY_SIZE[battery_size]["capacity"]
     data_config.hydro_participation_to_imbalance = IMBALANCE_PARTICIPATION[imbalance_participation]
-
-
-
-        
 
     second_stage_optimization_results, adjusted_income, fig_2 = second_stage_stochastic_pipeline(
             data_config=data_config,
@@ -62,9 +57,9 @@ for imbalance_participation, battery_size in pbar:
 
     results_data[scenario_name] = second_stage_optimization_results
 results_data["adjusted_income"] = pl.DataFrame(
-    income_list, schema=["imbalance_participation", "battery_size", "adjusted_income [kEUR]"]
-)
+    income_list, schema=["imbalance_participation", "battery_size", "adjusted_income"]
+).pivot(on="imbalance_participation", index="battery_size", values="adjusted_income")
 
-print_pl(results_data["adjusted_income"])
+print_pl(results_data["adjusted_income"], float_precision=0)
     
 dict_to_duckdb(results_data, f"{output_folder}/results.duckdb")

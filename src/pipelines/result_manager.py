@@ -172,10 +172,11 @@ def extract_third_stage_optimization_results(
         .with_columns(
             pl.sum_horizontal(cs.contains("power").and_(~cs.contains("forecast"))).alias("total_power_real"),
         ).with_columns(
-            (c("market_price") * c("total_power_forecast")).alias("da_income"),
-            pl.when(c("total_power_real") > c("total_power_forecast"))
-            .then((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance"))
-            .otherwise((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance")).alias("imbalance_penalty")
+            (c("total_power_real") - c("total_power_forecast")).alias("power_difference")
+        ).with_columns(
+            pl.when(c("power_difference") > 0)
+            .then(c("power_difference")* c("long_imbalance"))
+            .otherwise(c("power_difference") * c("short_imbalance")).alias("imbalance_penalty")
         )
     )
 
