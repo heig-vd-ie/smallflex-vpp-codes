@@ -15,9 +15,8 @@ from pipelines.data_manager import HydroDataManager
 
 
 from optimization_model.deterministic_second_stage.model import deterministic_second_stage_model
-from optimization_model.third_stage.model import (
-    third_stage_model_without_battery, third_stage_model_with_battery
-)
+from optimization_model.third_stage.model import third_stage_model
+
 
 from utility.data_preprocessing import (
     generate_hydro_power_state, generate_basin_state, split_timestamps_per_sim
@@ -48,10 +47,9 @@ class StochasticSecondStage(HydroDataManager):
         self.data_config = data_config
 
         self.second_stage_model: pyo.AbstractModel = deterministic_second_stage_model(with_battery=False, with_ancillary=False)
-        if data_config.battery_capacity == 0:
-            self.third_stage_model: pyo.AbstractModel = third_stage_model_without_battery()
-        else:
-            self.third_stage_model: pyo.AbstractModel = third_stage_model_with_battery()
+        
+        self.third_stage_model: pyo.AbstractModel = third_stage_model(with_battery=data_config.battery_capacity > 0)
+
 
         self.second_stage_model_instances: dict[int, pyo.ConcreteModel] = {}
         self.third_stage_model_instances: dict[int, pyo.ConcreteModel] = {}
@@ -321,7 +319,7 @@ class StochasticSecondStage(HydroDataManager):
             self.generate_second_stage_model_instance()
         
             solution = self.data_config.second_stage_solver.solve(self.second_stage_model_instances[self.sim_idx], tee=self.data_config.verbose)
-
+            print(solution["Solver"][0]["Status"] )
             if solution["Solver"][0]["Status"] == "aborted":
                 self.non_optimal_solution_idx.append(self.sim_idx)
 
@@ -331,7 +329,7 @@ class StochasticSecondStage(HydroDataManager):
 
             if solution["Solver"][0]["Status"] == "aborted":
                 self.non_optimal_solution_idx.append(self.sim_idx)
-                
-            self.sim_start_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
+            if self.data_config.battery_capacity > 0:
+                self.sim_start_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
             self.start_basin_volume = extract_result_table(self.third_stage_model_instances[self.sim_idx], "end_basin_volume").rename({"end_basin_volume": "start_volume"})
 

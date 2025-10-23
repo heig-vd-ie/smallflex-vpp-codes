@@ -222,11 +222,34 @@ def total_power_deviation_constraint_without_battery(model, t):
     )
 
 def hydro_power_deviation_constraint(model, t, h):
-    return model.hydro_power_deviation_positive[t, h] - model.hydro_power_deviation_negative[t, h]  == (
+    return (
+        model.hydro_power_deviation_positive[t, h] - model.hydro_power_deviation_negative[t, h] + 
+        model.hydro_power_forced_deviation_positive[t, h] - model.hydro_power_forced_deviation_negative[t, h] == 
         model.hydro_power_forecast[t, h] - model.hydro_power[t, h]
     )
 
 
+def vpp_forecast_long_constraint_without_battery(model, t):
+    return (
+        sum(model.hydro_power_deviation_negative[t, h] for h in model.H)
+        <= model.big_m * model.vpp_forecast_long[t]
+    )
+def vpp_forecast_short_constraint_without_battery(model, t):
+    return (
+        sum(model.hydro_power_deviation_positive[t, h] for h in model.H)
+        <= model.big_m *(1 -  model.vpp_forecast_long[t])
+    )
+
+def vpp_forecast_long_constraint_with_battery(model, t):
+    return (
+        sum(model.hydro_power_deviation_negative[t, h] for h in model.H) + model.battery_discharging_power[t] 
+        <= model.big_m * model.vpp_forecast_long[t]
+    )
+def vpp_forecast_short_constraint_with_battery(model, t):
+    return (
+        sum(model.hydro_power_deviation_positive[t, h] for h in model.H) + model.battery_charging_power[t]
+        <= model.big_m *(1 -  model.vpp_forecast_long[t])
+    )
 ########################################################################################################################
 # 2.5.2 Water basin volume evolution ###################################################################################
 ########################################################################################################################
@@ -345,17 +368,18 @@ def end_battery_soc_constraint(model):
         )
 
 def battery_max_charging_power_constraint(model, t):
-    return model.battery_charging_power[t] <= model.battery_rated_power
-
-def battery_max_discharging_power_constraint(model, t):
-    return model.battery_discharging_power[t] <= model.battery_rated_power
-
-
-def battery_in_charge_constraint(model, t):
     return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
 
-def battery_in_discharge_constraint(model, t):
+def battery_max_discharging_power_constraint(model, t):
     return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
+
+
+
+# def battery_in_charge_constraint(model, t):
+#     return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
+
+# def battery_in_discharge_constraint(model, t):
+    #     return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
 
 
 

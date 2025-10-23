@@ -13,7 +13,7 @@ def third_stage_parameters(model):
 
     model.spilled_factor = pyo.Param(model.B, default=1) # m^3
     model.battery_penalty_factor = pyo.Param(default=0.01) 
-    model.hydro_power_penalty_factor = pyo.Param(model.H, default=0.5)
+    model.hydro_power_penalty_factor = pyo.Param(model.H, default=0.05)
     
     model.min_basin_volume = pyo.Param(model.BS, default=0) # m^3
     model.max_basin_volume = pyo.Param(model.BS, default=0) # m^3
