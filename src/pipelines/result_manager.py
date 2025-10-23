@@ -172,16 +172,18 @@ def extract_third_stage_optimization_results(
         .with_columns(
             pl.sum_horizontal(cs.contains("power").and_(~cs.contains("forecast"))).alias("total_power_real"),
         ).with_columns(
-            (c("total_power_real") - c("total_power_forecast")).alias("power_difference")
+            (c("total_power_real") - c("total_power_forecast")).alias("power_difference"),
+            (c("total_power_forecast") * c("market_price")).alias("da_income")
         ).with_columns(
             pl.when(c("power_difference") > 0)
-            .then(c("power_difference")* c("long_imbalance"))
+            .then(c("power_difference") * c("long_imbalance"))
             .otherwise(c("power_difference") * c("short_imbalance")).alias("imbalance_penalty")
         )
     )
 
     income = optimization_results.select(cs.contains("income")).to_numpy().sum()
-    # mean_market_price = optimization_results["market_price"].median()
+    imbalance_penalty = optimization_results["imbalance_penalty"].sum()
+
     market_price_upper_quantile = optimization_results["market_price"].quantile(data_config.market_price_upper_quantile)
     market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile)
 
@@ -204,41 +206,11 @@ def extract_third_stage_optimization_results(
             ).alias("end_volume_penalty")
         )["end_volume_penalty"].to_numpy().sum()
 
-    adjusted_income = income + end_volume_penalty
-    imbalance_penalty = optimization_results["imbalance_penalty"].sum()
+    adjusted_income = income + end_volume_penalty + imbalance_penalty
+    
     return optimization_results, adjusted_income, imbalance_penalty
 
 
-def extract_powered_volume_quota(
-    model_instance: pyo.ConcreteModel, first_stage_nb_timestamp: int
-) -> pl.DataFrame:
-
-    nb_hours_mapping = pl_to_dict(
-        extract_result_table(model_instance=model_instance, var_name="nb_hours")[
-            ["T", "nb_hours"]
-        ]
-    )
-
-    powered_volume_quota = (
-        extract_result_table(model_instance=model_instance, var_name="flow")
-        .with_columns(
-            (
-                c("flow")
-                * 3600
-                * c("T").replace_strict(nb_hours_mapping, default=1)
-            ).alias("powered_volume")
-        )
-        .drop("flow")
-    )
-
-    powered_volume_quota = (
-        split_timestamps_per_sim(
-            data=powered_volume_quota, divisors=first_stage_nb_timestamp
-        )
-        .group_by("sim_idx", "H", maintain_order=True)
-        .agg(c("powered_volume").sum())
-    )
-    return powered_volume_quota
 
 
 def extract_basin_volume_expectation(
