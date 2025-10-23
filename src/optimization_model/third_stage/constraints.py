@@ -196,8 +196,6 @@ r"""
 ########################################################################################################################
 # 2.5.2 Power deviation constraint  ####################################################################################
 ########################################################################################################################
-
-
 def total_power_deviation_constraint_with_battery(model, t):
     return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
         model.total_power_forecast[t] -
@@ -216,7 +214,7 @@ def total_power_deviation_constraint_without_battery(model, t):
         model.total_power_forecast[t] -
         (   
             model.pv_power_measured[t] +
-            model.wind_power_measured[t] -
+            model.wind_power_measured[t] +
             sum(model.hydro_power[t, h] for h in model.H)
         )
     )

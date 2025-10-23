@@ -32,8 +32,9 @@ from timeseries_preparation.second_stage_stochastic_data import process_second_s
 
 from data_display.baseline_plots import plot_scenario_results, plot_second_stage_result
 
-from pipelines.piplines_manager.first_stage_stochastic_pipeline import first_stage_stochastic_pipeline
-from pipelines.piplines_manager.second_stage_deterministic_pipeline import second_stage_deterministic_pipeline
+from pipelines.pipeline_manager.first_stage_stochastic_pipeline import first_stage_stochastic_pipeline
+from pipelines.pipeline_manager.second_stage_deterministic_pipeline import second_stage_deterministic_pipeline
+from pipelines.pipeline_manager.second_stage_stochastic_pipeline import second_stage_stochastic_pipeline
 
 
 from utility.data_preprocessing import (
@@ -70,6 +71,11 @@ BATTERY_SIZE = {
     "battery_1_MW_4MWh": {"rated_power": 1, "capacity": 4},
     "battery_2_MW_8MWh": {"rated_power": 2, "capacity": 8},
     "battery_5_MW_20MWh": {"rated_power": 5, "capacity": 20},
+}
+
+IMBALANCE_PARTICIPATION = {
+    "with_hydro": True,
+    "without_hydro": False,
 }
 
 def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:

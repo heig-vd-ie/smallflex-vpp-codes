@@ -50,7 +50,7 @@ def second_stage_deterministic_pipeline(
             extract_second_stage_optimization_results(
                 model_instances=deterministic_second_stage.model_instances,
                 timeseries=deterministic_second_stage.timeseries,
-                nb_timestamp_per_ancillary =data_config.nb_timestamp_per_ancillary
+                data_config=data_config
             )
         )
     if plot_result:
@@ -59,7 +59,6 @@ def second_stage_deterministic_pipeline(
             water_basin=deterministic_second_stage.water_basin,
             market_price_quantiles=deterministic_second_stage.market_price_quantiles,
             basin_volume_expectation=deterministic_second_stage.basin_volume_expectation,
-            with_battery=data_config.battery_capacity > 0,
         )
     
     else:

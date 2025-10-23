@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
+from functools import partial
 import pyomo.environ as pyo
 from numpy.random import default_rng, Generator
 
@@ -18,10 +19,10 @@ class HydroConfig:
     basin_volume_min_quantile_diff: float = 0.1
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     start_basin_volume_ratio: dict[int, float] = field(default_factory=lambda: {})
-    # volume_buffer_ratio: float = 0.2
     spilled_factor: float = 1e6
     d_height: float = 0.01
     first_stage_max_powered_flow_ratio: float= 0.75
+    hydro_participation_to_imbalance: bool = True
 
 @dataclass
 class DgrConfig:

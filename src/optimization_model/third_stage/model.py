@@ -34,7 +34,6 @@ def third_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMode
     return model
 
 def third_stage_battery_constraints(model: pyo.AbstractModel) -> pyo.AbstractModel:
-    model = third_stage_common_constraints(model)
     #####################################################################################################################
     ### Battery constraints #############################################################################################
     #####################################################################################################################
@@ -45,18 +44,15 @@ def third_stage_battery_constraints(model: pyo.AbstractModel) -> pyo.AbstractMod
 
     return model
 
-def third_stage_constraints_without_battery(model: pyo.AbstractModel) -> pyo.AbstractModel:
-    model = third_stage_common_constraints(model)
-    return model
-
 def third_stage_model(with_battery: bool) -> pyo.AbstractModel:
     model: pyo.AbstractModel = pyo.AbstractModel() # type: ignore
     model = third_stage_sets(model)
     model = third_stage_parameters(model)
     model = third_stage_variables(model, with_battery=with_battery)
+    model = third_stage_common_constraints(model)
     if with_battery:
-        model.objective = pyo.Objective(rule=third_stage_objective_with_battery, sense=pyo.minimize)
         model = third_stage_battery_constraints(model)
+        model.objective = pyo.Objective(rule=third_stage_objective_with_battery, sense=pyo.minimize)
         model.total_power_deviation_constraint = pyo.Constraint(model.T, rule=total_power_deviation_constraint_with_battery)
         model.vpp_forecast_long_constraint = pyo.Constraint(model.T, rule=vpp_forecast_long_constraint_with_battery)
         model.vpp_forecast_short_constraint = pyo.Constraint(model.T, rule=vpp_forecast_short_constraint_with_battery)

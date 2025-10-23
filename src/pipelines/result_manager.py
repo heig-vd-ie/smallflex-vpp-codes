@@ -71,7 +71,7 @@ def extract_second_stage_optimization_results(
     
     model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
-    nb_timestamp_per_ancillary: int
+    data_config: DataConfig
 
 ) ->  tuple[pl.DataFrame, float]:
 
@@ -107,11 +107,12 @@ def extract_second_stage_optimization_results(
     )
     if optimization_results.select(cs.contains("ancillary_reserve")).shape[1] > 0:
         optimization_results = optimization_results.with_columns(
-            (pl.sum_horizontal(cs.contains("ancillary_reserve")) * c("ancillary_market_price") / nb_timestamp_per_ancillary).alias("ancillary_income")
+            (pl.sum_horizontal(cs.contains("ancillary_reserve")) * c("ancillary_market_price") / data_config.nb_timestamp_per_ancillary).alias("ancillary_income")
         )
 
     income = optimization_results.select(cs.contains("income")).to_numpy().sum()
-    mean_market_price = optimization_results["market_price"].median()
+    market_price_upper_quantile = optimization_results["market_price"].quantile(data_config.market_price_upper_quantile)
+    market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile)
 
     rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
     end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
@@ -122,8 +123,14 @@ def extract_second_stage_optimization_results(
         .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
         .join(basin_volume_range, on="B", how="inner")\
         .with_columns(
-            ((c("end_basin_volume") - c("start_basin_volume")) *
-             c("rated_alpha") * c("basin_volume_range") * mean_market_price / 3600).alias("end_volume_penalty")
+            (c("end_basin_volume") - c("start_basin_volume")).alias("end_basin_volume_diff")
+        ).with_columns(
+            (
+                c("end_basin_volume_diff") * c("rated_alpha") * c("basin_volume_range")/ 3600 *
+                pl.when(c("end_basin_volume_diff") > 0)
+                .then(market_price_lower_quantile)
+                .otherwise(market_price_upper_quantile)
+            ).alias("end_volume_penalty")
         )["end_volume_penalty"].to_numpy().sum()
 
     adjusted_income = income + end_volume_penalty
@@ -134,6 +141,7 @@ def extract_third_stage_optimization_results(
     
     model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
+    data_config: DataConfig
 
 ) ->  tuple[pl.DataFrame, float, float]:
 
@@ -164,7 +172,7 @@ def extract_third_stage_optimization_results(
         .with_columns(
             pl.sum_horizontal(cs.contains("power").and_(~cs.contains("forecast"))).alias("total_power_real"),
         ).with_columns(
-            (c("market_price") * c("total_power_real")).alias("da_income"),
+            (c("market_price") * c("total_power_forecast")).alias("da_income"),
             pl.when(c("total_power_real") > c("total_power_forecast"))
             .then((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance"))
             .otherwise((c("total_power_real") - c("total_power_forecast")) * c("long_imbalance")).alias("imbalance_penalty")
@@ -172,7 +180,9 @@ def extract_third_stage_optimization_results(
     )
 
     income = optimization_results.select(cs.contains("income")).to_numpy().sum()
-    mean_market_price = optimization_results["market_price"].median()
+    # mean_market_price = optimization_results["market_price"].median()
+    market_price_upper_quantile = optimization_results["market_price"].quantile(data_config.market_price_upper_quantile)
+    market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile)
 
     rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
     end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
@@ -183,8 +193,14 @@ def extract_third_stage_optimization_results(
         .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
         .join(basin_volume_range, on="B", how="inner")\
         .with_columns(
-            ((c("end_basin_volume") - c("start_basin_volume")) *
-             c("rated_alpha") * c("basin_volume_range") * mean_market_price / 3600).alias("end_volume_penalty")
+            (c("end_basin_volume") - c("start_basin_volume")).alias("end_basin_volume_diff")
+        ).with_columns(
+            (
+                c("end_basin_volume_diff") * c("rated_alpha") * c("basin_volume_range")/ 3600 *
+                pl.when(c("end_basin_volume_diff") > 0)
+                .then(market_price_lower_quantile)
+                .otherwise(market_price_upper_quantile)
+            ).alias("end_volume_penalty")
         )["end_volume_penalty"].to_numpy().sum()
 
     adjusted_income = income + end_volume_penalty

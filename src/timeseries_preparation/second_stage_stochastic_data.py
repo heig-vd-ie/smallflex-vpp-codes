@@ -155,14 +155,6 @@ def process_second_stage_timeseries_stochastic_data(
             window_size=data_config.market_price_window_size  * 24).alias("market_price_upper_quantile"),
     )
 
-    ancillary_market_price: pl.DataFrame = (
-        smallflex_input_schema.market_price_measurement.filter(
-            c("country") == data_config.market_country
-        )
-        .filter(c("market") == data_config.ancillary_market)
-        .filter(c("source") == data_config.market_source)
-        .sort("timestamp")
-    )
     imbalance_price: pl.DataFrame = (
         smallflex_input_schema.market_price_measurement.filter(
             c("market") == "imbalance"
@@ -175,28 +167,22 @@ def process_second_stage_timeseries_stochastic_data(
         .pivot(on="direction", values="avg", index="timestamp")
         .sort("timestamp")
         .with_columns(
-            (c("timestamp") + pl.duration(days=2 * 366)).alias("timestamp"),
+            (c("timestamp") + pl.duration(days=1 * 365)).alias("timestamp"),
         )
     )
 
     market_price = market_price.select(
-        c("timestamp") + pl.duration(days=2 * 366), 
+        c("timestamp") + pl.duration(days=1 * 365), 
         "market_price", "market_price_lower_quantile", "market_price_upper_quantile"
-    )
-    ancillary_market_price = ancillary_market_price.select(
-        c("timestamp") + pl.duration(days=2 * 366),
-        c("avg").alias("ancillary_market_price"),
     )
 
 
     input_timeseries = (
         input_timeseries.join(market_price, on="timestamp", how="left")
-        .join(ancillary_market_price, on="timestamp", how="left")
         .join(imbalance_price, on="timestamp", how="left")
         .with_columns(
             c(
                 "market_price",
-                "ancillary_market_price",
                 "short_imbalance",
                 "long_imbalance",
             )

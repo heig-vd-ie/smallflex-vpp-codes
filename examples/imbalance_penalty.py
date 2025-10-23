@@ -1,60 +1,70 @@
+#%%
 import os
 os.chdir(os.getcwd().replace("/src", ""))
 
 from examples import *
 
+
+# %%
 file_names: dict[str, str] = json.load(open(settings.FILE_NAMES)) # type: ignore
 smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=file_names["duckdb_input"])
-basin_volume_expectation = pl.read_csv(".cache/basin_volume_expectation.csv")
-
-# smallflex_input_schema_2 = SmallflexInputSchema().duckdb_to_schema(file_path=".cache/input/small_flex_input_data_2.db")
-# smallflex_input_schema_dict = smallflex_input_schema.__dict__
-# smallflex_input_schema_dict["market_price_measurement"] = smallflex_input_schema_2.market_price_measurement
-# dict_to_duckdb(smallflex_input_schema_dict, file_names["duckdb_input"])
-
 
 data_config: DataConfig = DataConfig(
     bound_penalty_factor=0.25,
-    nb_scenarios=30,
+    nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
     market_price_window_size=56,
-    verbose=False,
+    with_ancillary=True
 )
-
-output_folder = file_names["ancillary_market"]
+hydro_power_mask = HYDROPOWER_MASK["medium"]
+output_folder = f"{file_names["output"]}/imbalance"
+plot_folder = f"{file_names["results_plot"]}/imbalance"
 build_non_existing_dirs(output_folder)
+build_non_existing_dirs(plot_folder)
 
-previous_hydro_power_mask = None
-powered_volume_quota: pl.DataFrame = pl.DataFrame()
+# %%
+first_stage_optimization_results, basin_volume_expectation, fig_1 = first_stage_stochastic_pipeline(
+            data_config=data_config,
+            smallflex_input_schema=smallflex_input_schema,
+            hydro_power_mask=hydro_power_mask,
+        )
+if fig_1 is not None:
+    fig_1.write_html(f"{plot_folder}/first_stage_results.html")
+
+# %%
 results_data = {}
+basin_volume_expectation: pl.DataFrame = pl.DataFrame()
+income_list: list = []
+scenario_list = list(product(*[IMBALANCE_PARTICIPATION.keys(), BATTERY_SIZE.keys()]))
+pbar = tqdm(scenario_list, desc=f"Optimization", position=0)
+for imbalance_participation, battery_size in pbar:
+    pbar.set_description(f"Optimization {imbalance_participation} imbalance participation and with {battery_size}")
+    scenario_name = "_".join([imbalance_participation, battery_size])
+
+    data_config.battery_rated_power = BATTERY_SIZE[battery_size]["rated_power"]
+    data_config.battery_capacity = BATTERY_SIZE[battery_size]["capacity"]
+    data_config.hydro_participation_to_imbalance = IMBALANCE_PARTICIPATION[imbalance_participation]
 
 
 
+        
 
-data_config.battery_rated_power = BATTERY_SIZE["battery_1_MW_2MWh"]["rated_power"]
-data_config.battery_capacity = BATTERY_SIZE["battery_1_MW_2MWh"]["capacity"]
+    second_stage_optimization_results, adjusted_income, fig_2 = second_stage_stochastic_pipeline(
+            data_config=data_config,
+            smallflex_input_schema=smallflex_input_schema,
+            basin_volume_expectation=basin_volume_expectation,
+            hydro_power_mask=hydro_power_mask)
 
-
-data_config.battery_rated_power = 0
-data_config.battery_capacity = 0
+    income_list.append((imbalance_participation, battery_size, adjusted_income/1e3))
     
+    if fig_2 is not None:
+        fig_2.write_html(f"{plot_folder}/{scenario_name}_second_stage_results.html")
 
-stochastic_second_stage : StochasticSecondStage = StochasticSecondStage(
-    data_config=data_config,
-    smallflex_input_schema=smallflex_input_schema,
-    basin_volume_expectation=basin_volume_expectation,
-    hydro_power_mask=HYDROPOWER_MASK["continuous_turbine_pump"],
+    results_data[scenario_name] = second_stage_optimization_results
+results_data["adjusted_income"] = pl.DataFrame(
+    income_list, schema=["imbalance_participation", "battery_size", "adjusted_income [kEUR]"]
 )
 
-timeseries_forecast, timeseries_measurement = process_second_stage_timeseries_stochastic_data(
-    smallflex_input_schema=smallflex_input_schema,
-    data_config=data_config)
-
-stochastic_second_stage.set_timeseries(timeseries_forecast=timeseries_forecast, timeseries_measurement=timeseries_measurement)
-
-stochastic_second_stage.solve_every_models()
-
-results, adjusted_income, imbalance_penalty = extract_third_stage_optimization_results(
-    model_instances=stochastic_second_stage.third_stage_model_instances,
-    timeseries=stochastic_second_stage.timeseries_measurement
-    )
+print_pl(results_data["adjusted_income"])
+    
+dict_to_duckdb(results_data, f"{output_folder}/results.duckdb")

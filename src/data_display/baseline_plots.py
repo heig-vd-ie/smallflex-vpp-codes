@@ -25,7 +25,7 @@ def plot_second_stage_market_price(
             x=(market_price_quantiles["timestamp"]).to_list(),
             y=market_price_quantiles["market_price_lower_quantile"].to_list(),
             legendgroup="market_price",
-            name="quantiles",
+            name="Market price quantiles",
             mode="lines",
             line=dict(color="purple"),
             showlegend=True,
@@ -40,7 +40,7 @@ def plot_second_stage_market_price(
             x=(market_price_quantiles["timestamp"]).to_list(),
             y=market_price_quantiles["market_price_upper_quantile"].to_list(),
             legendgroup="market_price",
-            name="upper_quantile",
+            name="quantile",
             mode="lines",
             line=dict(color="purple"),
             opacity=0.7,
@@ -63,21 +63,22 @@ def plot_second_stage_market_price(
         row=row,
         col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=(results["timestamp"]).to_list(),
-            y=results["ancillary_market_price"].to_list(),
-            legendgroup="market_price",
-            name="Ancillary market price [EUR/MWh]",
-            mode="lines",
-            line=dict(color=COLORS[1]),
-            showlegend=True,
-        ),
-        row=row,
-        col=1,
-    )
+    if "ancillary_market_price" in results.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=(results["timestamp"]).to_list(),
+                y=results["ancillary_market_price"].to_list(),
+                legendgroup="market_price",
+                name="Ancillary market price [EUR/MWh]",
+                mode="lines",
+                line=dict(color=COLORS[1]),
+                showlegend=True,
+            ),
+            row=row,
+            col=1,
+        )
 
- 
+    
 
     fig.update_traces(
         selector=dict(legendgroup="market_price"),
@@ -148,19 +149,7 @@ def plot_second_stage_basin_volume(
         ).with_columns(basin_volume_raw["timestamp"])
     )
     
-    fig.add_trace(
-        go.Scatter(
-            x=cleaned_basin_volume["timestamp"].to_list(),
-            y=cleaned_basin_volume["basin_volume_0"].to_list(),
-            mode="lines",
-            line=dict(color=COLORS[0]),
-            showlegend=True,
-            name="basin_volume",
-            legendgroup="basin_volume",
-        ),
-        row=row,
-        col=1,
-    )
+    
     
     fig.add_trace(go.Scatter(
         x=basin_volume_expectation["timestamp"],
@@ -168,7 +157,7 @@ def plot_second_stage_basin_volume(
         mode='lines',
         line=dict(color='red'),
         opacity=0.5,
-        name='Scheduled basin volume',
+        name='Scheduled reservoir level',
         legendgroup="basin_volume",
     ),row=row,
     col=1)
@@ -178,7 +167,7 @@ def plot_second_stage_basin_volume(
         y=basin_volume_expectation["upper_quantile"],
         mode='lines',
         line=dict(width=0.5, color='red'),
-        name='Lower Bound',
+        name='Scheduled bounds',
         showlegend=False,
         legendgroup="basin_volume",
     ), row=row,
@@ -195,14 +184,27 @@ def plot_second_stage_basin_volume(
     ), row=row,
     col=1)
     
+    fig.add_trace(
+        go.Scatter(
+            x=cleaned_basin_volume["timestamp"].to_list(),
+            y=cleaned_basin_volume["basin_volume_0"].to_list(),
+            mode="lines",
+            line=dict(color=COLORS[0]),
+            showlegend=True,
+            name="Real reservoir level",
+            legendgroup="basin_volume",
+        ),
+        row=row,
+        col=1,
+    )
     fig.update_traces(
         selector=dict(legendgroup="basin_volume"),
-        legendgrouptitle_text="<b>Basin volume [%]<b>",
+        legendgrouptitle_text="<b>Reservoir level [%]<b>",
     )
     return fig
 
 def plot_hydro_power(results: pl.DataFrame, fig: go.Figure, row: int):
-    hydro_name = results.select(cs.starts_with("hydro_power")).columns
+    hydro_name = results.select(cs.starts_with("hydro_power").and_(~cs.contains("forecast"))).columns
     name = ["Continuous turbine", "Pump"]
 
     for i, col in enumerate(hydro_name):
@@ -562,54 +564,58 @@ def plot_second_stage_result(
     water_basin: pl.DataFrame,
     market_price_quantiles: pl.DataFrame,
     basin_volume_expectation: pl.DataFrame,
-    with_battery: bool = False,
 ) -> go.Figure:
 
-        
-    nb_subplot = 6 if with_battery else 4
+    with_battery = results.select(cs.contains("battery")).shape[1] > 0    
+    with_ancillary = results.select(cs.contains("ancillary_reserve")).shape[1] > 0
+
 
     row_titles = [
-        "<b>Price]<b>",
-        "<b>Basin level [%]<b>",
-        "<b>Hydro power [%]<b>",
-        "<b>Ancillary reserve [MW]<b>",
+        "<b>Price<b>",
+        "<b>Reservoir level [%]<b>",
+        "<b>Hydro power [MW]<b>",
     ]
+    if with_ancillary:
+        row_titles.append("<b>Ancillary reserve [MW]<b>")
+        
     if with_battery:
         row_titles.append("<b>Battery power [MW]<b>")
         row_titles.append("<b>Battery SOC [%]<b>")
 
     fig = make_subplots(
-        rows=nb_subplot,
+        rows=len(row_titles),
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.02,
-        x_title="<b>Weeks<b>",
-        row_titles=[
-            "<b>Price<b>",
-            "<b>Basin water volume<b>",
-            "<b>Hydro power<b>",
-            "<b>Ancillary power<b>",
-        ],
+        x_title="<b>Timestamp<b>",
+        row_titles=row_titles,
     )
-
-    fig = plot_second_stage_market_price(results=results, market_price_quantiles=market_price_quantiles, fig=fig, row=1)
+    row_idx = 1
+    fig = plot_second_stage_market_price(
+        results=results, market_price_quantiles=market_price_quantiles, fig=fig, row=row_idx)
+    row_idx += 1
     fig = plot_second_stage_basin_volume(
         results=results, 
         basin_volume_expectation=basin_volume_expectation,
-        water_basin=water_basin, 
-        fig=fig, row=2)
-    
-    fig = plot_hydro_power(results=results, fig=fig, row=3)
-    # fig = plot_ancillary_reserve(results=results, fig=fig, row=4, with_battery=with_battery)
+        water_basin=water_basin,
+        fig=fig, row=row_idx)
+    row_idx += 1
+    fig = plot_hydro_power(results=results, fig=fig, row=row_idx)
+    row_idx += 1
+    if with_ancillary:
+        fig = plot_ancillary_reserve(results=results, fig=fig, row=row_idx, with_battery=with_battery)
+        row_idx += 1
     if with_battery:
-        fig = plot_battery_power(results=results, fig=fig, row=5)
-        fig = plot_battery_soc(results=results, fig=fig, row=6)
+        fig = plot_battery_power(results=results, fig=fig, row=row_idx)
+        row_idx += 1
+        fig = plot_battery_soc(results=results, fig=fig, row=row_idx)
+        row_idx += 1
 
 
     fig.update_layout(
         margin=dict(t=60, l=65, r=10, b=60),
         width=1200,  # Set the width of the figure
-        height=300 * nb_subplot,
+        height=300 * len(row_titles),
         legend_tracegroupgap=215,
         barmode = "overlay"
     )

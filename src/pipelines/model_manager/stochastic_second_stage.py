@@ -159,6 +159,10 @@ class StochasticSecondStage(HydroDataManager):
         )
         self.data["bound_penalty_factor"] = {None: self.data_config.bound_penalty_factor}
         
+        if not self.data_config.hydro_participation_to_imbalance:
+            self.data["hydro_power_penalty_factor"] = dict(zip(self.data["H"][None], [2]*len(self.data["H"][None] )))
+            self.data["hydro_power_forced_penalty_factor"] = self.data["hydro_power_penalty_factor"] 
+        
     def generate_second_stage_model_instance(self):
     
 
@@ -211,10 +215,6 @@ class StochasticSecondStage(HydroDataManager):
         )
         self.data["wind_power"] = pl_to_dict(
             self.timeseries_forecast.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]]
-        )
-        self.data["ancillary_market_price"] = pl_to_dict(
-            self.timeseries_forecast.filter(c("sim_idx") == self.sim_idx).filter(c("F").is_first_distinct())
-            [["F", "ancillary_market_price"]]
         )
         
         self.data["max_flow"] = pl_to_dict_with_tuple(self.sim_hydro_power_state["HS", "flow"])  
@@ -310,7 +310,7 @@ class StochasticSecondStage(HydroDataManager):
             
         for self.sim_idx in tqdm(
             range(nb_sim_tot),
-            desc="Solving second stage optimization problem",
+            desc="Solving second and third stage optimization problem",
             position=1,
             leave=False
         ):
@@ -319,7 +319,6 @@ class StochasticSecondStage(HydroDataManager):
             self.generate_second_stage_model_instance()
         
             solution = self.data_config.second_stage_solver.solve(self.second_stage_model_instances[self.sim_idx], tee=self.data_config.verbose)
-            print(solution["Solver"][0]["Status"] )
             if solution["Solver"][0]["Status"] == "aborted":
                 self.non_optimal_solution_idx.append(self.sim_idx)
 
