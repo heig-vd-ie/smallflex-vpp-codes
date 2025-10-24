@@ -57,7 +57,7 @@ for imbalance_participation, battery_size in pbar:
 
     results_data[scenario_name] = second_stage_optimization_results
 results_data["adjusted_income"] = pl.DataFrame(
-    income_list, schema=["imbalance_participation", "battery_size", "adjusted_income"]
+    income_list, schema=["imbalance_participation", "battery_size", "adjusted_income"], orient="row"
 ).pivot(on="imbalance_participation", index="battery_size", values="adjusted_income")
 
 print_pl(results_data["adjusted_income"], float_precision=0)
