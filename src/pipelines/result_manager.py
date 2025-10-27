@@ -112,7 +112,7 @@ def extract_second_stage_optimization_results(
 
     income = optimization_results.select(cs.contains("income")).to_numpy().sum()
     market_price_upper_quantile = optimization_results["market_price"].quantile(data_config.market_price_upper_quantile)
-    market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile)
+    market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile) # type: ignore
 
     rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
     end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
@@ -132,7 +132,7 @@ def extract_second_stage_optimization_results(
                 .otherwise(market_price_upper_quantile)
             ).alias("end_volume_penalty")
         )["end_volume_penalty"].to_numpy().sum()
-
+    print(f"End volume penalty: {end_volume_penalty:.2f} EUR")
     adjusted_income = income + end_volume_penalty
 
     return optimization_results, adjusted_income

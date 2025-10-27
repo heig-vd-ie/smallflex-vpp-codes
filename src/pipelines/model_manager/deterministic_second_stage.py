@@ -126,7 +126,8 @@ class DeterministicSecondStage(HydroDataManager):
             self.water_basin.select("B", "volume_range")
         )
         self.data["rated_alpha"] = pl_to_dict(
-            self.hydro_power_plant.with_columns(
+            self.hydro_power_plant.filter(c("type") == "turbine")\
+            .with_columns(
                 (c("rated_power")/c("rated_flow")).alias("rated_alpha")
             ).group_by("upstream_B").agg(c("rated_alpha").mean())
         )

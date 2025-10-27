@@ -119,12 +119,6 @@ def plot_second_stage_basin_volume(
     volume_range = pl_to_dict(water_basin["B", "volume_range"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
     
-    basin_volume_expectation = basin_volume_expectation.join(
-        results.filter(c("sim_idx").is_first_distinct())["timestamp", "sim_idx"],
-        on="sim_idx", how="inner"
-    ).sort("timestamp")
-    
-    
     basin_volume_raw = results.select(
         "timestamp", cs.contains("basin_volume_"), cs.contains("spilled_volume_")
     )
@@ -151,39 +145,60 @@ def plot_second_stage_basin_volume(
     
     
     
-    fig.add_trace(go.Scatter(
-        x=basin_volume_expectation["timestamp"],
-        y=basin_volume_expectation["mean"],
-        mode='lines',
-        line=dict(color='red'),
-        opacity=0.5,
-        name='Scheduled reservoir level',
-        legendgroup="basin_volume",
-    ),row=row,
-    col=1)
-
-    fig.add_trace(go.Scatter(
-        x=basin_volume_expectation["timestamp"],
-        y=basin_volume_expectation["upper_quantile"],
-        mode='lines',
-        line=dict(width=0.5, color='red'),
-        name='Scheduled bounds',
-        showlegend=False,
-        legendgroup="basin_volume",
-    ), row=row,
-    col=1)
-    fig.add_trace(go.Scatter(
-        x=basin_volume_expectation["timestamp"],
-        y=basin_volume_expectation["lower_quantile"],
-        mode='lines',
-        fill='tonexty',
-        line=dict(width=0.5, color='red'),
-        fillcolor='rgba(255, 0, 0, 0.2)',
-        name='Scheduled bounds',
-        legendgroup="basin_volume",
-    ), row=row,
-    col=1)
+    ### Add quantile limit ###################################################################################
+    basin_volume_expectation = basin_volume_expectation.filter(c("B") == 0).join(
+        results.filter(c("sim_idx").is_first_distinct())["timestamp", "sim_idx"],
+        on="sim_idx", how="inner"
+    ).sort("timestamp")
     
+    inner_quantiles = basin_volume_expectation.select(cs.contains("quantile_").and_(~cs.contains(f"quantile_0"))).columns
+    for col in inner_quantiles:
+        fig.add_trace(
+            go.Scatter(
+                x=basin_volume_expectation["timestamp"].to_list(),
+                y=basin_volume_expectation[col].to_list(),
+                mode="lines",
+                name=col,
+                line=dict(width=0.5, color="red", dash="dash"),
+                opacity=0.5,
+                showlegend=False,
+                legendgroup="basin_volume",
+            ),
+            row=row,
+            col=1,
+        )
+    for i, col in enumerate(basin_volume_expectation.select(cs.contains(f"quantile_0")).columns):
+        
+        fig.add_trace(
+            go.Scatter(
+                x=basin_volume_expectation["timestamp"].to_list(),
+                y=basin_volume_expectation[col].to_list(),
+                mode="lines",
+                line=dict(width=0.5, color="red", dash="dash"),
+                showlegend=i==1,
+                name='Scheduled limits',
+                fill='tonexty' if i==1 else None,
+                legendgroup="basin_volume",
+                opacity=0.5,
+            ),
+            row=row,
+            col=1,
+        )
+            
+    fig.add_trace(
+        go.Scatter(
+            x=basin_volume_expectation["timestamp"].to_list(),
+            y=basin_volume_expectation["mean"].to_list(),
+            mode="lines",
+            name="Scheduled reservoir level",
+            legendgroup="basin_volume",
+            line=dict(color="red"),
+            showlegend=True,
+            opacity=0.5,
+        ),
+        row=row,
+        col=1,
+    )
     fig.add_trace(
         go.Scatter(
             x=cleaned_basin_volume["timestamp"].to_list(),
@@ -197,10 +212,13 @@ def plot_second_stage_basin_volume(
         row=row,
         col=1,
     )
+    
     fig.update_traces(
         selector=dict(legendgroup="basin_volume"),
         legendgrouptitle_text="<b>Reservoir level [%]<b>",
     )
+
+    
     return fig
 
 def plot_hydro_power(results: pl.DataFrame, fig: go.Figure, row: int):
@@ -338,77 +356,6 @@ def plot_battery_power(results: pl.DataFrame, fig: go.Figure, row: int) -> go.Fi
         legendgrouptitle_text="<b>Battery power [MW]<b>",
     )
     return fig
-
-# def plot_result(
-#     results: pl.DataFrame,
-#     max_volume_mapping: dict[int, float],
-#     start_volume_mapping: dict[int, float],
-#     with_battery: bool = False,
-# ) -> go.Figure:
-#     nb_subplot = 6 if with_battery else 4
-#     optimization_results = results.sort(["timestamp"]).with_columns(
-#         (
-#             (
-#                 c(f"spilled_volume_{col}").shift(1) + c(f"basin_volume_{col}").diff()
-#             ).fill_null(start_volume_mapping[col])
-#             / max_volume_mapping[col]
-#             * 100
-#         ).alias(f"basin_volume_{col}")
-#         for col in start_volume_mapping.keys()
-#     )
-
-#     basin_volume_df = optimization_results.select(cs.starts_with("basin_volume_"))
-
-#     new_basin_volume = pl.DataFrame(
-#         clipped_cumsum(basin_volume_df.to_numpy(), xmin=0, xmax=100),
-#         schema=basin_volume_df.columns,
-#     ).with_columns(optimization_results["timestamp"])
-#     optimization_results = optimization_results.drop(
-#         cs.starts_with("basin_volume_")
-#     ).join(new_basin_volume, on="timestamp", how="left")
-    
-#     row_titles = [
-#         "<b>Price]<b>",
-#         "<b>Basin level [%]<b>",
-#         "<b>Hydro power [%]<b>",
-#         "<b>Ancillary reserve [MW]<b>",
-#     ]
-#     if with_battery:
-#         row_titles.append("<b>Battery power [MW]<b>")
-#         row_titles.append("<b>Battery SOC [%]<b>")
-
-#     fig = make_subplots(
-#         rows=nb_subplot,
-#         cols=1,
-#         shared_xaxes=True,
-#         vertical_spacing=0.02,
-#         x_title="<b>Weeks<b>",
-#         row_titles=[
-#             "<b>Price<b>",
-#             "<b>Basin water volume<b>",
-#             "<b>Hydro power<b>",
-#             "<b>Ancillary power<b>",
-#         ],
-#     )
-
-#     fig = plot_second_stage_market_price(results=optimization_results, fig=fig, row=1)
-#     fig = plot_basin_volume(results=optimization_results, fig=fig, row=2)
-#     fig = plot_hydro_power(results=optimization_results, fig=fig, row=3)
-#     fig = plot_ancillary_reserve(results=optimization_results, fig=fig, row=4, with_battery=with_battery)
-#     if with_battery:
-#         fig = plot_battery_power(results=optimization_results, fig=fig, row=5)
-#         fig = plot_battery_soc(results=optimization_results, fig=fig, row=6)
-
-
-#     fig.update_layout(
-#         margin=dict(t=60, l=65, r=10, b=60),
-#         width=1200,  # Set the width of the figure
-#         height=300 * nb_subplot,
-#         legend_tracegroupgap=215,
-#         barmode = "stack"
-#     )
-
-#     return fig
 
 
 def plot_scenario_results(

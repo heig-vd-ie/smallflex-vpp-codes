@@ -32,7 +32,6 @@ def first_stage_stochastic_pipeline(
     timeseries = process_first_stage_timeseries_data(
         smallflex_input_schema=smallflex_input_schema,
         data_config=data_config,
-        scenario_list=stochastic_first_stage.scenario_list,
         water_basin_mapping=pl_to_dict(stochastic_first_stage.water_basin["uuid", "B"]),
     )
     stochastic_first_stage.set_timeseries(timeseries=timeseries)

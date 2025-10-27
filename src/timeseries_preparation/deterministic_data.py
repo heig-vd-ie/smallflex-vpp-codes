@@ -54,6 +54,7 @@ def process_timeseries_data(
         smallflex_input_schema.market_price_measurement.filter(
             c("country") == data_config.market_country
         ).filter(c("market") == data_config.market)
+        .filter(c("timestamp").is_first_distinct())
     ).select("timestamp", c("avg").alias("market_price"))
 
     ancillary_market_price: pl.DataFrame = (
@@ -114,9 +115,8 @@ def process_timeseries_data(
     )
     
     input_timeseries = (
-        input_timeseries.filter(c("timestamp").is_between(
-        pl.datetime(data_config.year, 1, 1, time_zone="UTC"),
-        pl.datetime(data_config.year+1, 1, 1, time_zone="UTC"), closed="left"
-        ))
+        input_timeseries
+        .filter(c("timestamp").dt.year() < data_config.year)
+        .filter(c("timestamp").dt.ordinal_day() < 366)
     )
     return input_timeseries

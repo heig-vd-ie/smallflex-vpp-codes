@@ -11,7 +11,6 @@ from pipelines.data_configs import DataConfig
 def process_first_stage_timeseries_data(
     smallflex_input_schema: SmallflexInputSchema,
     data_config: DataConfig,
-    scenario_list: list[str],
     water_basin_mapping: dict[str, int],
 ) -> pl.DataFrame:
 
@@ -19,14 +18,14 @@ def process_first_stage_timeseries_data(
         smallflex_input_schema.market_price_synthesized.filter(
             c("market") == data_config.market
         )
-        .filter(c("scenario").is_in(scenario_list))
+        .filter(c("scenario").is_in(data_config.scenario_list))
         .filter(pl.struct(["timestamp", "scenario"]).is_first_distinct())
         .select("timestamp", c("scenario").alias("Ω"), "market_price")
     )
 
     discharge_volume_synthesized = (
         smallflex_input_schema.discharge_volume_synthesized.filter(
-            c("scenario").is_in(scenario_list)
+            c("scenario").is_in(data_config.scenario_list)
         )
         .with_columns(
             c("scenario").alias("Ω"),

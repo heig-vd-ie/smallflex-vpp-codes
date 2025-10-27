@@ -39,10 +39,6 @@ class StochasticFirstStage(HydroDataManager):
         self.timeseries: pl.DataFrame
         self.unpowered_factor_price : pl.DataFrame
                 
-        self.scenario_list = list(self.data_config.rng.choice(
-            smallflex_input_schema.discharge_volume_synthesized["scenario"].unique().to_numpy(), 
-            size=self.data_config.nb_scenarios, replace=False
-        ))
 
     def set_timeseries(self, timeseries: pl.DataFrame):
         min_timestamp = timeseries["timestamp"].min()
@@ -87,7 +83,7 @@ class StochasticFirstStage(HydroDataManager):
         data["DH"] = {
             None: self.hydro_power_plant.filter(c("control") == "discrete")["H"].to_list()
         }
-        data["Ω"] = {None: self.scenario_list}
+        data["Ω"] = {None: self.data_config.scenario_list}
         data["HB"] = {
             None: list(map(tuple, self.first_stage_hydro_power_state["HB"].to_list()))
         }

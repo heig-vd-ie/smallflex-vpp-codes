@@ -16,7 +16,7 @@ class BatteryConfig:
 class HydroConfig:
     basin_volume_quantile: list[float] = field(default_factory=lambda: [0.45, 0.35, 0.2])
     basin_volume_quantile_min: list[float] = field(default_factory=lambda: [0.1, 0.05, 0.03])
-    bound_penalty_factor: list[float] = field(default_factory=lambda: [0.25, 0.2, 0.05])
+    bound_penalty_factor: list[float] = field(default_factory=lambda: [0.3, 0.15, 0.05])
     nb_state_dict: dict[int, int] = field(default_factory=lambda: {})
     start_basin_volume_ratio: dict[int, float] = field(default_factory=lambda: {})
     spilled_factor: float = 1e6
@@ -51,6 +51,7 @@ class DataConfig(BatteryConfig, HydroConfig, MarketConfig, DgrConfig):
     second_stage_timestep: timedelta = timedelta(hours=1)
     ancillary_market_timestep: timedelta = timedelta(hours=4)
     nb_scenarios: int = 100
+    total_scenarios_synthesized: int = 100
     year: int = 2024
 
     verbose: bool = False
@@ -71,11 +72,17 @@ class DataConfig(BatteryConfig, HydroConfig, MarketConfig, DgrConfig):
         assert self.second_stage_sim_horizon.total_seconds()%self.second_stage_timestep.total_seconds() == 0
         assert self.ancillary_market_timestep.total_seconds()%self.second_stage_timestep.total_seconds() == 0
         assert self.second_stage_sim_horizon.total_seconds()%self.ancillary_market_timestep.total_seconds() == 0
+        assert self.total_scenarios_synthesized >= self.nb_scenarios
+        
         
         self.first_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.first_stage_timestep
         self.second_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.second_stage_timestep
         self.nb_timestamp_per_ancillary: int = self.ancillary_market_timestep // self.second_stage_timestep
         self.nb_quantiles: int = len(self.basin_volume_quantile)
         self.second_stage_solver.options['TimeLimit'] = self.time_limit
-        # self.ancillary_nb_timestamp: int = self.second_stage_sim_horizon // self.ancillary_market_timestep
+        
+        self.scenario_list = list(self.rng.choice(
+            range(self.total_scenarios_synthesized), 
+            size=self.nb_scenarios, replace=False
+        ))
 

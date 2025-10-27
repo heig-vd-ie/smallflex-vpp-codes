@@ -7,7 +7,11 @@ from examples import *
 
 
 # %%
-YEAR_LIST = [2021, 2022, 2023]
+YEAR_LIST = [
+    2021, 
+    2022, 
+    2023
+]
 MARKET = ["da_energy", "primary_ancillary"]
 # %%
 file_names: dict[str, str] = json.load(open(settings.FILE_NAMES))  # type: ignore
@@ -18,7 +22,8 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 data_config: DataConfig = DataConfig(
     nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
-    market_price_window_size=56,
+    market_price_window_size=7,
+    total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max() # type: ignore
 )
 
 
@@ -36,7 +41,7 @@ for market in MARKET:
         results_data = {}
         basin_volume_expectation: pl.DataFrame = pl.DataFrame()
         income_list: list = []
-        scenario_list = list(product(*[HYDROPOWER_MASK.keys(), BATTERY_SIZE.keys()]))
+        scenario_list = list(product(*[HYDROPOWER_MASK.keys(), list(BATTERY_SIZE.keys())[0:1]]))
         pbar = tqdm(scenario_list, desc=f"Year {year} scenarios", position=0)
         for hydro_power_mask, battery_size in pbar:
             pbar.set_description(

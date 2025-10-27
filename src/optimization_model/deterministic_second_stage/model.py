@@ -19,9 +19,9 @@ def second_stage_common_constraints(model: pyo.AbstractModel, with_ancillary: bo
     model.basin_max_state_constraint = pyo.Constraint(model.T, model.BS, rule=basin_max_state_constraint)
     model.basin_min_state_constraint = pyo.Constraint(model.T, model.BS, rule=basin_min_state_constraint)
     model.basin_state_constraint = pyo.Constraint(model.T, model.B, rule=basin_state_constraint)
-    model.end_basin_volume_mean_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_mean_diff_constraint)
-    model.end_basin_volume_upper_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_upper_diff_constraint)
-    model.end_basin_volume_lower_diff_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_lower_diff_constraint)
+    model.end_basin_volume_mean_constraint = pyo.Constraint(model.UP_B, rule=end_basin_volume_mean_constraint)
+    model.end_basin_volume_upper_limit_constraint = pyo.Constraint(model.UP_B, model.Q, rule=end_basin_volume_upper_limit_constraint)
+    model.end_basin_volume_lower_limit_constraint = pyo.Constraint(model.UP_B, model.Q, rule=end_basin_volume_lower_limit_constraint)
     ####################################################################################################################
     ### basin volume per state constraints used to determine the state of each basin ###################################
     ####################################################################################################################

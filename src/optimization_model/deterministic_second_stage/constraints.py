@@ -263,10 +263,10 @@ def end_basin_volume_mean_constraint(model, b):
 
 def end_basin_volume_upper_limit_constraint(model, b, q):
     return (
-        model.end_basin_volume[b] - model.expected_upper_end_basin_volume[b, q] == 
+        model.end_basin_volume[b] - model.end_basin_volume_upper_limit[b, q] == 
         model.end_basin_volume_upper_overage[b, q] - model.end_basin_volume_upper_shortage[b, q]
     )
-    q
+    
 def end_basin_volume_lower_limit_constraint(model, b, q):
     return (
         model.end_basin_volume[b] - model.end_basin_volume_lower_limit[b, q] ==
