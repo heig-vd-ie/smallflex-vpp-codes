@@ -116,7 +116,7 @@ def process_timeseries_data(
     
     input_timeseries = (
         input_timeseries
-        .filter(c("timestamp").dt.year() < data_config.year)
+        .filter(c("timestamp").dt.year() == data_config.year)
         .filter(c("timestamp").dt.ordinal_day() < 366)
     )
     return input_timeseries
