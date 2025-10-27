@@ -8,10 +8,10 @@ def second_stage_variables(model, with_ancillary: bool, with_battery: bool):
     model.end_basin_volume = pyo.Var(model.B, within=pyo.NonNegativeReals)
     model.end_basin_volume_mean_overage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
     model.end_basin_volume_mean_shortage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
-    model.end_basin_volume_upper_overage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
-    model.end_basin_volume_upper_shortage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
-    model.end_basin_volume_lower_overage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
-    model.end_basin_volume_lower_shortage = pyo.Var(model.UP_B, within=pyo.NonNegativeReals) # m^3
+    model.end_basin_volume_upper_overage = pyo.Var(model.UP_B, model.Q, within=pyo.NonNegativeReals) # m^3
+    model.end_basin_volume_upper_shortage = pyo.Var(model.UP_B, model.Q, within=pyo.NonNegativeReals) # m^3
+    model.end_basin_volume_lower_overage = pyo.Var(model.UP_B, model.Q, within=pyo.NonNegativeReals) # m^3
+    model.end_basin_volume_lower_shortage = pyo.Var(model.UP_B, model.Q, within=pyo.NonNegativeReals) # m^3
 
     model.basin_state = pyo.Var(model.T, model.BS, within=pyo.Binary)
 

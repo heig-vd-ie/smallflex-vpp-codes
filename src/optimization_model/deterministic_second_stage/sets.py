@@ -6,6 +6,7 @@ def second_stage_sets(model, with_ancillary: bool):
     
     model.H = pyo.Set()
     model.B = pyo.Set()
+    model.Q = pyo.Set()
     model.UP_B = pyo.Set(within=model.B)
     
     model.DH = pyo.Set(within=model.H)

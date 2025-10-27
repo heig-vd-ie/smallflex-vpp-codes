@@ -10,7 +10,6 @@ file_names: dict[str, str] = json.load(open(settings.FILE_NAMES)) # type: ignore
 smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=file_names["duckdb_input"])
 
 data_config: DataConfig = DataConfig(
-    bound_penalty_factor=0.25,
     nb_scenarios=20,
     first_stage_max_powered_flow_ratio=0.75,
     market_price_window_size=56,

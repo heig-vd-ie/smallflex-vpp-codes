@@ -278,24 +278,33 @@ def extract_basin_volume_expectation(
                 .list.to_struct(fields=["B", "Ω"])
             ).unnest("BΩ")
     )
-
-
-    col_list = ["mean", "lower_quantile", "upper_quantile"]
+    
+    quantile_columns = [
+        expr
+        for i, (quantile, quantile_min) in 
+        enumerate(zip(data_config.basin_volume_quantile, data_config.basin_volume_quantile_min))
+        for expr in (
+            c("basin_volume").quantile(0.5 - quantile)
+                .clip(upper_bound=c("basin_volume").mean() - quantile_min)
+                .clip(lower_bound=0)
+                .alias(f"lower_quantile_{i}"),
+            c("basin_volume").quantile(0.5 + quantile)
+                .clip(lower_bound=c("basin_volume").mean() + quantile_min)
+                .clip(upper_bound=100)
+                .alias(f"upper_quantile_{i}")
+        )
+    ]
 
     stat_volume: pl.DataFrame = cleaned_basin_volume.group_by("T", "B").agg(
-            c("basin_volume").mean().alias("mean"),
-            c("basin_volume").quantile(data_config.basin_volume_lower_quantile).alias("lower_quantile"),
-            c("basin_volume").quantile(data_config.basin_volume_upper_quantile).alias("upper_quantile")
-        ).sort(["B", "T"])\
-        .with_columns(
-            c("lower_quantile").clip(upper_bound=c("mean") - data_config.basin_volume_min_quantile_diff).clip(lower_bound=0),
-            c("upper_quantile").clip(lower_bound=c("mean") + data_config.basin_volume_min_quantile_diff).clip(upper_bound=100)
-        )
+            c("basin_volume").mean().alias("mean"), *quantile_columns
+        ).sort(["B", "T"])
+
+    col_list = stat_volume.drop(["T", "B"]).columns
         
     mean_stat_volume = stat_volume.with_columns(
             c(col_list).rolling_mean(window_size=7).shift(-3).over("B")
         )
-
+    # build missing values at beginning and end
     mean_stat_volume = mean_stat_volume.join(
         stat_volume.filter(c("T").is_in([stat_volume["T"].max(), stat_volume["T"].min()])),
         on=["T", "B"],
@@ -313,6 +322,5 @@ def extract_basin_volume_expectation(
         with_columns(
             c("mean").diff().shift(-1).alias("diff_volume")
         )
-
     return mean_stat_volume
 

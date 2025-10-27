@@ -255,22 +255,22 @@ def basin_max_end_volume_constraint(model, b):
 def basin_min_end_volume_constraint(model, b):
     return model.end_basin_volume[b] >= model.min_basin_volume[b, model.S_B[b].first()]
 
-def end_basin_volume_mean_diff_constraint(model, b):
+def end_basin_volume_mean_constraint(model, b):
     return (
         model.end_basin_volume[b] - model.expected_end_basin_volume[b] == 
         model.end_basin_volume_mean_overage[b] - model.end_basin_volume_mean_shortage[b]
     )
 
-def end_basin_volume_upper_diff_constraint(model, b):
+def end_basin_volume_upper_limit_constraint(model, b, q):
     return (
-        model.end_basin_volume[b] - model.expected_upper_end_basin_volume[b] == 
-        model.end_basin_volume_upper_overage[b] - model.end_basin_volume_upper_shortage[b]
+        model.end_basin_volume[b] - model.expected_upper_end_basin_volume[b, q] == 
+        model.end_basin_volume_upper_overage[b, q] - model.end_basin_volume_upper_shortage[b, q]
     )
-
-def end_basin_volume_lower_diff_constraint(model, b):
+    q
+def end_basin_volume_lower_limit_constraint(model, b, q):
     return (
-        model.end_basin_volume[b] - model.expected_lower_end_basin_volume[b] == 
-        model.end_basin_volume_lower_overage[b] - model.end_basin_volume_lower_shortage[b]
+        model.end_basin_volume[b] - model.end_basin_volume_lower_limit[b, q] ==
+        model.end_basin_volume_lower_overage[b, q] - model.end_basin_volume_lower_shortage[b, q]
     )
 
 ########################################################################################################################

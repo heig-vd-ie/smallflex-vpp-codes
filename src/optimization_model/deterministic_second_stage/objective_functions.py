@@ -84,12 +84,13 @@ def basin_volume_penalty_term(model):
     return (
         sum(
             (model.end_basin_volume_mean_overage[b] * model.overage_market_price
-             - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_upper_overage[b] * model.shortage_market_price
-             - model.bound_penalty_factor * model.end_basin_volume_lower_shortage[b] * model.shortage_market_price
-            ) 
-            * model.rated_alpha[b] * model.basin_volume_range[b]
-            for b in model.UP_B
+            - model.end_basin_volume_mean_shortage[b] * model.shortage_market_price
+            - sum(
+                model.bound_penalty_factor[q] * model.shortage_market_price *
+                model.end_basin_volume_upper_overage[b, q] + model.end_basin_volume_lower_shortage[b, q] 
+                for q in model.Q
+            ) * model.rated_alpha[b] * model.basin_volume_range[b]
+            for b in model.UP_B)
         )
-        / model.nb_sec
-    )
+    / model.nb_sec
+)

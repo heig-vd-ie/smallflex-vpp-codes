@@ -54,6 +54,7 @@ def first_stage_stochastic_pipeline(
         fig = plot_scenario_results(
             optimization_results=optimization_results, 
             water_basin=stochastic_first_stage.upstream_water_basin,
+            basin_volume_expectation=basin_volume_expectation,
             data_config=data_config
         )
     else: 

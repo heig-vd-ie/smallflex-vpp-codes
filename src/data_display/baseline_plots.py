@@ -414,7 +414,8 @@ def plot_battery_power(results: pl.DataFrame, fig: go.Figure, row: int) -> go.Fi
 def plot_scenario_results(
     optimization_results: pl.DataFrame,
     water_basin: pl.DataFrame,
-    data_config: DataConfig
+    basin_volume_expectation: pl.DataFrame,
+    data_config: DataConfig,
 ) -> go.Figure:
 
     
@@ -490,20 +491,13 @@ def plot_scenario_results(
                 row=idx + 1,
                 col=1,
             )
-
-        
-        stat_data = optimization_results.group_by("T")\
-        .agg(
-            c(col_name).median().alias("median"),
-            c(col_name).quantile(data_config.basin_volume_lower_quantile).alias("lower_quantile"),
-            c(col_name).quantile(data_config.basin_volume_upper_quantile).alias("upper_quantile")
-        ).sort("T")
-
-        if col_name == "basin_volume_0":
-            stat_data = stat_data.with_columns(
-                c("lower_quantile").clip(upper_bound=c("median") - data_config.basin_volume_min_quantile_diff).clip(lower_bound=0),
-                c("upper_quantile").clip(lower_bound=c("median") + data_config.basin_volume_min_quantile_diff).clip(upper_bound=1)
-            )
+        if col_name != "basin_volume_0":
+            stat_data = optimization_results.group_by("T")\
+                .agg(
+                    c(col_name).median().alias("median"),
+                    c(col_name).quantile(0.15).alias("lower_quantile"),
+                    c(col_name).quantile(0.85).alias("upper_quantile")
+                ).sort("T")
 
             mean_stat_data = stat_data.with_columns(
                 c("median", "lower_quantile", "upper_quantile").rolling_mean(window_size=7).shift(-4)
@@ -516,19 +510,62 @@ def plot_scenario_results(
             ], how='diagonal_relaxed').interpolate()
             
 
-        for i in stat_data.drop("T").columns:
+            for i in stat_data.drop("T").columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=stat_data["T"].to_list(),
+                        y=stat_data[i].to_list(),
+                        mode="lines",
+                        name=f"{i}",
+                        line=dict(color="red" if i == "median" else "orange"),
+                        showlegend=False,
+                    ),
+                    row=idx + 1,
+                    col=1,
+                )
+        else:
+            basin_volume_expectation = basin_volume_expectation.filter(c("B") == 0)
             fig.add_trace(
                 go.Scatter(
-                    x=stat_data["T"].to_list(),
-                    y=stat_data[i].to_list(),
+                    x=basin_volume_expectation["T"].to_list(),
+                    y=basin_volume_expectation["mean"].to_list(),
                     mode="lines",
-                    name=f"{i}",
-                    line=dict(color="red" if i == "median" else "orange"),
+                    name="mean",
+                    line=dict(color="red"),
                     showlegend=False,
                 ),
                 row=idx + 1,
                 col=1,
             )
+            inner_quantiles = basin_volume_expectation.select(cs.contains("quantile_").and_(~cs.contains(f"quantile_0"))).columns
+            for col in inner_quantiles:
+                fig.add_trace(
+                    go.Scatter(
+                        x=basin_volume_expectation["T"].to_list(),
+                        y=basin_volume_expectation[col].to_list(),
+                        mode="lines",
+                        name=col,
+                        line=dict(color="orange", dash="dash"),
+                        opacity=0.7,
+                        showlegend=False,
+                    ),
+                    row=idx + 1,
+                    col=1,
+                )
+            for col in basin_volume_expectation.select(cs.contains(f"quantile_0")).columns:
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=basin_volume_expectation["T"].to_list(),
+                        y=basin_volume_expectation[col].to_list(),
+                        mode="lines",
+                        name=col,
+                        line=dict(color="orange"),
+                        showlegend=False,
+                    ),
+                    row=idx + 1,
+                    col=1,
+                )
 
     hydro_name = optimization_results.select(cs.starts_with("hydro_power")).columns
 
