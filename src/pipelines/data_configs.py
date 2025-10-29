@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
-from functools import partial
 import pyomo.environ as pyo
 from numpy.random import default_rng, Generator
 
@@ -40,7 +39,7 @@ class MarketConfig:
     market_source: str= "swissgrid"
     market_price_lower_quantile: float = 0.35
     market_price_upper_quantile: float = 0.65
-    market_price_window_size: int = 28 # 28 days
+    market_price_window_size: int = 182 # 28 days
     with_ancillary: bool = True
 
 @dataclass

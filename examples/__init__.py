@@ -86,7 +86,7 @@ def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
         set_thousands_separator="'",
         set_float_precision=float_precision,
         set_tbl_hide_column_data_types=True,
-    
+        set_tbl_hide_dataframe_shape=True
     ):
         print(data)
 

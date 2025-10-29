@@ -18,7 +18,13 @@ YEAR_LIST = [
     2022,
     2023,
 ]
-WINDOW_SIZE = [7, 14, 28, 56, 112, 182]
+MARKET_QUANTILE = {
+    "0": (0.5, 0.5),
+    "10": (0.4, 0.6),
+    "20": (0.3, 0.7),
+    "25": (0.25, 0.75),
+    "30": (0.2, 0.8)
+}
 
 
 # %%
@@ -30,7 +36,6 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 data_config: DataConfig = DataConfig(
     nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
-    market_price_window_size=7,
     total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max(), # type: ignore
     with_ancillary=False,
     battery_rated_power=0.0,
@@ -40,26 +45,27 @@ data_config: DataConfig = DataConfig(
 
 # %%
 
-output_folder = f"{file_names["output"]}/market_price_window_size_analysis"
+output_folder = f"{file_names["output"]}/market_price_market_quantile_analysis"
 build_non_existing_dirs(output_folder)
 
 for year in YEAR_LIST:
     data_config.year = year
-    plot_folder = f"{file_names["results_plot"]}/market_price_window_size_analysis/{year}"
+    plot_folder = f"{file_names["results_plot"]}/market_price_market_quantile_analysis/{year}"
     build_non_existing_dirs(plot_folder)
 
     previous_hydro_power_mask = None
     results_data = {}
     basin_volume_expectation: pl.DataFrame = pl.DataFrame()
     income_list: list = []
-    scenario_list = list(product(*[list(HYDROPOWER_MASK.keys())[:2], WINDOW_SIZE]))
+    scenario_list = list(product(*[list(HYDROPOWER_MASK.keys())[:2], MARKET_QUANTILE.keys()]))
     pbar = tqdm(scenario_list, desc=f"Year {year} scenarios", position=0)
-    for hydro_power_mask, window_size in pbar:
+    for hydro_power_mask, market_quantile in pbar:
         pbar.set_description(
-            f"Optimization with {hydro_power_mask} with {window_size} for year {year}"
+            f"Optimization with {hydro_power_mask} with {market_quantile} for year {year}"
         )
-        scenario_name = "_".join([hydro_power_mask, str(window_size)])
-        data_config.market_price_window_size = window_size
+        scenario_name = "_".join([hydro_power_mask, str(market_quantile)])
+        data_config.market_price_lower_quantile = MARKET_QUANTILE[market_quantile][0]
+        data_config.market_price_upper_quantile = MARKET_QUANTILE[market_quantile][1]
 
         if previous_hydro_power_mask != hydro_power_mask:
             previous_hydro_power_mask = hydro_power_mask
@@ -85,7 +91,7 @@ for year in YEAR_LIST:
             )
         )
 
-        income_list.append((hydro_power_mask, window_size, adjusted_income / 1e3))
+        income_list.append((hydro_power_mask, market_quantile, adjusted_income / 1e3))
 
         if fig_2 is not None:
             fig_2.write_html(
@@ -95,9 +101,9 @@ for year in YEAR_LIST:
         results_data[scenario_name] = second_stage_optimization_results
     results_data["adjusted_income"] = pl.DataFrame(
         income_list,
-        schema=["hydro_power_mask", "window_size", "adjusted_income"],
+        schema=["hydro_power_mask", "market_quantile", "adjusted_income"],
         orient="row",
-    ).pivot(on="hydro_power_mask", index="window_size", values="adjusted_income")
+    ).pivot(on="hydro_power_mask", index="market_quantile", values="adjusted_income")
 
     print_pl(results_data["adjusted_income"], float_precision=0)
 

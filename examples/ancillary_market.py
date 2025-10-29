@@ -92,6 +92,6 @@ for market in MARKET:
             orient="row",
         ).pivot(on="hydro_power_mask", index="battery_size", values="adjusted_income")
 
-        print_pl(results_data["adjusted_income"])
+        print_pl(results_data["adjusted_income"], float_precision=0)
 
         dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")

@@ -21,8 +21,8 @@ def second_stage_deterministic_pipeline(
     smallflex_input_schema: SmallflexInputSchema,
     basin_volume_expectation: pl.DataFrame,
     hydro_power_mask: pl.Expr,
-    pv_power_mask: pl.Expr,
-    wind_power_mask: pl.Expr,
+    pv_power_mask: Optional[pl.Expr] = None,
+    wind_power_mask: Optional[pl.Expr] = None,
     plot_result: bool = True,
 ) -> tuple[pl.DataFrame, float, Optional[go.Figure]]:
 
@@ -38,8 +38,7 @@ def second_stage_deterministic_pipeline(
         data_config=data_config,
         basin_index_mapping=pl_to_dict(deterministic_second_stage.water_basin["uuid", "B"]),
         pv_power_mask=pv_power_mask,
-        wind_power_mask=wind_power_mask,
-        
+        wind_power_mask=wind_power_mask
     )
 
     deterministic_second_stage.set_timeseries(timeseries=timeseries)

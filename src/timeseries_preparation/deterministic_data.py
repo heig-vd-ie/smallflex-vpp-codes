@@ -104,6 +104,7 @@ def process_timeseries_data(
         .join(pl.DataFrame(pv_production), on="timestamp", how="left")
         .join(pl.DataFrame(wind_production), on="timestamp", how="left")
         .with_columns(pl.all().forward_fill().backward_fill())
+        .with_columns(c("pv_power", "wind_power").fill_null(0.0))
     )
     input_timeseries = input_timeseries.sort("timestamp").with_columns(
         pl.col("market_price").rolling_quantile(

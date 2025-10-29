@@ -17,7 +17,7 @@ COLORS = px.colors.qualitative.Plotly
 
 
 def plot_second_stage_market_price(
-    results: pl.DataFrame, market_price_quantiles: pl.DataFrame, fig: go.Figure, row: int
+    results: pl.DataFrame, market_price_quantiles: pl.DataFrame, with_ancillary: bool, fig: go.Figure, row: int
 ) -> go.Figure:
     
     fig.add_trace(
@@ -25,7 +25,7 @@ def plot_second_stage_market_price(
             x=(market_price_quantiles["timestamp"]).to_list(),
             y=market_price_quantiles["market_price_lower_quantile"].to_list(),
             legendgroup="market_price",
-            name="Market price quantiles",
+            name="Market price quantiles [EUR/MWh]",
             mode="lines",
             line=dict(color="purple"),
             showlegend=True,
@@ -63,13 +63,13 @@ def plot_second_stage_market_price(
         row=row,
         col=1,
     )
-    if "ancillary_market_price" in results.columns:
+    if with_ancillary:
         fig.add_trace(
             go.Scatter(
                 x=(results["timestamp"]).to_list(),
                 y=results["ancillary_market_price"].to_list(),
                 legendgroup="market_price",
-                name="Ancillary market price [EUR/MWh]",
+                name="FRC weighted average bides [EUR/MW]",
                 mode="lines",
                 line=dict(color=COLORS[1]),
                 showlegend=True,
@@ -223,7 +223,7 @@ def plot_second_stage_basin_volume(
 
 def plot_hydro_power(results: pl.DataFrame, fig: go.Figure, row: int):
     hydro_name = results.select(cs.starts_with("hydro_power").and_(~cs.contains("forecast"))).columns
-    name = ["Continuous turbine", "Pump"]
+    name = ["Turbine", "Pump"]
 
     for i, col in enumerate(hydro_name):
 
@@ -576,7 +576,7 @@ def plot_second_stage_result(
     )
     row_idx = 1
     fig = plot_second_stage_market_price(
-        results=results, market_price_quantiles=market_price_quantiles, fig=fig, row=row_idx)
+        results=results, market_price_quantiles=market_price_quantiles, with_ancillary=with_ancillary, fig=fig, row=row_idx)
     row_idx += 1
     fig = plot_second_stage_basin_volume(
         results=results, 
