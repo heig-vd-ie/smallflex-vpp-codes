@@ -61,12 +61,12 @@ data_config: DataConfig = DataConfig(
 
 # %%
 
-output_folder = f"{file_names["output"]}/market_price_window_size_analysis"
+output_folder = f"{file_names["output"]}/water_level_quantile_analysis"
 build_non_existing_dirs(output_folder)
 
 for year in YEAR_LIST:
     data_config.year = year
-    plot_folder = f"{file_names["results_plot"]}/market_price_window_size_analysis/{year}"
+    plot_folder = f"{file_names["results_plot"]}/water_level_quantile_analysis/{year}"
     build_non_existing_dirs(plot_folder)
 
     previous_hydro_power_mask = None
