@@ -8,13 +8,13 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    2015,
-    2016,
-    2017,
-    2018,
-    2019,
-    2020,
-    2021,
+    # 2015,
+    # 2016,
+    # 2017,
+    # 2018,
+    # 2019,
+    # 2020,
+    # 2021,
     2022,
     2023,
 ]
@@ -86,19 +86,33 @@ for year in YEAR_LIST:
 
         if previous_hydro_power_mask != hydro_power_mask:
             previous_hydro_power_mask = hydro_power_mask
-
-            first_stage_optimization_results, basin_volume_expectation, fig_1 = (
-                first_stage_stochastic_pipeline(
-                    data_config=data_config,
-                    smallflex_input_schema=smallflex_input_schema,
-                    hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
-                )
+            
+            stochastic_first_stage: StochasticFirstStage = StochasticFirstStage(
+                data_config=data_config,
+                smallflex_input_schema=smallflex_input_schema,
+                hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
             )
-            if fig_1 is not None:
-                fig_1.write_html(
-                    f"{plot_folder}/{hydro_power_mask}_first_stage_results.html"
-                )
 
+            timeseries = process_first_stage_timeseries_data(
+                smallflex_input_schema=smallflex_input_schema,
+                data_config=data_config,
+                water_basin_mapping=pl_to_dict(stochastic_first_stage.water_basin["uuid", "B"]),
+            )
+            stochastic_first_stage.set_timeseries(timeseries=timeseries)
+
+            stochastic_first_stage.solve_model()
+                    
+            optimization_results = extract_first_stage_optimization_results(
+                model_instance=stochastic_first_stage.model_instance,
+                timeseries=stochastic_first_stage.timeseries
+            )
+    
+        basin_volume_expectation = extract_basin_volume_expectation(
+            model_instance=stochastic_first_stage.model_instance,
+            optimization_results=optimization_results,
+            water_basin=stochastic_first_stage.upstream_water_basin,
+            data_config=data_config
+        )
         second_stage_optimization_results, adjusted_income, fig_2 = (
             second_stage_deterministic_pipeline(
                 data_config=data_config,

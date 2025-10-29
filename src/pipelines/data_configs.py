@@ -37,8 +37,8 @@ class MarketConfig:
     market: str = "DA"
     ancillary_market: str = "FCR-cap"
     market_source: str= "swissgrid"
-    market_price_lower_quantile: float = 0.5
-    market_price_upper_quantile: float = 0.5
+    market_price_lower_quantile: float = 0.35
+    market_price_upper_quantile: float = 0.65
     market_price_window_size: int = 182 # 28 days
     with_ancillary: bool = True
 
