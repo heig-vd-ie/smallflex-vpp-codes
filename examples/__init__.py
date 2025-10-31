@@ -16,13 +16,15 @@ from numpy_function import clipped_cumsum
 
 from smallflex_data_schema import SmallflexInputSchema
 from pipelines.data_configs import DataConfig
+from pipelines.model_manager.deterministic_first_stage import DeterministicFirstStage
 from pipelines.model_manager.stochastic_first_stage import StochasticFirstStage
 from pipelines.model_manager.deterministic_second_stage import DeterministicSecondStage
 from pipelines.model_manager.stochastic_second_stage import StochasticSecondStage
 
 from pipelines.result_manager import (
+    extract_basin_volume,
+    extract_basin_volume_expectation,
     extract_first_stage_optimization_results, 
-    extract_basin_volume_expectation, 
     extract_second_stage_optimization_results, 
     extract_third_stage_optimization_results)
 
@@ -30,8 +32,9 @@ from timeseries_preparation.first_stage_stochastic_data import process_first_sta
 from timeseries_preparation.deterministic_data import process_timeseries_data
 from timeseries_preparation.second_stage_stochastic_data import process_second_stage_timeseries_stochastic_data
 
-from data_display.baseline_plots import plot_scenario_results, plot_second_stage_result
+from data_display.baseline_plots import plot_scenario_results, plot_second_stage_result, plot_first_stage_result
 
+from pipelines.pipeline_manager.first_stage_deterministic_pipeline import first_stage_deterministic_pipeline
 from pipelines.pipeline_manager.first_stage_stochastic_pipeline import first_stage_stochastic_pipeline
 from pipelines.pipeline_manager.second_stage_deterministic_pipeline import second_stage_deterministic_pipeline
 from pipelines.pipeline_manager.second_stage_stochastic_pipeline import second_stage_stochastic_pipeline
@@ -77,6 +80,8 @@ IMBALANCE_PARTICIPATION = {
     "with_hydro": True,
     "without_hydro": False,
 }
+
+MARKET = ["da_energy", "primary_ancillary"]
 
 def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
     with pl.Config(

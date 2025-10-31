@@ -135,17 +135,13 @@ def first_stage_baseline_objective(model):
         model.market_price[t] * model.nb_hours[t] * 
         sum(model.hydro_power[t, h] for h in model.H) for t in model.T
     )
-    ancillary_market_price = sum(
-        model.ancillary_market_price[t] * model.nb_hours[t] *
-        model.hydro_ancillary_reserve[t]  for t in model.T
-    )
     
     spilled_penalty = sum(
         sum(model.spilled_volume[t, b] for t in model.T) * model.spilled_factor[b] 
         for b in model.B
     ) / (model.nb_sec)
-        
-    return market_price + ancillary_market_price - spilled_penalty
+
+    return market_price - spilled_penalty
 
 ########################################################################################################################
 # 1.5.2 Water basin volume evolution ###################################################################################
@@ -156,17 +152,23 @@ def basin_volume_evolution(model, t, b):
         return model.basin_volume[t, b] == model.start_basin_volume[b]
     else:
         return model.basin_volume[t, b] == (
-            model.basin_volume[t - 1, b] + model.discharge_volume[t - 1, b] - model.spilled_volume[t - 1, b] +
-            model.nb_sec * model.nb_hours[t - 1] *
-            sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+            model.basin_volume[t - 1, b] + (
+                model.discharge_volume[t - 1, b] 
+                - model.spilled_volume[t - 1, b] 
+                + model.nb_sec * model.nb_hours[t - 1] *
+                sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+            ) / model.basin_volume_range[b]
         )
         
 def basin_end_volume_constraint(model, b):
     t_max = model.T.last()
     return model.start_basin_volume[b] == (
-        model.basin_volume[t_max, b] + model.discharge_volume[t_max, b] - model.spilled_volume[t_max, b] +
-        model.nb_sec * model.nb_hours[t_max] *
-        sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+        model.basin_volume[t_max, b] + (
+            model.discharge_volume[t_max, b] 
+            - model.spilled_volume[t_max, b] 
+            + model.nb_sec * model.nb_hours[t_max] 
+            * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+        ) / model.basin_volume_range[b]
     )
 
 ########################################################################################################################
@@ -211,18 +213,18 @@ def total_hydro_power(model, t, h):
     )
 
 
-########################################################################################################################
+# #######################################################################################################################
 # 1.5.5. Ancillary services ############################################################################################
-########################################################################################################################
+# #######################################################################################################################
 
-def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
-    return (
-        model.hydro_ancillary_reserve[t] <=
-        sum(model.total_positive_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) - sum(model.hydro_power[t, h] for h in model.CH)
-    ) 
+# def positive_hydro_hydro_ancillary_reserve_constraint(model, t):
+#     return (
+#         model.hydro_ancillary_reserve[t] <=
+#         sum(model.total_positive_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) - sum(model.hydro_power[t, h] for h in model.CH)
+#     ) 
 
-def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
-    return (
-        model.hydro_ancillary_reserve[t] <=
-        sum(model.total_negative_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) + sum(model.hydro_power[t, h] for h in model.CH)
-    ) 
+# def negative_hydro_hydro_ancillary_reserve_constraint(model, t):
+#     return (
+#         model.hydro_ancillary_reserve[t] <=
+#         sum(model.total_negative_flex_power[s] * model.basin_state[t, b, s] for b, s in model.BS) + sum(model.hydro_power[t, h] for h in model.CH)
+#     ) 

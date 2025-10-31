@@ -381,7 +381,13 @@ def generate_first_stage_basin_state_table(
     
     basin_state = pl.concat([
         basin_state, 
-        water_basin.filter(~c("B").is_in(basin_volume_table["B"]))["B", "volume_max", "volume_min"]
+        water_basin
+        .filter(~c("B").is_in(basin_volume_table["B"]))
+        .select(
+            "B", 
+            ((c("volume_max")-c("volume_min"))/c("volume_range")).alias("volume_max"),
+            pl.lit(0).alias("volume_min")
+        )
     ], how="diagonal_relaxed")
 
     

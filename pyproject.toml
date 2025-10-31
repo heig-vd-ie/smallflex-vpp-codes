@@ -21,6 +21,7 @@ gurobipy = "^12.0.2"
 patito = "^0.8.3"
 ipywidgets = "^8.1.7"
 rich = "10.13.0"
+kaleido = "^1.1.0"
 
 
 [build-system]

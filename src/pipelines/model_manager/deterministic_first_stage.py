@@ -4,7 +4,7 @@ from polars import col as c
 import pyomo.environ as pyo
 from pyparsing import Opt
 from typing import Optional
-import tqdm
+from tqdm.auto import tqdm
 
 from smallflex_data_schema import SmallflexInputSchema
 from general_function import pl_to_dict, pl_to_dict_with_tuple, generate_log
@@ -37,9 +37,10 @@ class DeterministicFirstStage(HydroDataManager):
 
         self.data_config = data_config
         self.model: pyo.AbstractModel = deterministic_first_stage_model()
+        self.model_instance: pyo.ConcreteModel
         self.timeseries: pl.DataFrame
         self.discharge_volume: pl.DataFrame
-        self.model_instance: pyo.ConcreteModel
+        
 
     def create_model_instance(self):
         data: dict = {}
@@ -89,14 +90,17 @@ class DeterministicFirstStage(HydroDataManager):
             self.water_flow_factor["BH", "water_factor"]
         )
         data["spilled_factor"] = pl_to_dict(
-            self.basin_spilled_factor["B", "spilled_factor"]
+            self.upstream_water_basin.select("B", pl.lit(self.data_config.spilled_factor).alias("spilled_factor"))
         )
-
+        
         data["min_basin_volume"] = pl_to_dict_with_tuple(
             self.first_stage_basin_state.select("BS", "volume_min")
         )
         data["max_basin_volume"] = pl_to_dict_with_tuple(
             self.first_stage_basin_state.select("BS", "volume_max")
+        )
+        data["basin_volume_range"] = pl_to_dict(
+            self.water_basin.select("B", "volume_range")
         )
         # Hydro power plant
         data["max_flow"] = pl_to_dict_with_tuple(
@@ -116,20 +120,16 @@ class DeterministicFirstStage(HydroDataManager):
         data["max_powered_flow_ratio"] = {
             None: self.data_config.first_stage_max_powered_flow_ratio
         }
-        # Timeseries
-
         data["T"] = {None: self.timeseries["T"].to_list()}
         data["nb_hours"] = pl_to_dict(self.timeseries[["T", "nb_hours"]])
-
-        
 
         data["discharge_volume"] = pl_to_dict_with_tuple(
             self.discharge_volume[["TB", "discharge_volume"]]
         )
         data["market_price"] = pl_to_dict(self.timeseries[["T", "market_price"]])
-        data["ancillary_market_price"] = pl_to_dict(
-            self.timeseries[["T", "ancillary_market_price"]]
-        )
+        # data["ancillary_market_price"] = pl_to_dict(
+        #     self.timeseries[["T", "ancillary_market_price"]]
+        # )
 
         self.model_instance = self.model.create_instance({None: data})  # type: ignore
 
@@ -162,10 +162,9 @@ class DeterministicFirstStage(HydroDataManager):
 
     def solve_model(self):
 
-        with tqdm.tqdm(
+        with tqdm(
             total=1,
             desc="Solving first stage optimization problem",
-            ncols=150,
             position=0,
             leave=False,
         ) as pbar:

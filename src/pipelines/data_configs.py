@@ -67,14 +67,14 @@ class DataConfig(BatteryConfig, HydroConfig, MarketConfig, DgrConfig):
         self.second_stage_solver= pyo.SolverFactory(self.solver_name)
         
         assert len(self.basin_volume_quantile) == len(self.bound_penalty_factor)
-        assert self.second_stage_sim_horizon.total_seconds()%self.first_stage_timestep.total_seconds() == 0
+        # assert self.second_stage_sim_horizon.total_seconds()%self.first_stage_timestep.total_seconds() == 0
         assert self.second_stage_sim_horizon.total_seconds()%self.second_stage_timestep.total_seconds() == 0
         assert self.ancillary_market_timestep.total_seconds()%self.second_stage_timestep.total_seconds() == 0
         assert self.second_stage_sim_horizon.total_seconds()%self.ancillary_market_timestep.total_seconds() == 0
         assert self.total_scenarios_synthesized >= self.nb_scenarios
-        
-        
-        self.first_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.first_stage_timestep
+
+
+        self.first_stage_nb_timestamp: int = max(self.second_stage_sim_horizon // self.first_stage_timestep, 1)
         self.second_stage_nb_timestamp: int = self.second_stage_sim_horizon // self.second_stage_timestep
         self.nb_timestamp_per_ancillary: int = self.ancillary_market_timestep // self.second_stage_timestep
         self.nb_quantiles: int = len(self.basin_volume_quantile)

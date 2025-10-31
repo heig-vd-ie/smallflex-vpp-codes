@@ -15,8 +15,8 @@ def deterministic_first_stage_constraints(model):
     model.max_flow_by_state = pyo.Constraint(model.T, model.HBS, rule=max_flow_by_state)
     model.total_flow = pyo.Constraint(model.T, model.H, rule=total_flow)
     model.total_hydro_power = pyo.Constraint(model.T, model.H, rule=total_hydro_power)
-    model.positive_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=positive_hydro_hydro_ancillary_reserve_constraint)
-    model.negative_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=negative_hydro_hydro_ancillary_reserve_constraint)
+    # model.positive_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=positive_hydro_hydro_ancillary_reserve_constraint)
+    # model.negative_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=negative_hydro_hydro_ancillary_reserve_constraint)
     
     return model
 

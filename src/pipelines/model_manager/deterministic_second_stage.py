@@ -61,13 +61,11 @@ class DeterministicSecondStage(HydroDataManager):
         self.hydro_flex_power: dict[str, float] = {}
         self.sim_basin_state: pl.DataFrame
         self.sim_hydro_power_state: pl.DataFrame
-        
+
         self.basin_volume_expectation: pl.DataFrame = basin_volume_expectation.with_columns(
             (c("T")//data_config.first_stage_nb_timestamp).alias("sim_idx")
         ).sort("sim_idx", "B").unique(subset=["sim_idx", "B"], keep="last")
                 
-        
-        
         self.start_basin_volume: pl.DataFrame = self.water_basin["B", "start_volume"]
         self.sim_start_battery_soc: float = self.data_config.start_battery_soc
         self.non_optimal_solution_idx: list[int] = []
@@ -223,11 +221,12 @@ class DeterministicSecondStage(HydroDataManager):
         self.model_instances[self.sim_idx] = self.model.create_instance({None: self.data}) # type: ignore
     
     def calculate_second_stage_states(self):
+
         volume_bound = self.start_basin_volume.join(
             self.basin_volume_expectation.filter(c("T") == self.sim_idx)["B", "diff_volume"], on="B").with_columns(
             pl.concat_list(c("start_volume"), c("start_volume") + c("diff_volume")).list.sort().alias("volume_bound")
             )
-            
+
         second_stage_basin_state= pl.DataFrame()
 
         for data in volume_bound.to_dicts():
@@ -244,10 +243,12 @@ class DeterministicSecondStage(HydroDataManager):
                             second_stage_basin_state, 
                             new_basin_state.with_columns(pl.lit(data["B"]).alias("B"))
                         ], how="diagonal_relaxed")
-
-        self.sim_basin_state = second_stage_basin_state.with_row_index(name="S").with_columns(
-                        pl.concat_list("B", "S").alias("BS")
-                        )
+        self.sim_basin_state = (
+            second_stage_basin_state.with_row_index(name="S")
+            .with_columns(
+                pl.concat_list("B", "S").alias("BS")
+            )
+        )
 
         second_stage_basin_state = pl.concat([
                 second_stage_basin_state, 

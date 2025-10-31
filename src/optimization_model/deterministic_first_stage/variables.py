@@ -10,6 +10,6 @@ def first_stage_variables(model):
     model.flow_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals) # m^3
     model.flow = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals) # m^3
     model.hydro_power= pyo.Var(model.T, model.H, within=pyo.Reals)  # MWh
-    model.hydro_ancillary_reserve= pyo.Var(model.T, within=pyo.NonNegativeReals)  # MWh
+    # model.hydro_ancillary_reserve= pyo.Var(model.T, within=pyo.NonNegativeReals)  # MWh
 
     return model

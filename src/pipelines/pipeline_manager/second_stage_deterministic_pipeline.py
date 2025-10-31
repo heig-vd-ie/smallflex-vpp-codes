@@ -23,6 +23,7 @@ def second_stage_deterministic_pipeline(
     hydro_power_mask: pl.Expr,
     pv_power_mask: Optional[pl.Expr] = None,
     wind_power_mask: Optional[pl.Expr] = None,
+    display_battery: bool = False,
     plot_result: bool = True,
 ) -> tuple[pl.DataFrame, float, Optional[go.Figure]]:
 
@@ -58,7 +59,9 @@ def second_stage_deterministic_pipeline(
             water_basin=deterministic_second_stage.water_basin,
             market_price_quantiles=deterministic_second_stage.market_price_quantiles,
             basin_volume_expectation=deterministic_second_stage.basin_volume_expectation,
+            display_battery=display_battery
         )
+        
     
     else:
         fig = None

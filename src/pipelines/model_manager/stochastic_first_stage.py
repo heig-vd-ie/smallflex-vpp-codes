@@ -94,7 +94,8 @@ class StochasticFirstStage(HydroDataManager):
             self.water_flow_factor["BH", "water_factor"]
         )
         data["spilled_factor"] = pl_to_dict(
-            self.upstream_water_basin.select("B", pl.lit(self.data_config.spilled_factor).alias("spilled_factor")))
+            self.upstream_water_basin.select("B", pl.lit(self.data_config.spilled_factor).alias("spilled_factor"))
+        )
         
         data["min_basin_volume"] = pl_to_dict(
             self.first_stage_basin_state.select("B", "volume_min")

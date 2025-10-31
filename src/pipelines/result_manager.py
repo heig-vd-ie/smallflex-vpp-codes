@@ -1,6 +1,7 @@
 import polars as pl
 from polars import col as c
 from polars import selectors as cs
+from datetime import timedelta
 import pyomo.environ as pyo
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
@@ -65,6 +66,10 @@ def extract_first_stage_optimization_results(
         model_instance=model_instance,
         optimization_results=optimization_results
     )
+    optimization_results = optimization_results.with_columns(
+        (pl.sum_horizontal(cs.starts_with("hydro_power")) * c("market_price")).alias("da_income"),
+    )
+    
     return optimization_results
 
 def extract_second_stage_optimization_results(
@@ -211,7 +216,81 @@ def extract_third_stage_optimization_results(
     
     return optimization_results, adjusted_income, imbalance_penalty
 
+def extract_basin_volume(
+    optimization_results: pl.DataFrame, 
+    water_basin: pl.DataFrame,
+    data_config: DataConfig
+    ) -> pl.DataFrame:
 
+    basin_idx = water_basin["B"].to_list()
+        
+    volume_range = pl_to_dict(water_basin["B", "volume_range"])
+    start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
+
+    basin_volume_raw = optimization_results.select(
+        "timestamp", cs.contains("basin_volume_"), cs.contains("spilled_volume_")
+    )
+
+
+    basin_volume_raw = basin_volume_raw.sort(["timestamp"]).select(
+        "timestamp",
+        *[(
+            (
+                (c(f"spilled_volume_{col}")/volume_range[col]).shift(1) + 
+                c(f"basin_volume_{col}").diff()
+            ).fill_null(start_volume_mapping[col])
+        ).alias(f"basin_volume_{col}")
+        for col in basin_idx]
+    )
+
+
+    basin_volume = (
+        pl.DataFrame(
+            clipped_cumsum(basin_volume_raw.drop("timestamp").to_numpy(), xmin=0, xmax=1),
+            schema=basin_volume_raw.drop("timestamp").columns,
+        ).with_columns(basin_volume_raw["timestamp"])
+    )
+    
+    end_basin_volume = basin_volume[0].with_columns(
+    pl.datetime(data_config.year + 1, 1, 1,time_zone="UTC").alias("timestamp")
+)
+
+    basin_volume = basin_volume.vstack(end_basin_volume)
+
+    basin_volume = basin_volume.upsample(
+        time_column="timestamp",
+        every=timedelta(days=1),
+    ).interpolate().with_row_index(name="T")
+
+    basin_volume = basin_volume.unpivot(
+        on=cs.exclude("T", "timestamp"),
+        index=["T","timestamp"],
+        variable_name="B",
+        value_name="mean"
+    ).with_columns(
+        c("B").str.replace("basin_volume_", "").cast(pl.Int64)
+    )
+
+    quantile_columns = [
+            expr
+            for i, quantile_min in 
+            enumerate(data_config.basin_volume_quantile_min)
+            for expr in (
+                (c("mean") - quantile_min)
+                    .clip(lower_bound=0)
+                    .alias(f"lower_quantile_{i}"),
+                (c("mean") + quantile_min)
+                    .clip(upper_bound=100)
+                    .alias(f"upper_quantile_{i}")
+            )
+        ]
+
+    basin_volume = basin_volume.with_columns(
+        *quantile_columns,
+            c("mean").diff().shift(-1).alias("diff_volume")
+        )
+    return basin_volume
+    
 
 
 def extract_basin_volume_expectation(
