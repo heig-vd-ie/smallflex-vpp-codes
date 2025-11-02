@@ -18,7 +18,13 @@ YEAR_LIST = [
     2022,
     2023,
 ]
-WINDOW_SIZE = [7, 14, 28, 56, 112, 182]
+WINDOW_SIZE = [
+    7, 
+    # 14, 
+    # 28,
+    # 56,
+    # 112, 
+    182]
 
 
 # %%
@@ -71,6 +77,10 @@ for year in YEAR_LIST:
                     hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
                 )
             )
+            
+            results_data[f"first_stage_{scenario_name}"] = first_stage_optimization_results
+            results_data[f"basin_volume_expectation_{scenario_name}"] = basin_volume_expectation
+            
             if fig_1 is not None:
                 fig_1.write_html(
                     f"{plot_folder}/{hydro_power_mask}_first_stage_results.html"

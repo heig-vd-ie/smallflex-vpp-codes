@@ -1,5 +1,5 @@
-from datetime import timedelta
-import time
+from datetime import timedelta, datetime
+
 from typing import Optional
 from matplotlib.pylab import f
 import plotly.graph_objs as go
@@ -54,18 +54,17 @@ def remove_spillage_effects(
 
 def plot_second_stage_market_price(
     results: pl.DataFrame,
-    market_price_quantiles: pl.DataFrame,
     with_ancillary: bool,
     fig: go.Figure,
     row: int,
     showlegend: bool,
     col: int = 1,
 ) -> go.Figure:
-    if not market_price_quantiles.is_empty():
+    if not results.select(cs.contains("quantile")).is_empty():
         fig.add_trace(
             go.Scatter(
-                x=(market_price_quantiles["timestamp"]).to_list(),
-                y=market_price_quantiles["market_price_lower_quantile"].to_list(),
+                x=results["timestamp"].to_list(),
+                y=results["market_price_lower_quantile"].to_list(),
                 legendgroup="market_price",
                 name="Market price quantiles",
                 mode="lines",
@@ -79,8 +78,8 @@ def plot_second_stage_market_price(
 
         fig.add_trace(
             go.Scatter(
-                x=(market_price_quantiles["timestamp"]).to_list(),
-                y=market_price_quantiles["market_price_upper_quantile"].to_list(),
+                x=results["timestamp"].to_list(),
+                y=results["market_price_upper_quantile"].to_list(),
                 legendgroup="market_price",
                 name="quantile",
                 mode="lines",
@@ -111,7 +110,7 @@ def plot_second_stage_market_price(
                 x=(results["timestamp"]).to_list(),
                 y=results["ancillary_market_price"].to_list(),
                 legendgroup="market_price",
-                name="FRC weighted average bides",
+                name="FCR weighted average bides",
                 mode="lines",
                 line=dict(color="darkgreen"),
                 showlegend=showlegend,
@@ -219,7 +218,7 @@ def plot_second_stage_basin_volume(
         )
         .sort("timestamp").slice(0, 365)
     )
-
+    
     inner_quantiles = basin_volume_expectation.select(
         cs.contains("quantile_").and_(~cs.contains(f"quantile_0"))
     ).columns
@@ -353,7 +352,7 @@ def plot_ancillary_reserve(
             go.Bar(
                 x=results["timestamp"].to_list(),
                 y=results["hydro_ancillary_reserve"].to_list(),
-                marker=dict(color=COLORS[0], line=dict(width=0)),
+                marker=dict(color=COLORS[0], line=dict(color=COLORS[0])),
                 showlegend=showlegend,
                 width=timestep.total_seconds() * 1000,
                 name="hydro reserve",
@@ -368,7 +367,7 @@ def plot_ancillary_reserve(
             go.Bar(
                 x=results["timestamp"].to_list(),
                 y=results["battery_ancillary_reserve"].to_list(),
-                marker=dict(color=COLORS[1], line=dict(width=0)),
+                marker=dict(color=COLORS[1], line=dict(color=COLORS[1])),
                 width=timestep.total_seconds() * 1000,
                 showlegend=showlegend,
                 name="Battery reserve",
@@ -379,7 +378,7 @@ def plot_ancillary_reserve(
         )
     fig.update_traces(
         selector=dict(legendgroup="ancillary_reserve"),
-        legendgrouptitle_text="<b>Ancillary power [MW]<b>",
+        legendgrouptitle_text="<b>Ancillary reserve [MW]<b>",
         legendgrouptitle=dict(font=dict(size=20)),
     )
     return fig
@@ -391,7 +390,7 @@ def plot_battery_soc(
     fig.add_trace(
         go.Scatter(
             x=results["timestamp"].to_list(),
-            y=results["battery_soc"].to_list(),
+            y=(100*results["battery_soc"]).to_list(),
             mode="lines",
             line=dict(color=COLORS[0]),
             showlegend=showlegend,
@@ -417,7 +416,7 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_discharging_power"].to_list(),
-            marker=dict(color=COLORS[0], line=dict(width=0)),
+            marker=dict(color=COLORS[0], line=dict(color=COLORS[0])),
             showlegend=showlegend,
             width=timestep.total_seconds() * 1000,
             name="Battery discharging power",
@@ -431,7 +430,7 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_charging_power"].to_list(),
-            marker=dict(color=COLORS[1], line=dict(width=0)),
+            marker=dict(color=COLORS[1], line=dict(color=COLORS[1])),
             showlegend=showlegend,
             width=timedelta(hours=1).total_seconds() * 1000,
             name="Battery charging power",
@@ -647,7 +646,6 @@ def plot_scenario_results(
 def plot_second_stage_result(
     results: pl.DataFrame,
     water_basin: pl.DataFrame,
-    market_price_quantiles: pl.DataFrame,
     basin_volume_expectation: pl.DataFrame,
     display_battery: bool = False,
     tick_size: int = 20,
@@ -693,7 +691,6 @@ def plot_second_stage_result(
     row_idx = 1
     fig = plot_second_stage_market_price(
         results=results,
-        market_price_quantiles=market_price_quantiles,
         with_ancillary=with_ancillary,
         fig=fig,
         row=row_idx,
@@ -732,11 +729,21 @@ def plot_second_stage_result(
         fig = plot_battery_soc(results=results, fig=fig, row=row_idx, showlegend=showlegend,col=col)
         row_idx += 1
 
+    ticks_df = results.filter(
+        (c("timestamp").dt.month().is_in([2, 5, 8, 11]) & (c("timestamp").dt.day() == 15))
+    ).filter(c("timestamp").dt.month().is_first_distinct())\
+    .with_columns(
+        pl.col("timestamp").dt.strftime("%b %Y").alias("formatted_timestamp")
+    )
+
     for i in range(1, len(row_titles) + 1):
         fig.update_xaxes(
             tickfont=dict(size=tick_size),
             ticklabelposition="outside",
             ticklabelstandoff=10,
+            tickmode = 'array',
+            tickvals = ticks_df["timestamp"].to_list(),
+            ticktext = ticks_df["formatted_timestamp"].to_list(),
             row=i,
             col=col,
         )
@@ -780,7 +787,6 @@ def plot_first_stage_result(
     showlegend = col == len(cols)
     fig = plot_second_stage_market_price(
         results=results,
-        market_price_quantiles=pl.DataFrame(),
         with_ancillary=False,
         fig=fig,
         row=1,
@@ -803,15 +809,164 @@ def plot_first_stage_result(
         col=col,
         showlegend=showlegend,
     )
+    
+    ticks_df = results.filter(
+        (c("timestamp").dt.month().is_in([2, 5, 8, 11]) & (c("timestamp").dt.day() == 15))
+    ).filter(c("timestamp").dt.month().is_first_distinct())\
+    .with_columns(
+        pl.col("timestamp").dt.strftime("%b %Y").alias("formatted_timestamp")
+    )
 
     for i in range(1, len(row_titles) + 1):
         fig.update_xaxes(
             tickfont=dict(size=tick_size),
             ticklabelposition="outside",
             ticklabelstandoff=10,
-            row=i,
+            tickmode = 'array',
+            tickvals = ticks_df["timestamp"].to_list(),
+            ticktext = ticks_df["formatted_timestamp"].to_list(),
             col=col,
         )
-        fig.update_yaxes(tickfont=dict(size=tick_size), row=i, col=col)
+        fig.update_yaxes(
+            tickfont=dict(size=tick_size),
+            row=i, col=col)
+
+    return fig
+
+
+def plot_reservoir_level_measurement(basin_height_measurement: pl.DataFrame, basin_volume_table: pl.DataFrame):
+    
+
+    reservoir_level = basin_height_measurement.join(basin_volume_table, on="height", how="left").with_columns(
+        c("timestamp").dt.year().alias("year"),
+        (c("timestamp") - pl.datetime(c("timestamp").dt.year(), 1, 1,time_zone="UTC")).dt.total_days().alias("dt"),
+    ).filter(c("timestamp").is_first_distinct()).pivot(
+        on="year",
+        values="volume",
+        index="dt",
+    ).sort("dt").interpolate()
+
+    fig = go.Figure()
+
+    for year in reservoir_level.drop(["dt", "2019"]).columns:
+        fig.add_trace(
+            go.Scatter(
+                x=reservoir_level["dt"].to_list(),
+                y=(100*reservoir_level[year]).to_list(),
+                mode="lines",
+                name=str(year),
+            )
+        )
+    fig.update_layout(
+        margin=dict(t=10, l=25, r=8, b=60),
+        legend_title_text='Years',
+        legend=dict(font=dict(size=20)),
+        yaxis=dict(
+            title=dict(
+                text='Reservoir level [%]', # The axis title text
+                font=dict(
+                    size=20,
+                )
+            )
+        )
+    )
+
+
+    ticks_df =  pl.DataFrame(
+        {
+            "timestamp": pl.date_range(start=datetime(2019, 1, 1), end=datetime(2020, 12, 31), interval=timedelta(days=1), eager=True)
+        }
+    ).with_row_index(name="row_index").filter(
+            (c("timestamp").dt.month().is_in([2, 4, 6, 8, 10, 12]))
+        ).filter(c("timestamp").dt.month().is_first_distinct())\
+        .with_columns(
+            pl.col("timestamp").dt.strftime("%b").alias("formatted_timestamp")
+        )
+
+    fig.update_xaxes(
+        tickfont=dict(size=20),
+        ticklabelposition="outside",
+        ticklabelstandoff=10,
+        tickmode = 'array',
+        tickvals = ticks_df["row_index"].to_list(),
+        ticktext = ticks_df["formatted_timestamp"].to_list(),
+        
+    )
+    fig.update_yaxes(
+        tickfont=dict(size=20))
+    return fig
+
+def plot_battery_arbitrage(results: pl.DataFrame, tick_size: int = 20) -> go.Figure:
+
+    with_ancillary = results.select(cs.contains("ancillary_reserve")).shape[1] > 0
+    timestep = results["timestamp"].diff()[1]
+    row_titles = [
+        "<b>Market price [EUR]<b>",
+        "<b>Hydro power [MW]<b>",
+        "<b>Battery power [MW]<b>",
+        "<b>Battery SOC [%]<b>"
+    ]
+    
+    if with_ancillary:
+        row_titles.append("<b>Ancillary reserve [MW]<b>")
+    
+    fig = make_subplots(
+                rows=len(row_titles),
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.02,
+                row_titles=row_titles,
+            )
+    fig.update_layout(
+        margin=dict(t=10, l=25, r=8, b=60),
+        width=1200,  # Set the width of the figure
+        height=300 * len(row_titles),
+        legend_tracegroupgap=208,
+        legend=dict(font=dict(size=20)),
+        barmode="overlay",
+    )
+
+    fig = plot_second_stage_market_price(
+            results=results,
+            with_ancillary=True,
+            fig=fig,
+            row=1,
+            col=1,
+            showlegend=True,
+        )
+
+    fig = plot_hydro_power(results=results, fig=fig, row=2, timestep=timestep, showlegend=True, col=1)
+
+
+    fig = plot_battery_power(
+        results=results, fig=fig, row=3, timestep=timestep, showlegend=True,col=1
+    )
+    fig = plot_battery_soc(results=results, fig=fig, row=4, showlegend=True,col=1)
+    
+    for ann in fig.layout.annotations: # type: ignore
+        if ann.text in row_titles:
+            ann.update(font=dict(size=20))  # set your desired size here
+
+    if with_ancillary:
+        fig = plot_ancillary_reserve(
+                results=results,
+                fig=fig,
+                row=5,
+                timestep=timestep,
+                with_battery=True,
+                showlegend=True,
+                col=1
+            )
+
+    for i in range(1, len(row_titles) + 1):
+        fig.update_xaxes(
+            tickfont=dict(size=tick_size),
+            ticklabelposition="outside",
+            ticklabelstandoff=10,
+            tickmode = 'array',
+            row=i,
+            col=1,
+        )
+        fig.update_yaxes(tickfont=dict(size=tick_size), row=i, col=1)
 
     return fig

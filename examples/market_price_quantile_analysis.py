@@ -8,21 +8,21 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    2015,
-    2016,
-    2017,
-    2018,
-    2019,
-    2020,
-    2021,
+    # 2015,
+    # 2016,
+    # 2017,
+    # 2018,
+    # 2019,
+    # 2020,
+    # 2021,
     2022,
-    2023,
+    # 2023,
 ]
 MARKET_QUANTILE = {
     "0": (0.5, 0.5),
-    "10": (0.4, 0.6),
-    "20": (0.3, 0.7),
-    "25": (0.25, 0.75),
+    # "10": (0.4, 0.6),
+    # "20": (0.3, 0.7),
+    # "25": (0.25, 0.75),
     "30": (0.2, 0.8)
 }
 
@@ -61,7 +61,7 @@ for year in YEAR_LIST:
     pbar = tqdm(scenario_list, desc=f"Year {year} scenarios", position=0)
     for hydro_power_mask, market_quantile in pbar:
         pbar.set_description(
-            f"Optimization with {hydro_power_mask} with {market_quantile} for year {year}"
+            f"Optimization with {hydro_power_mask} with {market_quantile} quantile for year {year}"
         )
         scenario_name = "_".join([hydro_power_mask, str(market_quantile)])
         data_config.market_price_lower_quantile = MARKET_QUANTILE[market_quantile][0]
@@ -81,6 +81,9 @@ for year in YEAR_LIST:
                 fig_1.write_html(
                     f"{plot_folder}/{hydro_power_mask}_first_stage_results.html"
                 )
+                
+            results_data[f"first_stage_{scenario_name}"] = first_stage_optimization_results
+            results_data[f"basin_volume_expectation_{scenario_name}"] = basin_volume_expectation
 
         second_stage_optimization_results, adjusted_income, fig_2 = (
             second_stage_deterministic_pipeline(

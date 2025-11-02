@@ -8,8 +8,8 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    2021, 
-    2022, 
+    2021,
+    2022,
     2023
 ]
 
@@ -25,12 +25,13 @@ smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_
 data_config: DataConfig = DataConfig(
     nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
-    total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max() # type: ignore
+    total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max(), # type: ignore
+    market_price_window_size=56
 )
 
 
 # %%
-for market in MARKET:
+for market in MARKET[-1:]:
     output_folder = f"{file_names["output"]}/full_deterministic_{market}"
     build_non_existing_dirs(output_folder)
     data_config.with_ancillary = market == "primary_ancillary"
@@ -68,7 +69,10 @@ for market in MARKET:
                 first_stage_income_list.append(
                     (hydro_power_mask, first_stage_optimization_results["da_income"].sum() / 1e3)
                 )
-                results_data[f"{hydro_power_mask}_first_stage"] = first_stage_optimization_results
+                
+                results_data[f"first_stage_{hydro_power_mask}"] = first_stage_optimization_results
+                results_data[f"basin_volume_expectation_{hydro_power_mask}"] = basin_volume_expectation
+                
                 if fig_1 is not None:
                     fig_1.write_html(
                         f"{plot_folder}/{hydro_power_mask}_first_stage_results.html"

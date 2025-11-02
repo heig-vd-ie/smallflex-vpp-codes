@@ -57,7 +57,6 @@ def second_stage_deterministic_pipeline(
         fig = plot_second_stage_result(
             results=optimization_results,
             water_basin=deterministic_second_stage.water_basin,
-            market_price_quantiles=deterministic_second_stage.market_price_quantiles,
             basin_volume_expectation=deterministic_second_stage.basin_volume_expectation,
             display_battery=display_battery
         )

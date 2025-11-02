@@ -8,39 +8,39 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    2015,
-    2016,
-    2017,
-    2018,
-    2019,
-    2020,
-    2021,
-    # 2022,
+    # 2015,
+    # 2016,
+    # 2017,
+    # 2018,
+    # 2019,
+    # 2020,
+    # 2021,
+    2022,
     # 2023,
 ]
 BASIN_VOLUME_QUANTILE = {
     "1": [0.25, 0.15, 0.05],
-    "2": [0.25, 0.15, 0.05],
-    "3": [0.4, 0.3, 0.15],
-    "4": [0.4, 0.3, 0.15],
-    "5": [0.45, 0.35, 0.2],
+    # "2": [0.25, 0.15, 0.05],
+    # "3": [0.4, 0.3, 0.15],
+    # "4": [0.4, 0.3, 0.15],
+    # "5": [0.45, 0.35, 0.2],
     "6": [0.45, 0.35, 0.2],
 }
 
 BASIN_VOLUME_QUANTILE_MIN = {
     "1": [0.05, 0.025, 0.01],
-    "2": [0.05, 0.025, 0.01],
-    "3": [0.07, 0.035, 0.015],
-    "4": [0.07, 0.035, 0.015],
-    "5": [0.1, 0.06, 0.03],
+    # "2": [0.05, 0.025, 0.01],
+    # "3": [0.07, 0.035, 0.015],
+    # "4": [0.07, 0.035, 0.015],
+    # "5": [0.1, 0.06, 0.03],
     "6": [0.1, 0.06, 0.03],
 }
 BOUND_PENALTY_FACTOR = {
     "1": [0.3, 0.15, 0.05],
-    "2": [0.5, 0.3, 0.1],
-    "3": [0.3, 0.15, 0.05],
-    "4": [0.5, 0.3, 0.1],
-    "5": [0.3, 0.15, 0.05],
+    # "2": [0.5, 0.3, 0.1],
+    # "3": [0.3, 0.15, 0.05],
+    # "4": [0.5, 0.3, 0.1],
+    # "5": [0.3, 0.15, 0.05],
     "6": [0.5, 0.3, 0.1],
 }
 
@@ -102,17 +102,20 @@ for year in YEAR_LIST:
 
             stochastic_first_stage.solve_model()
                     
-            optimization_results = extract_first_stage_optimization_results(
+            first_stage_optimization_results = extract_first_stage_optimization_results(
                 model_instance=stochastic_first_stage.model_instance,
                 timeseries=stochastic_first_stage.timeseries
             )
+            results_data[f"first_stage_{scenario_name}"] = first_stage_optimization_results
+            
     
         basin_volume_expectation = extract_basin_volume_expectation(
             model_instance=stochastic_first_stage.model_instance,
-            optimization_results=optimization_results,
+            optimization_results=first_stage_optimization_results,
             water_basin=stochastic_first_stage.upstream_water_basin,
             data_config=data_config
         )
+        results_data[f"basin_volume_expectation_{scenario_name}"] = basin_volume_expectation
         second_stage_optimization_results, adjusted_income, fig_2 = (
             second_stage_deterministic_pipeline(
                 data_config=data_config,

@@ -39,22 +39,13 @@ from pipelines.pipeline_manager.first_stage_stochastic_pipeline import first_sta
 from pipelines.pipeline_manager.second_stage_deterministic_pipeline import second_stage_deterministic_pipeline
 from pipelines.pipeline_manager.second_stage_stochastic_pipeline import second_stage_stochastic_pipeline
 
+from general_function import duckdb_to_dict
+from plotly.subplots import make_subplots
 
-from utility.data_preprocessing import (
-    generate_basin_volume_table,
-    clean_hydro_power_performance_table,
-    split_timestamps_per_sim,
-    generate_hydro_power_state,
-    generate_first_stage_basin_state_table,
-    generate_clean_timeseries,
-    generate_datetime_index,
-    generate_clean_timeseries_scenarios,
-)
-from utility.data_preprocessing import (
-    split_timestamps_per_sim,
-    extract_result_table,
-    pivot_result_table,
-)
+from data_display.baseline_plots import *
+
+import plotly.graph_objects as go
+fig = go.Figure()
 
 from config import settings
 

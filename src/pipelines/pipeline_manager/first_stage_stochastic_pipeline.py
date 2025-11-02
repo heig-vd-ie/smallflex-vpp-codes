@@ -20,7 +20,7 @@ def first_stage_stochastic_pipeline(
     data_config: DataConfig,
     smallflex_input_schema: SmallflexInputSchema,
     hydro_power_mask: pl.Expr,
-    plot_result: bool = True,
+    plot_result: bool = False,
 ) -> tuple[pl.DataFrame, pl.DataFrame, Optional[go.Figure]]:
 
     stochastic_first_stage: StochasticFirstStage = StochasticFirstStage(

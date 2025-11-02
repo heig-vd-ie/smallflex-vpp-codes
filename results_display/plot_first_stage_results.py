@@ -2,9 +2,8 @@
 import os
 
 os.chdir(os.getcwd().replace("/src", ""))
-from general_function import duckdb_to_dict
-from plotly.subplots import make_subplots
-from examples import *
+
+from results_display import *
 # %%
 
 file_names: dict[str, str] = json.load(open(settings.FILE_NAMES))  # type: ignore
@@ -51,11 +50,12 @@ for hydro_power_mask in ["discrete_turbine", "discrete_turbine_pump"]:
         row_titles=row_titles,
     )
 
-    for i, file_name in enumerate(file_names):
+    for i, year in enumerate([2021, 2023]):
+        file_name = f".cache/output/full_deterministic_da_energy/{year}_results.duckdb"
         result_dict = duckdb_to_dict(file_name)
         fig = plot_first_stage_result(
             fig=fig,
-            results=result_dict[f"{hydro_power_mask}_first_stage"], 
+            results=result_dict[f"first_stage_{hydro_power_mask}"],
             water_basin=deterministic_first_stage.water_basin,
             col= i + 1)
 
@@ -68,7 +68,7 @@ for hydro_power_mask in ["discrete_turbine", "discrete_turbine_pump"]:
         )
 
 
-    for ann in fig.layout.annotations:
+    for ann in fig.layout.annotations: # type: ignore
         if ann.text in row_titles:
             ann.update(font=dict(size=20))  # set your desired size here
 
