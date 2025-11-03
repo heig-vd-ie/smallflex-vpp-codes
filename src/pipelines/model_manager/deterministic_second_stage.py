@@ -243,6 +243,7 @@ class DeterministicSecondStage(HydroDataManager):
                             second_stage_basin_state, 
                             new_basin_state.with_columns(pl.lit(data["B"]).alias("B"))
                         ], how="diagonal_relaxed")
+            
         self.sim_basin_state = (
             second_stage_basin_state.with_row_index(name="S")
             .with_columns(
@@ -251,14 +252,19 @@ class DeterministicSecondStage(HydroDataManager):
         )
 
         second_stage_basin_state = pl.concat([
-                second_stage_basin_state, 
-                self.water_basin.filter(~c("B").is_in(self.basin_volume_table["B"]))["B", "volume_max", "volume_min"]
-            ], how="diagonal_relaxed")
+            second_stage_basin_state,  
+            self.water_basin.filter(~c("B").is_in(self.basin_volume_table["B"])).select(
+                "B", 
+                pl.lit(1).alias("volume_max"), 
+                pl.lit(0).alias("volume_min")
+            )
+            ], how="diagonal_relaxed"
+        )
+        
 
         self.sim_basin_state = second_stage_basin_state.with_row_index(name="S").with_columns(
                         pl.concat_list("B", "S").alias("BS")
-                        )
-
+                        ) 
         self.sim_hydro_power_state = generate_hydro_power_state(
                 power_performance_table=self.power_performance_table, basin_state=self.sim_basin_state)
 

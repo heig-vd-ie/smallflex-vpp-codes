@@ -31,7 +31,7 @@ data_config: DataConfig = DataConfig(
 
 
 # %%
-for market in MARKET[-1:]:
+for market in MARKET[:1]:
     output_folder = f"{file_names["output"]}/full_deterministic_{market}"
     build_non_existing_dirs(output_folder)
     data_config.with_ancillary = market == "primary_ancillary"

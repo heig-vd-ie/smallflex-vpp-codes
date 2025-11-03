@@ -2,8 +2,7 @@
 import os
 
 os.chdir(os.getcwd().replace("/src", ""))
-from general_function import duckdb_to_dict
-from plotly.subplots import make_subplots
+
 from results_display import *
 # %%
 
@@ -55,28 +54,17 @@ for market in MARKET:
         for i, year in enumerate([2021, 2023]):
             file_name = f".cache/output/full_deterministic_{market}/{year}_results.duckdb"
             result_dict = duckdb_to_dict(file_name)
-            data_config.year = year
-            first_stage_result = result_dict[f"{hydro_power_mask}_first_stage"]
-            second_stage_results = result_dict[f"{hydro_power_mask}_{battery}"]
-            basin_volume: pl.DataFrame = extract_basin_volume(
-                optimization_results=first_stage_result,
-                water_basin=deterministic_first_stage.upstream_water_basin,
-                data_config=data_config
-            )
 
+            data_config.year = year
+            second_stage_results = result_dict[f"{hydro_power_mask}_{battery}"]
+
+            basin_volume_expectation = result_dict[f"basin_volume_expectation_{hydro_power_mask}"]
             deterministic_second_stage: DeterministicSecondStage = DeterministicSecondStage(
                     data_config=data_config,
                     smallflex_input_schema=smallflex_input_schema,
-                    basin_volume_expectation=basin_volume,
+                    basin_volume_expectation=basin_volume_expectation,
                     hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask]
                 )
-            timeseries = process_timeseries_data(
-                    smallflex_input_schema=smallflex_input_schema,
-                    data_config=data_config,
-                    basin_index_mapping=pl_to_dict(deterministic_second_stage.water_basin["uuid", "B"]),
-                )
-
-            deterministic_second_stage.set_timeseries(timeseries=timeseries)
 
             fig = plot_second_stage_result(
                 fig=fig,
@@ -110,4 +98,4 @@ for market in MARKET:
             )
         )
         # fig.show()
-        fig.write_image(f"{plot_folder}/{plot_name}.svg", width=width, height=height, scale=1)
+        fig.write_image(f"{plot_folder}/{plot_name}.png", width=width, height=height, scale=1)

@@ -16,7 +16,7 @@ os.chdir(os.getcwd().replace("/src", ""))
 
 year = 2022
 
-results_dict = duckdb_to_dict(f".cache/output/battery_size_design/2022_results.duckdb")
+results_dict = duckdb_to_dict(f".cache/output/full_deterministic_da_energy")
 
 income_result = []
 for key, results in results_dict.items():

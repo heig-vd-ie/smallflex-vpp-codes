@@ -67,7 +67,7 @@ def extract_first_stage_optimization_results(
         optimization_results=optimization_results
     )
     optimization_results = optimization_results.with_columns(
-        (pl.sum_horizontal(cs.starts_with("hydro_power")) * c("market_price")).alias("da_income"),
+        (pl.sum_horizontal(cs.starts_with("hydro_power")) * c("market_price") * 24).alias("da_income"),
     )
     
     return optimization_results

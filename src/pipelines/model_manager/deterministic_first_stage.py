@@ -127,9 +127,6 @@ class DeterministicFirstStage(HydroDataManager):
             self.discharge_volume[["TB", "discharge_volume"]]
         )
         data["market_price"] = pl_to_dict(self.timeseries[["T", "market_price"]])
-        # data["ancillary_market_price"] = pl_to_dict(
-        #     self.timeseries[["T", "ancillary_market_price"]]
-        # )
 
         self.model_instance = self.model.create_instance({None: data})  # type: ignore
 

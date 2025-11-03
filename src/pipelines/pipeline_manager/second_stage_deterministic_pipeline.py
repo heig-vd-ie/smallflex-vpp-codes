@@ -24,7 +24,7 @@ def second_stage_deterministic_pipeline(
     pv_power_mask: Optional[pl.Expr] = None,
     wind_power_mask: Optional[pl.Expr] = None,
     display_battery: bool = False,
-    plot_result: bool = True,
+    plot_result: bool = False,
 ) -> tuple[pl.DataFrame, float, Optional[go.Figure]]:
 
     deterministic_second_stage: DeterministicSecondStage = DeterministicSecondStage(

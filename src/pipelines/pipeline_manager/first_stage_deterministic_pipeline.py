@@ -19,7 +19,7 @@ def first_stage_deterministic_pipeline(
     data_config: DataConfig,
     smallflex_input_schema: SmallflexInputSchema,
     hydro_power_mask: pl.Expr,
-    plot_result: bool = True,
+    plot_result: bool = False,
     fig: Optional[go.Figure] = None
 ) -> tuple[pl.DataFrame, pl.DataFrame, Optional[go.Figure]]:
 
@@ -42,7 +42,7 @@ def first_stage_deterministic_pipeline(
             model_instance=deterministic_first_stage.model_instance,
             timeseries=deterministic_first_stage.timeseries
         )
-
+    
 
     basin_volume: pl.DataFrame = extract_basin_volume(
             optimization_results=optimization_results,
