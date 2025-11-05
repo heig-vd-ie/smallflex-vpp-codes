@@ -12,7 +12,6 @@ YEAR_LIST = [
     2022, 
     2023
 ]
-MARKET = ["da_energy", "primary_ancillary"]
 # %%
 file_names: dict[str, str] = json.load(open(settings.FILE_NAMES))  # type: ignore
 smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(
