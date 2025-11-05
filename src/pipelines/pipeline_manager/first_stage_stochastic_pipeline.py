@@ -53,9 +53,11 @@ def first_stage_stochastic_pipeline(
         fig = plot_scenario_results(
             optimization_results=optimization_results, 
             water_basin=stochastic_first_stage.upstream_water_basin,
-            basin_volume_expectation=basin_volume_expectation,
-            data_config=data_config
+
         )
+        plot_folder = ".cache/plots/static_plots/"
+        plot_name = f"first_stage_stochastic_results_{hydro_power_mask}.png"
+        fig.write_image(f"{plot_folder}/{plot_name}", width=fig.layout.width, height=fig.layout.height, scale=1) # type: ignore
     else: 
         fig = None
             

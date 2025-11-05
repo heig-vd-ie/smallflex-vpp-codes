@@ -20,10 +20,10 @@ YEAR_LIST = [
 ]
 WINDOW_SIZE = [
     7, 
-    # 14, 
-    # 28,
-    # 56,
-    # 112, 
+    14, 
+    28,
+    56,
+    112, 
     182]
 
 
@@ -48,7 +48,7 @@ data_config: DataConfig = DataConfig(
 
 output_folder = f"{file_names["output"]}/market_price_window_size_analysis"
 build_non_existing_dirs(output_folder)
-
+mean_result = pl.DataFrame()
 for year in YEAR_LIST:
     data_config.year = year
     plot_folder = f"{file_names["results_plot"]}/market_price_window_size_analysis/{year}"
@@ -110,5 +110,23 @@ for year in YEAR_LIST:
     ).pivot(on="hydro_power_mask", index="window_size", values="adjusted_income")
 
     print_pl(results_data["adjusted_income"], float_precision=0)
+    
+    
+    col_name = "window_size"
+    
+
+
+    max_val = results_data["adjusted_income"].drop(col_name).to_numpy().max()
+    result_percent = results_data["adjusted_income"].with_columns(
+        pl.all().exclude(col_name)/max_val*100
+    )
+
+    mean_result = mean_result.vstack(result_percent)
+
 
     dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
+
+
+mean_result = mean_result.group_by(col_name).agg(pl.all().mean()).sort(col_name)
+print_pl(mean_result, float_precision=1)
+mean_result.write_csv(f"{output_folder}/mean_result.csv")

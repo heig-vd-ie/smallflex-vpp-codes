@@ -8,39 +8,39 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    # 2015,
-    # 2016,
-    # 2017,
-    # 2018,
-    # 2019,
-    # 2020,
-    # 2021,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
     2022,
-    # 2023,
+    2023,
 ]
 BASIN_VOLUME_QUANTILE = {
     "1": [0.25, 0.15, 0.05],
-    # "2": [0.25, 0.15, 0.05],
-    # "3": [0.4, 0.3, 0.15],
-    # "4": [0.4, 0.3, 0.15],
-    # "5": [0.45, 0.35, 0.2],
+    "2": [0.25, 0.15, 0.05],
+    "3": [0.4, 0.3, 0.15],
+    "4": [0.4, 0.3, 0.15],
+    "5": [0.45, 0.35, 0.2],
     "6": [0.45, 0.35, 0.2],
 }
 
 BASIN_VOLUME_QUANTILE_MIN = {
     "1": [0.05, 0.025, 0.01],
-    # "2": [0.05, 0.025, 0.01],
-    # "3": [0.07, 0.035, 0.015],
-    # "4": [0.07, 0.035, 0.015],
-    # "5": [0.1, 0.06, 0.03],
+    "2": [0.05, 0.025, 0.01],
+    "3": [0.07, 0.035, 0.015],
+    "4": [0.07, 0.035, 0.015],
+    "5": [0.1, 0.06, 0.03],
     "6": [0.1, 0.06, 0.03],
 }
 BOUND_PENALTY_FACTOR = {
     "1": [0.3, 0.15, 0.05],
-    # "2": [0.5, 0.3, 0.1],
-    # "3": [0.3, 0.15, 0.05],
-    # "4": [0.5, 0.3, 0.1],
-    # "5": [0.3, 0.15, 0.05],
+    "2": [0.5, 0.3, 0.1],
+    "3": [0.3, 0.15, 0.05],
+    "4": [0.5, 0.3, 0.1],
+    "5": [0.3, 0.15, 0.05],
     "6": [0.5, 0.3, 0.1],
 }
 
@@ -63,7 +63,7 @@ data_config: DataConfig = DataConfig(
 
 output_folder = f"{file_names["output"]}/water_level_quantile_analysis"
 build_non_existing_dirs(output_folder)
-
+mean_result = pl.DataFrame()
 for year in YEAR_LIST:
     data_config.year = year
     plot_folder = f"{file_names["results_plot"]}/water_level_quantile_analysis/{year}"
@@ -140,5 +140,17 @@ for year in YEAR_LIST:
     ).pivot(on="hydro_power_mask", index="quantile_config", values="adjusted_income")
 
     print_pl(results_data["adjusted_income"], float_precision=0)
+    
+    col_name = "quantile_config"
+    max_val = results_data["adjusted_income"].drop(col_name).to_numpy().max()
+    result_percent = results_data["adjusted_income"].with_columns(
+        pl.all().exclude(col_name)/max_val*100
+    )
+
+    mean_result = mean_result.vstack(result_percent)
 
     dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
+
+mean_result = mean_result.group_by(col_name).agg(pl.all().mean()).sort(col_name)
+print_pl(mean_result, float_precision=1)
+mean_result.write_csv(f"{output_folder}/mean_result.csv")

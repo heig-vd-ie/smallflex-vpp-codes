@@ -24,7 +24,7 @@ date = pl.datetime(2021, 10, 1, time_zone="UTC")
 
 
 file_name = f".cache/output/full_deterministic_{market}/{year}_results.duckdb"
-result_dict = duckdb_to_dict(file_name)
+result_dict: dict[str, pl.DataFrame] = duckdb_to_dict(file_name)
 
 
 filtered_results = result_dict[f"{hydro_power_mask}_{battery}"].filter(
@@ -32,5 +32,5 @@ filtered_results = result_dict[f"{hydro_power_mask}_{battery}"].filter(
 )
 
 fig = plot_battery_arbitrage(results=filtered_results)
-plot_name = f"battery_arbitrage_{hydro_power_mask}_{battery}_{market}_{year}.svg"
+plot_name = f"battery_arbitrage_{hydro_power_mask}_{battery}_{market}_{year}.png"
 fig.write_image(f"{plot_folder}/{plot_name}", width=fig.layout.width, height=fig.layout.height, scale=1) # type: ignore

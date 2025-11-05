@@ -451,29 +451,64 @@ def plot_battery_power(
 def plot_scenario_results(
     optimization_results: pl.DataFrame,
     water_basin: pl.DataFrame,
-    basin_volume_expectation: pl.DataFrame,
-    data_config: DataConfig,
+    fig: Optional[go.Figure] = None,
+    col: int = 1,
+    tick_size: int = 20
 ) -> go.Figure:
+    row_titles=[
+        "<b>Price [Euro]<b>",
+        "<b>Discharge volume [m³/day]<b>",
+        "<b>Basin level [%]<b>",
+        "<b>Hydro power [MW]<b>",
+    ]
+    if fig is None:
+        fig = make_subplots(
+                rows=4,
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.02,
+                row_titles=row_titles
+            )
+        fig.update_layout(
+            margin=dict(t=10, l=25, r=8, b=60),
+            width=900,  # Set the width of the figure
+            height=300 * 4,
+            legend_tracegroupgap=720,
+            barmode="overlay",
+        )
 
+    _, cols = fig._get_subplot_rows_columns()
+    showlegend = col == len(cols)
+    
     volume_range = pl_to_dict(water_basin["B", "volume_range"])
     start_volume_mapping = pl_to_dict(water_basin["B", "start_volume"])
+    
+    name_mapping = {
+        "market_price": "<b>Market Price [Euro]</b>",
+        "discharge_volume_0": "<b>Discharge Volume [Mm³/day]</b>",
+        "basin_volume_0": "<b>Reservoir level [%]</b>"
+    }
+
+    optimization_results = optimization_results.with_columns(
+        (c("discharge_volume_0") / 1e6).alias("discharge_volume_0")
+    )
+    
     optimization_results = optimization_results.sort(["Ω", "T"]).with_columns(
         (
             (
-                (c(f"spilled_volume_{col}") / volume_range[col]).shift(1)
-                + c(f"basin_volume_{col}").diff().over("Ω")
-            ).fill_null(start_volume_mapping[col])
-        ).alias(f"basin_volume_{col}")
-        for col in start_volume_mapping.keys()
+                (c(f"spilled_volume_{col_name}") / volume_range[col_name]).shift(1)
+                + c(f"basin_volume_{col_name}").diff().over("Ω")
+            ).fill_null(start_volume_mapping[col_name])
+        ).alias(f"basin_volume_{col_name}")
+        for col_name in start_volume_mapping.keys()
     )
-    col = list(start_volume_mapping.keys())[0]
-
+    
     new_optimization_results = optimization_results.drop(
-        [f"basin_volume_{col}" for col in start_volume_mapping.keys()]
+        [f"basin_volume_{col_name}" for col_name in start_volume_mapping.keys()]
     )
-    for col in start_volume_mapping.keys():
+    for col_name in start_volume_mapping.keys():
         basin_volume_df = optimization_results.pivot(
-            on="Ω", values=f"basin_volume_{col}", index="T"
+            on="Ω", values=f"basin_volume_{col_name}", index="T"
         )
 
         new_basin_volume_df = (
@@ -482,141 +517,86 @@ def plot_scenario_results(
                 schema=basin_volume_df.drop("T").columns,
             )
             .with_columns(basin_volume_df["T"])
-            .unpivot(variable_name="Ω", value_name=f"basin_volume_{col}", index="T")
+            .unpivot(variable_name="Ω", value_name=f"basin_volume_{col_name}", index="T")
             .with_columns(c("Ω").cast(pl.UInt32))
         )
         new_optimization_results = new_optimization_results.join(
             new_basin_volume_df, on=["T", "Ω"], how="left"
         )
     optimization_results = new_optimization_results
+    
+    
 
-    fig = make_subplots(
-        rows=4,
-        cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.02,
-        x_title="<b>Weeks<b>",
-        row_titles=[
-            "<b>Price [CHF/MWh]<b>",
-            "<b>Discharge volume [m³/s]<b>",
-            "<b>Basin level [%]<b>",
-            "<b>Hydropower [MW]<b>",
-        ],
-    )
-
-    for idx, col_name in enumerate(
-        ["market_price", "discharge_volume_0", "basin_volume_0"]
-    ):
+    for idx, col_name in enumerate(name_mapping.keys()):
 
         data = optimization_results.pivot(index="T", on="Ω", values=col_name)
-
-        for i in data.drop("T").columns:
+        
+        for i, senario in enumerate(data.drop("T").columns):
             fig.add_trace(
                 go.Scatter(
                     x=data["T"].to_list(),
-                    y=data[i].to_list(),
+                    y=data[senario].to_list(),
                     mode="lines",
                     opacity=0.3,
-                    name=f"Scenario {i}",
+                    name=f"Scenarios",
                     line=dict(color="grey"),
-                    showlegend=False,
-                    hovertemplate=f"Scenario {i}<br>"
-                    + "Time: %{x}<br>"
-                    + "Market price: %{y:.2f} €/MWh",
+                    showlegend=showlegend & (i == 0) & (idx==0),
+                    legendgroup="stochastic_scenario",
                 ),
                 row=idx + 1,
                 col=col,
             )
-        if col_name != "basin_volume_0":
-            stat_data = (
-                optimization_results.group_by("T")
-                .agg(
-                    c(col_name).median().alias("median"),
-                    c(col_name).quantile(0.15).alias("lower_quantile"),
-                    c(col_name).quantile(0.85).alias("upper_quantile"),
-                )
-                .sort("T")
+        
+        stat_data = (
+            optimization_results.group_by("T")
+            .agg(
+                c(col_name).median().alias("Median"),
+                c(col_name).quantile(0.15).alias("15th-quantile"),
+                c(col_name).quantile(0.85).alias("85th-quantile"),
             )
+            .sort("T")
+        )
 
-            mean_stat_data = stat_data.with_columns(
-                c("median", "lower_quantile", "upper_quantile")
+        mean_stat_data = stat_data.with_columns(
+            c("Median", "15th-quantile", "85th-quantile")
                 .rolling_mean(window_size=7)
                 .shift(-4)
-            )
+        )
 
-            stat_data = pl.concat(
-                [
-                    stat_data.slice(0, 1),  # first row
-                    mean_stat_data.slice(1, mean_stat_data.height - 2),  # middle rows
-                    stat_data.slice(-1, 1),  # last row
-                ],
-                how="diagonal_relaxed",
-            ).interpolate()
+        stat_data = pl.concat(
+            [
+                stat_data.slice(0, 1),  # first row
+                mean_stat_data.slice(1, mean_stat_data.height - 2),  # middle rows
+                stat_data.slice(-1, 1),  # last row
+            ],
+            how="diagonal_relaxed",
+        ).interpolate()
 
-            for i in stat_data.drop("T").columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=stat_data["T"].to_list(),
-                        y=stat_data[i].to_list(),
-                        mode="lines",
-                        name=f"{i}",
-                        line=dict(color="red" if i == "median" else "orange"),
-                        showlegend=False,
-                    ),
-                    row=idx + 1,
-                    col=col,
-                )
-        else:
-            basin_volume_expectation = basin_volume_expectation.filter(c("B") == 0)
-            fig.add_trace(
+        for stat_name in stat_data.drop("T").columns:
+            fig.add_trace(  
                 go.Scatter(
-                    x=basin_volume_expectation["T"].to_list(),
-                    y=basin_volume_expectation["mean"].to_list(),
+                    x=stat_data["T"].to_list(),
+                    y=stat_data[stat_name].to_list(),
                     mode="lines",
-                    name="mean",
-                    line=dict(color="red"),
-                    showlegend=False,
+                    name=stat_name,
+                    line=dict(color="red" if stat_name == "Median" else "orange"),
+                    showlegend=showlegend & (idx==0),
+                    legendgroup="stochastic_scenario",
                 ),
                 row=idx + 1,
                 col=col,
             )
-            inner_quantiles = basin_volume_expectation.select(
-                cs.contains("quantile_").and_(~cs.contains(f"quantile_0"))
-            ).columns
-            for col in inner_quantiles:
-                fig.add_trace(
-                    go.Scatter(
-                        x=basin_volume_expectation["T"].to_list(),
-                        y=basin_volume_expectation[col].to_list(),
-                        mode="lines",
-                        name=col,
-                        line=dict(color="orange", dash="dash"),
-                        opacity=0.7,
-                        showlegend=False,
-                    ),
-                    row=idx + 1,
-                    col=col,
-                )
-            for col in basin_volume_expectation.select(
-                cs.contains(f"quantile_0")
-            ).columns:
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=basin_volume_expectation["T"].to_list(),
-                        y=basin_volume_expectation[col].to_list(),
-                        mode="lines",
-                        name=col,
-                        line=dict(color="orange"),
-                        showlegend=False,
-                    ),
-                    row=idx + 1,
-                    col=col,
-                )
+        fig.update_traces(
+            selector=dict(legendgroup="stochastic_scenario"),
+            legendgrouptitle_text="<b>Stochastic variables</b>",
+            legendgrouptitle=dict(font=dict(size=20)),
+        )    
+    
 
     hydro_name = optimization_results.select(cs.starts_with("hydro_power")).columns
 
-    for i, col in enumerate(hydro_name):
+    
+    for i, hydro in enumerate(hydro_name):
 
         fig.add_trace(
             go.Bar(
@@ -624,22 +604,49 @@ def plot_scenario_results(
                     "T"
                 ].to_list(),
                 y=optimization_results.filter(c("Ω") == optimization_results["Ω"][0])[
-                    col
+                    hydro
                 ].to_list(),
+                name="Turbine" if i == 0 else "Pump",
                 marker=dict(color=COLORS[i]),
-                showlegend=False,
+                showlegend=showlegend,
+                legendgroup="hydro_power",
                 width=1,
             ),
             row=4,
             col=col,
         )
 
-    fig.update_layout(
-        barmode="relative",
-        margin=dict(t=60, l=65, r=10, b=60),
-        width=1200,  # Set the width of the figure
-        height=300 * 4,
+    fig.update_traces(
+            selector=dict(legendgroup="hydro_power"),
+            legendgrouptitle_text="<b>Hydro power [MW]<b>",
+            legendgrouptitle=dict(font=dict(size=20)),
+        ) 
+    
+    ticks_df = optimization_results.filter(
+        (c("timestamp").dt.month().is_in([2, 4, 6, 8, 10, 12]))
+    ).filter(c("timestamp").dt.month().is_first_distinct())\
+    .with_columns(
+        pl.col("timestamp").dt.strftime("%b").alias("formatted_timestamp")
     )
+
+    
+    for ann in fig.layout.annotations: # type: ignore
+        if ann.text in row_titles:
+            ann.update(font=dict(size=20))  # set your desired size here
+    
+    for i in range(1, len(row_titles) + 1):
+        fig.update_xaxes(
+            tickfont=dict(size=tick_size),
+            ticklabelposition="outside",
+            ticklabelstandoff=10,
+            tickmode = 'array',
+            tickvals = ticks_df["T"].to_list(),
+            ticktext = ticks_df["formatted_timestamp"].to_list(),
+            row=i,
+            col=col,
+        )
+        fig.update_yaxes(tickfont=dict(size=tick_size), row=i, col=col)    
+            
     return fig
 
 
@@ -762,8 +769,8 @@ def plot_first_stage_result(
 
     timestep = results["timestamp"].diff()[1]
     row_titles = [
-        "<b>Market prices [EUR]<b>",
-        "<b>Reservoir level [%]<b>",
+        "<b>Price [Euro]<b>",
+        "<b>Basin level [%]<b>",
         "<b>Hydro power [MW]<b>",
     ]
 
@@ -785,6 +792,7 @@ def plot_first_stage_result(
 
     _, cols = fig._get_subplot_rows_columns()
     showlegend = col == len(cols)
+    
     fig = plot_second_stage_market_price(
         results=results,
         with_ancillary=False,
@@ -818,6 +826,7 @@ def plot_first_stage_result(
     )
 
     for i in range(1, len(row_titles) + 1):
+
         fig.update_xaxes(
             tickfont=dict(size=tick_size),
             ticklabelposition="outside",

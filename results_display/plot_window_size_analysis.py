@@ -93,4 +93,4 @@ fig.update_layout(
         font=dict(size=20)
     )
 )
-fig.write_image(f"{plot_folder}/window_size_analysis.svg", width=width, height=height, scale=1)
+fig.write_image(f"{plot_folder}/window_size_analysis.png", width=width, height=height, scale=1)

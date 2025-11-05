@@ -8,21 +8,21 @@ from examples import *
 
 # %%
 YEAR_LIST = [
-    # 2015,
-    # 2016,
-    # 2017,
-    # 2018,
-    # 2019,
-    # 2020,
-    # 2021,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
     2022,
-    # 2023,
+    2023,
 ]
 MARKET_QUANTILE = {
     "0": (0.5, 0.5),
-    # "10": (0.4, 0.6),
-    # "20": (0.3, 0.7),
-    # "25": (0.25, 0.75),
+    "10": (0.4, 0.6),
+    "20": (0.3, 0.7),
+    "25": (0.25, 0.75),
     "30": (0.2, 0.8)
 }
 
@@ -47,7 +47,7 @@ data_config: DataConfig = DataConfig(
 
 output_folder = f"{file_names["output"]}/market_price_market_quantile_analysis"
 build_non_existing_dirs(output_folder)
-
+mean_result = pl.DataFrame()
 for year in YEAR_LIST:
     data_config.year = year
     plot_folder = f"{file_names["results_plot"]}/market_price_market_quantile_analysis/{year}"
@@ -109,5 +109,20 @@ for year in YEAR_LIST:
     ).pivot(on="hydro_power_mask", index="market_quantile", values="adjusted_income")
 
     print_pl(results_data["adjusted_income"], float_precision=0)
+    
+        
+    col_name = "market_quantile"
+    
+
+    max_val = results_data["adjusted_income"].drop(col_name).to_numpy().max()
+    result_percent = results_data["adjusted_income"].with_columns(
+        pl.all().exclude(col_name)/max_val*100
+    )
+
+    mean_result = mean_result.vstack(result_percent)
 
     dict_to_duckdb(results_data, f"{output_folder}/{year}_results.duckdb")
+    
+mean_result = mean_result.group_by(col_name).agg(pl.all().mean()).sort(col_name)
+print_pl(mean_result, float_precision=1)
+mean_result.write_csv(f"{output_folder}/mean_result.csv")
