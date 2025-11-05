@@ -140,6 +140,7 @@ class StochasticSecondStage(HydroDataManager):
         self.data["H"] = {None: self.hydro_power_plant["H"].to_list()}
         self.data["DH"] = {None: self.hydro_power_plant.filter(c("control") == "discrete")["H"].to_list()}
         self.data["B"] = {None: self.water_basin["B"].to_list()}
+        self.data["Q"] = {None: list(range(self.data_config.nb_quantiles))}
         self.data["UP_B"] = {None: self.upstream_water_basin["B"].to_list()}
         self.data["nb_timestamp_per_ancillary"] = {None: self.data_config.nb_timestamp_per_ancillary}
         self.data["water_factor"] = pl_to_dict_with_tuple(self.water_flow_factor["BH", "water_factor"])
@@ -157,7 +158,7 @@ class StochasticSecondStage(HydroDataManager):
                 (c("rated_power")/c("rated_flow")).alias("rated_alpha")
             ).group_by("upstream_B").agg(c("rated_alpha").mean())
         )
-        self.data["bound_penalty_factor"] = {None: self.data_config.bound_penalty_factor}
+        self.data["bound_penalty_factor"] = dict(zip(range(self.data_config.nb_quantiles), self.data_config.bound_penalty_factor))
         
         if not self.data_config.hydro_participation_to_imbalance:
             self.data["hydro_power_penalty_factor"] = dict(zip(self.data["H"][None], [2]*len(self.data["H"][None] )))
@@ -226,8 +227,25 @@ class StochasticSecondStage(HydroDataManager):
         
         actual_volume = self.basin_volume_expectation.filter(c("sim_idx") == self.sim_idx + 1)
         self.data["expected_end_basin_volume"] = pl_to_dict(actual_volume["B", "mean"])
-        self.data["expected_upper_end_basin_volume"] = pl_to_dict(actual_volume["B", "upper_quantile"])
-        self.data["expected_lower_end_basin_volume"] = pl_to_dict(actual_volume["B", "lower_quantile"])
+        
+        quantile_value = actual_volume.unpivot(
+            on=cs.contains("quantile"),
+            index=["B"],
+            variable_name="quantile",
+            value_name="limit"
+        ).with_columns(
+            c("quantile").str.split("_quantile_").list.to_struct(fields=["direction", "Q"])
+        ).unnest("quantile").with_columns(
+            c("Q").cast(pl.Int32)
+        )
+
+        for direction in ["upper", "lower"]:
+            self.data[f"end_basin_volume_{direction}_limit"] = pl_to_dict_with_tuple(
+                quantile_value.filter(c("direction") == direction)
+                .select(
+                    pl.concat_list("B", "Q"), "limit"
+                )
+            )
 
         self.second_stage_model_instances[self.sim_idx] = self.second_stage_model.create_instance({None: self.data}) # type: ignore
 

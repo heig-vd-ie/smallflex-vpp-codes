@@ -144,8 +144,8 @@ def extract_second_stage_optimization_results(
     return optimization_results, adjusted_income
 
 def extract_third_stage_optimization_results(
-    
-    model_instances: dict[int, pyo.ConcreteModel],
+    second_stage_model_instances: dict[int, pyo.ConcreteModel],
+    third_stage_model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
     data_config: DataConfig
 
@@ -162,15 +162,27 @@ def extract_third_stage_optimization_results(
     )
     optimization_results: pl.DataFrame = pl.DataFrame()
     
-    for key, model_instance in tqdm(model_instances.items(), desc="Extracting third stage results", leave=False):
+    for key, model_instance in tqdm(third_stage_model_instances.items(), desc="Extracting third stage results", leave=False):
+        
+        wind_power = (
+            extract_result_table(second_stage_model_instances[key], "wind_power")
+            .rename({"wind_power": "wind_power_forecast"})
+        )
+
+        pv_power = (
+            extract_result_table(second_stage_model_instances[key], "pv_power")
+            .rename({"pv_power": "pv_power_forecast"})
+        )
+
+        new_optimization_results = (
+            extract_optimization_results(
+                model_instance=model_instance,
+                optimization_results=timeseries.filter(c("sim_idx") == key),
+            ).join(wind_power, on=["T"], how="left")
+            .join(pv_power, on=["T"], how="left")
+        )
         optimization_results = pl.concat(
-            [
-                optimization_results,
-                extract_optimization_results(
-                    model_instance=model_instance,
-                    optimization_results=timeseries.filter(c("sim_idx") == key),
-                )
-            ], how="diagonal_relaxed",
+            [optimization_results, new_optimization_results], how="diagonal_relaxed",
         )
 
     optimization_results = (
@@ -178,12 +190,12 @@ def extract_third_stage_optimization_results(
         .with_columns(
             pl.sum_horizontal(cs.contains("power").and_(~cs.contains("forecast"))).alias("total_power_real"),
         ).with_columns(
-            (c("total_power_real") - c("total_power_forecast")).alias("power_difference"),
+            (c("total_power_real") - c("total_power_forecast")).alias("total_power_diff"),
             (c("total_power_forecast") * c("market_price")).alias("da_income")
         ).with_columns(
-            pl.when(c("power_difference") > 0)
-            .then(c("power_difference") * c("long_imbalance"))
-            .otherwise(c("power_difference") * c("short_imbalance")).alias("imbalance_penalty")
+            pl.when(c("total_power_diff") > 0)
+            .then(c("total_power_diff") * c("long_imbalance"))
+            .otherwise(c("total_power_diff") * c("short_imbalance")).alias("imbalance_penalty")
         )
     )
 
@@ -193,10 +205,10 @@ def extract_third_stage_optimization_results(
     market_price_upper_quantile = optimization_results["market_price"].quantile(data_config.market_price_upper_quantile)
     market_price_lower_quantile = optimization_results["market_price"].quantile(data_config.market_price_lower_quantile)
 
-    rated_alpha = extract_result_table(list(model_instances.values())[-1], "rated_alpha")
-    end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
-    start_basin_volume = extract_result_table(list(model_instances.values())[0], "start_basin_volume")
-    basin_volume_range = extract_result_table(list(model_instances.values())[0], "basin_volume_range")
+    rated_alpha = extract_result_table(list(second_stage_model_instances.values())[-1], "rated_alpha")
+    end_basin_volume = extract_result_table(list(second_stage_model_instances.values())[-1], "end_basin_volume")
+    start_basin_volume = extract_result_table(list(second_stage_model_instances.values())[0], "start_basin_volume")
+    basin_volume_range = extract_result_table(list(second_stage_model_instances.values())[0], "basin_volume_range")
     end_volume_penalty = start_basin_volume\
         .join(end_basin_volume, on="B", how="inner")\
         .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\

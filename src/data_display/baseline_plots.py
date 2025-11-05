@@ -385,7 +385,7 @@ def plot_ancillary_reserve(
 
 
 def plot_battery_soc(
-    results: pl.DataFrame, fig: go.Figure, row: int, showlegend: bool, col: int = 1
+    results: pl.DataFrame, fig: go.Figure, row: int, showlegend: bool, col: int = 1, 
 ) -> go.Figure:
     fig.add_trace(
         go.Scatter(
@@ -416,7 +416,7 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_discharging_power"].to_list(),
-            marker=dict(color=COLORS[0], line=dict(color=COLORS[0])),
+            marker=dict(color=COLORS[2], line=dict(color=COLORS[2])),
             showlegend=showlegend,
             width=timestep.total_seconds() * 1000,
             name="Battery discharging power",
@@ -463,7 +463,7 @@ def plot_scenario_results(
     ]
     if fig is None:
         fig = make_subplots(
-                rows=4,
+                rows=len(row_titles),
                 cols=1,
                 shared_xaxes=True,
                 vertical_spacing=0.02,
@@ -472,7 +472,7 @@ def plot_scenario_results(
         fig.update_layout(
             margin=dict(t=10, l=25, r=8, b=60),
             width=900,  # Set the width of the figure
-            height=300 * 4,
+            height=300 * len(row_titles),
             legend_tracegroupgap=720,
             barmode="overlay",
         )
@@ -978,4 +978,142 @@ def plot_battery_arbitrage(results: pl.DataFrame, tick_size: int = 20) -> go.Fig
         )
         fig.update_yaxes(tickfont=dict(size=tick_size), row=i, col=1)
 
+    return fig
+
+def plot_imbalance_management(
+    results: pl.DataFrame,
+    col: int = 1,
+    showlegend: bool = True,
+    tick_size: int = 20,
+) -> go.Figure:
+    
+    nb_graphs = 7
+    timestep = results["timestamp"][1] - results["timestamp"][0]
+    fig = make_subplots(
+                    rows=nb_graphs,
+                    cols=1,
+                    shared_xaxes=True,
+                    vertical_spacing=0.01,
+                )
+
+
+    market_mapping = {
+        "market_price": "Day Ahead", 
+        "short_imbalance": "Short imbalance",
+        "long_imbalance": "Long imbalance"
+        }
+
+    for i, (col_name, display_name) in enumerate(market_mapping.items(), start=0):
+        
+        fig.add_trace(
+            go.Scatter(
+                x=(results["timestamp"]).to_list(),
+                y=results[col_name].to_list(),
+                legendgroup="market_price",
+                name=display_name,
+                mode="lines",
+                line=dict(color=COLORS[i]),
+                showlegend=showlegend,
+            ),
+            row=1,
+            col=col,
+        )
+
+    fig.update_traces(
+            selector=dict(legendgroup="market_price"),
+            legendgrouptitle_text="<b>Market prices [EUR]<b>",
+            legendgrouptitle=dict(font=dict(size=20)),
+        )
+
+    power_mapping = {
+        "total_power": "<b>Total power [MW]<b>",
+        "wind_power": "<b>Wind power [MW]<b>",
+        "pv_power": "<b>PV power [MW]<b>",
+        "hydro_power": "<b>Hydro power [MW]<b>"
+        }
+
+    for i, (col_name, display_name) in enumerate(power_mapping.items(), start=2):
+        
+        fig.add_trace(
+            go.Bar(
+                x=results["timestamp"].to_list(),
+                y=results[f"{col_name}_forecast"].to_list(),
+                name="Forecast",
+                marker=dict(color=COLORS[0], line=dict(width=0)),
+                showlegend=showlegend,
+                legendgroup=col_name,
+                width=timestep.total_seconds() * 1000
+            ),
+            row=i,
+            col=col,
+        )
+        
+
+        fig.add_trace(
+            go.Bar(
+                x=results["timestamp"].to_list(),
+                y=results.select(c(f"{col_name}_diff").clip(lower_bound=0))[f"{col_name}_diff"].to_list(),
+                name="Power overage" if col_name != "hydro_power" else "Power increase",
+                marker=dict(color=COLORS[2], line=dict(width=0)),
+                showlegend=showlegend,
+                legendgroup=col_name,
+                width=timestep.total_seconds() * 1000
+            ),
+            row=i,
+            col=col,
+        )
+        fig.add_trace(
+            go.Bar(
+                x=results["timestamp"].to_list(),
+                y=results.select(c(f"{col_name}_diff").clip(upper_bound=0))[f"{col_name}_diff"].to_list(),
+                name="Power shortage" if col_name != "hydro_power" else "Power decresease",
+                marker=dict(color=COLORS[1], line=dict(width=0)),
+                showlegend=showlegend,
+                legendgroup=col_name,
+                width=timestep.total_seconds() * 1000
+            ),
+            row=i,
+            col=col,
+        )
+        fig.update_traces(
+            selector=dict(legendgroup=col_name),
+            legendgrouptitle_text=display_name,
+            legendgrouptitle=dict(font=dict(size=20)),
+        )
+        
+    plot_battery_power(
+        timestep=timestep,
+        fig=fig,
+        results=results,
+        row=6,
+        col=col,
+        showlegend=showlegend
+    )
+    plot_battery_soc(
+        fig=fig,
+        results=results,
+        row=7,
+        col=col,
+        showlegend=showlegend
+    )
+
+
+    for i in range(1, nb_graphs + 1):
+        fig.update_xaxes(
+            tickfont=dict(size=tick_size),
+            ticklabelposition="outside",
+            ticklabelstandoff=10,
+            row=i,
+            col=col,
+        )
+        fig.update_yaxes(tickfont=dict(size=tick_size), row=i, col=col)    
+
+    fig.update_layout(
+        margin=dict(t=10, l=25, r=8, b=60),
+        width=1100,  # Set the width of the figure
+        height=170 * nb_graphs,
+        legend_tracegroupgap=45,
+        barmode="stack",
+        legend=dict(font=dict(size=20))
+    )
     return fig
