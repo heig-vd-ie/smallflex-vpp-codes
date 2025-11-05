@@ -33,7 +33,7 @@ if fig_1 is not None:
 # %%
 results_data = {}
 income_list: list = []
-scenario_list = list(product(*[list(IMBALANCE_PARTICIPATION.keys())[:1], list(BATTERY_SIZE.keys())[2:3]]))
+scenario_list = list(product(*[list(IMBALANCE_PARTICIPATION.keys()), list(BATTERY_SIZE.keys())]))
 pbar = tqdm(scenario_list, desc=f"Optimization", position=0)
 for imbalance_participation, battery_size in pbar:
     pbar.set_description(f"Optimization {imbalance_participation} imbalance participation and with {battery_size}")
