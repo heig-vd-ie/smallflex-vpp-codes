@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 from typing import Optional
 
 from general_function import pl_to_dict, build_non_existing_dirs, dict_to_duckdb
+from polars_function import modify_string_col
 from numpy_function import clipped_cumsum
 
 from smallflex_data_schema import SmallflexInputSchema

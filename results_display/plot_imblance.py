@@ -26,9 +26,10 @@ nb_graphs = 7
 col = 1
 showlegend=True
 
-plot_imbalance_management(results, showlegend=True)
+fig = plot_imbalance_management(results, showlegend=True)
 
 plot_folder = ".cache/plots/static_plots/"
 plot_name = "imbalance_management_baseline.png"
 
+fig.show()
 fig.write_image(f"{plot_folder}/{plot_name}", width=fig.layout.width, height=fig.layout.height, scale=1) # type: ignore

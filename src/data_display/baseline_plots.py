@@ -416,10 +416,10 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_discharging_power"].to_list(),
-            marker=dict(color=COLORS[2], line=dict(color=COLORS[2])),
+            marker=dict(color=COLORS[2], line=dict(width=0)),
             showlegend=showlegend,
             width=timestep.total_seconds() * 1000,
-            name="Battery discharging power",
+            name="Discharge",
             legendgroup="battery_power",
         ),
         row=row,
@@ -430,10 +430,10 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_charging_power"].to_list(),
-            marker=dict(color=COLORS[1], line=dict(color=COLORS[1])),
+            marker=dict(color=COLORS[1], line=dict(width=0)),
             showlegend=showlegend,
             width=timedelta(hours=1).total_seconds() * 1000,
-            name="Battery charging power",
+            name="Charge",
             legendgroup="battery_power",
         ),
         row=row,
@@ -1026,7 +1026,7 @@ def plot_imbalance_management(
         )
 
     power_mapping = {
-        "total_power": "<b>Total power [MW]<b>",
+        "total_power": "<b>VPP power [MW]<b>",
         "wind_power": "<b>Wind power [MW]<b>",
         "pv_power": "<b>PV power [MW]<b>",
         "hydro_power": "<b>Hydro power [MW]<b>"
@@ -1053,7 +1053,7 @@ def plot_imbalance_management(
             go.Bar(
                 x=results["timestamp"].to_list(),
                 y=results.select(c(f"{col_name}_diff").clip(lower_bound=0))[f"{col_name}_diff"].to_list(),
-                name="Power overage" if col_name != "hydro_power" else "Power increase",
+                name="Excess power" if col_name != "hydro_power" else "Power increase",
                 marker=dict(color=COLORS[2], line=dict(width=0)),
                 showlegend=showlegend,
                 legendgroup=col_name,
@@ -1066,7 +1066,7 @@ def plot_imbalance_management(
             go.Bar(
                 x=results["timestamp"].to_list(),
                 y=results.select(c(f"{col_name}_diff").clip(upper_bound=0))[f"{col_name}_diff"].to_list(),
-                name="Power shortage" if col_name != "hydro_power" else "Power decresease",
+                name="Power shortage" if col_name != "hydro_power" else "Power decrease",
                 marker=dict(color=COLORS[1], line=dict(width=0)),
                 showlegend=showlegend,
                 legendgroup=col_name,
