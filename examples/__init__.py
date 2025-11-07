@@ -55,25 +55,25 @@ from utility.data_preprocessing import (
     extract_result_table,
     pivot_result_table,
 )
-
+from data_display.baseline_plots import *
 from config import settings
 
 PV_POWER_MASK = (c("sub_basin") == "Greisse_4") & (c("start_height") == 2050)
 WIND_POWER_MASK = (c("sub_basin") == "Greisse_3") & (c("start_height") == 3050)
 
 HYDROPOWER_MASK = {
-    "discrete_turbine": c("name").is_in(["Aegina discrete turbine"]),
-    "discrete_turbine_pump": c("name").is_in(["Aegina discrete turbine", "Aegina pump"]),
-    "continuous_turbine_pump": c("name").is_in(["Aegina continuous turbine", "Aegina pump"]),
+    "DT": c("name").is_in(["Aegina discrete turbine"]),
+    "DTP": c("name").is_in(["Aegina discrete turbine", "Aegina pump"]),
+    "CTP": c("name").is_in(["Aegina continuous turbine", "Aegina pump"]),
 }
 BATTERY_SIZE = {
-    "no_battery": {"rated_power": 0, "capacity": 0},
-    "battery_1_MW_2MWh": {"rated_power": 1, "capacity": 2},
-    "battery_2_MW_4MWh": {"rated_power": 2, "capacity": 4},
-    "battery_5_MW_10MWh": {"rated_power": 5, "capacity": 10},
-    "battery_1_MW_4MWh": {"rated_power": 1, "capacity": 4},
-    "battery_2_MW_8MWh": {"rated_power": 2, "capacity": 8},
-    "battery_5_MW_20MWh": {"rated_power": 5, "capacity": 20},
+    "0MW": {"rated_power": 0, "capacity": 0},
+    "1MW_2MWh": {"rated_power": 1, "capacity": 2},
+    "2MW_4MWh": {"rated_power": 2, "capacity": 4},
+    "5MW_10MWh": {"rated_power": 5, "capacity": 10},
+    "1MW_4MWh": {"rated_power": 1, "capacity": 4},
+    "2MW_8MWh": {"rated_power": 2, "capacity": 8},
+    "5MW_20MWh": {"rated_power": 5, "capacity": 20},
 }
 
 IMBALANCE_PARTICIPATION = {
@@ -81,7 +81,7 @@ IMBALANCE_PARTICIPATION = {
     "without_hydro": False,
 }
 
-MARKET = ["da_energy", "primary_ancillary"]
+MARKET = ["DA", "FRC"]
 
 def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
     with pl.Config(

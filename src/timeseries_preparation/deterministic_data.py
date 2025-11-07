@@ -11,6 +11,7 @@ def process_timeseries_data(
     basin_index_mapping: dict[str, int],
     pv_power_mask: Optional[pl.Expr] = None,
     wind_power_mask: Optional[pl.Expr] = None,
+    fcr_factor: float = 1,
 ) -> pl.DataFrame:
     """Process the second stage stochastic data.
 
@@ -64,7 +65,7 @@ def process_timeseries_data(
         .filter(c("market") == data_config.ancillary_market)
         .filter(c("source") == data_config.market_source)
         .sort("timestamp")
-    ).select("timestamp", c("avg").alias("ancillary_market_price"))
+    ).select("timestamp", (c("avg") * fcr_factor).alias("ancillary_market_price"))
 
     pv_production: pl.DataFrame = smallflex_input_schema.weather_historical.filter(
         pv_power_mask

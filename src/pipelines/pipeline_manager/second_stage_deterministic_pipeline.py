@@ -39,7 +39,8 @@ def second_stage_deterministic_pipeline(
         data_config=data_config,
         basin_index_mapping=pl_to_dict(deterministic_second_stage.water_basin["uuid", "B"]),
         pv_power_mask=pv_power_mask,
-        wind_power_mask=wind_power_mask
+        wind_power_mask=wind_power_mask,
+        fcr_factor=data_config.fcr_factor
     )
 
     deterministic_second_stage.set_timeseries(timeseries=timeseries)

@@ -197,56 +197,55 @@ r"""
 # 2.5.2 Power deviation constraint  ####################################################################################
 ########################################################################################################################
 def total_power_deviation_constraint_with_battery(model, t):
-    return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
-        model.total_power_forecast[t] -
+    return model.total_power_increase[t] - model.total_power_decrease[t] == (
+        
         (   
             model.pv_power_measured[t] +
             model.wind_power_measured[t] -
             model.battery_charging_power[t] +
             model.battery_discharging_power[t] +
             sum(model.hydro_power[t, h] for h in model.H)
-        )
+        ) -  model.total_power_forecast[t]
     )
 
 
 def total_power_deviation_constraint_without_battery(model, t):
-    return model.total_power_deviation_positive[t] - model.total_power_deviation_negative[t]  == (
-        model.total_power_forecast[t] -
+    return model.total_power_increase[t] - model.total_power_decrease[t]  == (
         (   
             model.pv_power_measured[t] +
             model.wind_power_measured[t] +
             sum(model.hydro_power[t, h] for h in model.H)
-        )
+        ) -  model.total_power_forecast[t]
     )
 
 def hydro_power_deviation_constraint(model, t, h):
     return (
-        model.hydro_power_deviation_positive[t, h] - model.hydro_power_deviation_negative[t, h] + 
-        model.hydro_power_forced_deviation_positive[t, h] - model.hydro_power_forced_deviation_negative[t, h] == 
-        model.hydro_power_forecast[t, h] - model.hydro_power[t, h]
+        model.hydro_power_increase[t, h] - model.hydro_power_decrease[t, h] +
+        model.hydro_power_forced_increase[t, h] - model.hydro_power_forced_decrease[t, h] ==
+        model.hydro_power[t, h] - model.hydro_power_forecast[t, h]
     )
 
 
 def vpp_forecast_long_constraint_without_battery(model, t):
     return (
-        sum(model.hydro_power_deviation_negative[t, h] for h in model.H)
-        <= model.big_m * model.vpp_forecast_long[t]
+        sum(model.hydro_power_increase[t, h] for h in model.H)
+        <= model.big_m * (1 -  model.vpp_long[t])
     )
 def vpp_forecast_short_constraint_without_battery(model, t):
     return (
-        sum(model.hydro_power_deviation_positive[t, h] for h in model.H)
-        <= model.big_m *(1 -  model.vpp_forecast_long[t])
+        sum(model.hydro_power_decrease[t, h] for h in model.H)
+        <= model.big_m *model.vpp_long[t]
     )
 
 def vpp_forecast_long_constraint_with_battery(model, t):
     return (
-        sum(model.hydro_power_deviation_negative[t, h] for h in model.H) + model.battery_discharging_power[t] 
-        <= model.big_m * model.vpp_forecast_long[t]
+        sum(model.hydro_power_increase[t, h] for h in model.H) + model.battery_discharging_power[t]
+        <= model.big_m * (1 -  model.vpp_long[t])
     )
 def vpp_forecast_short_constraint_with_battery(model, t):
     return (
-        sum(model.hydro_power_deviation_positive[t, h] for h in model.H) + model.battery_charging_power[t]
-        <= model.big_m *(1 -  model.vpp_forecast_long[t])
+        sum(model.hydro_power_decrease[t, h] for h in model.H) + model.battery_charging_power[t]
+        <= model.big_m *model.vpp_long[t]
     )
 ########################################################################################################################
 # 2.5.2 Water basin volume evolution ###################################################################################

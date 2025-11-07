@@ -12,9 +12,9 @@ def third_stage_parameters(model):
     
 
     model.spilled_factor = pyo.Param(model.B, default=1) # m^3
-    model.battery_penalty_factor = pyo.Param(default=0.01) 
-    model.hydro_power_penalty_factor = pyo.Param(model.H, default=0.05)
-    model.hydro_power_forced_penalty_factor = pyo.Param(model.H, default=1)
+    model.battery_penalty_factor = pyo.Param(default=0.1) 
+    model.hydro_power_penalty_factor = pyo.Param(model.H, default=0.2)
+    model.hydro_power_forced_penalty_factor = pyo.Param(model.H, default=2)
     
     model.min_basin_volume = pyo.Param(model.BS, default=0) # m^3
     model.max_basin_volume = pyo.Param(model.BS, default=0) # m^3
@@ -33,6 +33,8 @@ def third_stage_parameters(model):
     model.discharge_volume_measured = pyo.Param(model.T, model.B, default=0) # m^3
     model.hydro_power_forecast = pyo.Param(model.T, model.H, default=0) # MW
     model.total_power_forecast = pyo.Param(model.T, default=0) # MW
+    
+    model.vpp_long = pyo.Param(model.T, default=0) #MW/(Mm^3/s)
     
     model.battery_capacity = pyo.Param() # MWh
     model.battery_rated_power = pyo.Param() # MW

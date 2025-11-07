@@ -12,14 +12,13 @@ def third_stage_variables(model, with_battery: bool = True):
     model.basin_state = pyo.Var(model.T, model.BS, within=pyo.Binary)
     model.flow_by_state = pyo.Var(model.T, model.HS, within=pyo.NonNegativeReals)
     model.discrete_hydro_on = pyo.Var(model.T, model.DH, within=pyo.Binary)
-    model.vpp_forecast_long = pyo.Var(model.T, within=pyo.Binary)
 
-    model.hydro_power_deviation_positive = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
-    model.hydro_power_deviation_negative = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
-    model.hydro_power_forced_deviation_positive = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
-    model.hydro_power_forced_deviation_negative = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
-    model.total_power_deviation_positive = pyo.Var(model.T, within=pyo.NonNegativeReals)
-    model.total_power_deviation_negative = pyo.Var(model.T, within=pyo.NonNegativeReals)
+    model.hydro_power_increase = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
+    model.hydro_power_decrease= pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
+    model.hydro_power_forced_increase = pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
+    model.hydro_power_forced_decrease= pyo.Var(model.T, model.H, within=pyo.NonNegativeReals)
+    model.total_power_increase = pyo.Var(model.T, within=pyo.NonNegativeReals)
+    model.total_power_decrease= pyo.Var(model.T, within=pyo.NonNegativeReals)
     
     if with_battery:
         model.battery_charging_power = pyo.Var(model.T, within=pyo.NonNegativeReals, initialize=0)  # MW

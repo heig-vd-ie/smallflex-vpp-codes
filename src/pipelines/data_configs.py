@@ -36,6 +36,7 @@ class MarketConfig:
     market_country: str = "CH"
     market: str = "DA"
     ancillary_market: str = "FCR-cap"
+    fcr_factor: float = 1
     market_source: str= "swissgrid"
     market_price_lower_quantile: float = 0.35
     market_price_upper_quantile: float = 0.65

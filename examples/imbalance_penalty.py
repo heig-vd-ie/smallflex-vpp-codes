@@ -15,7 +15,7 @@ data_config: DataConfig = DataConfig(
     market_price_window_size=56,
     with_ancillary=True
 )
-hydro_power_mask = HYDROPOWER_MASK["continuous_turbine_pump"]
+hydro_power_mask = HYDROPOWER_MASK["CTP"]
 output_folder = f"{file_names["output"]}/imbalance"
 plot_folder = f"{file_names["results_plot"]}/imbalance"
 build_non_existing_dirs(output_folder)

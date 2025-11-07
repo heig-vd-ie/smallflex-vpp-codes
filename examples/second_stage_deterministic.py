@@ -9,8 +9,8 @@ from examples import *
 # %%
 YEAR_LIST = [
     2021, 
-    2022, 
-    2023
+    # 2022, 
+    # 2023
 ]
 # %%
 file_names: dict[str, str] = json.load(open(settings.FILE_NAMES))  # type: ignore
@@ -28,7 +28,7 @@ data_config: DataConfig = DataConfig(
 
 # %%
 for market in MARKET:
-    output_folder = f"{file_names["output"]}/{market}"
+    output_folder = f"{file_names["output"]}/second_stage_deterministic_{market}"
     build_non_existing_dirs(output_folder)
     data_config.with_ancillary = market == "primary_ancillary"
     for year in YEAR_LIST:
@@ -40,7 +40,7 @@ for market in MARKET:
         results_data = {}
         basin_volume_expectation: pl.DataFrame = pl.DataFrame()
         income_list: list = []
-        scenario_list = list(product(*[HYDROPOWER_MASK.keys(), list(BATTERY_SIZE.keys())[0:1]]))
+        scenario_list = list(product(*[HYDROPOWER_MASK.keys(), list(BATTERY_SIZE.keys())]))
         pbar = tqdm(scenario_list, desc=f"Year {year} scenarios", position=0)
         for hydro_power_mask, battery_size in pbar:
             pbar.set_description(
@@ -72,8 +72,6 @@ for market in MARKET:
                     smallflex_input_schema=smallflex_input_schema,
                     basin_volume_expectation=basin_volume_expectation,
                     hydro_power_mask=HYDROPOWER_MASK[hydro_power_mask],
-                    pv_power_mask=PV_POWER_MASK,
-                    wind_power_mask=WIND_POWER_MASK,
                 )
             )
 

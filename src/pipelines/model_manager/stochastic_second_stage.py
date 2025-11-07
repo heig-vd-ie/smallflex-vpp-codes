@@ -55,6 +55,7 @@ class StochasticSecondStage(HydroDataManager):
         self.third_stage_model_instances: dict[int, pyo.ConcreteModel] = {}
         self.timeseries_forecast: pl.DataFrame
         self.timeseries_measurement: pl.DataFrame
+        self.vpp_long : pl.DataFrame
         self.discharge_volume: pl.DataFrame
         self.market_price_quantiles: pl.DataFrame
         
@@ -103,6 +104,22 @@ class StochasticSecondStage(HydroDataManager):
                 pl.concat_list("T","F").alias("TF")
             )
         )
+        
+        renewable_power_forecast = self.timeseries_forecast.select(
+            "timestamp", "T", "sim_idx",
+            pl.sum_horizontal(cs.contains("wind_power") | cs.contains("pv_power")).alias("renewable_power_forecast"),
+        )
+
+        renewable_power_measured =self.timeseries_measurement.select(
+            "timestamp", 
+            pl.sum_horizontal(cs.contains("wind_power") | cs.contains("pv_power")).alias("renewable_power_measured"),
+        )
+        self.vpp_long = renewable_power_forecast.join(
+            renewable_power_measured, on="timestamp", how="left"
+        ).with_columns(
+            (c("renewable_power_measured") > c("renewable_power_forecast")).cast(pl.Int32).alias("vpp_long")
+        )
+
         
         self.nb_sims = self.timeseries_forecast["sim_idx"].max() + 1 # type: ignore
         
@@ -261,6 +278,11 @@ class StochasticSecondStage(HydroDataManager):
         
         self.data["pv_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]])
         self.data["wind_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]])
+        
+        self.data["vpp_long"] = pl_to_dict(
+            self.vpp_long.filter(c("sim_idx") == self.sim_idx)[["T", "vpp_long"]]
+        )
+
 
         self.third_stage_model_instances[self.sim_idx] = self.third_stage_model.create_instance({None: self.data}) # type: ignore
 
