@@ -30,7 +30,6 @@ def second_stage_deterministic_pipeline(
     deterministic_second_stage: DeterministicSecondStage = DeterministicSecondStage(
         data_config=data_config,
         smallflex_input_schema=smallflex_input_schema,
-        basin_volume_expectation=basin_volume_expectation,
         hydro_power_mask=hydro_power_mask
     )
 
@@ -40,10 +39,9 @@ def second_stage_deterministic_pipeline(
         basin_index_mapping=pl_to_dict(deterministic_second_stage.water_basin["uuid", "B"]),
         pv_power_mask=pv_power_mask,
         wind_power_mask=wind_power_mask,
-        fcr_factor=data_config.fcr_factor
     )
 
-    deterministic_second_stage.set_timeseries(timeseries=timeseries)
+    deterministic_second_stage.set_timeseries(timeseries=timeseries, basin_volume_expectation=basin_volume_expectation,)
 
     deterministic_second_stage.solve_every_models()
 

@@ -54,9 +54,9 @@ PV_POWER_MASK = (c("sub_basin") == "Greisse_4") & (c("start_height") == 2050)
 WIND_POWER_MASK = (c("sub_basin") == "Greisse_3") & (c("start_height") == 3050)
 
 HYDROPOWER_MASK = {
-    "discrete_turbine": c("name").is_in(["Aegina discrete turbine"]),
-    "discrete_turbine_pump": c("name").is_in(["Aegina discrete turbine", "Aegina pump"]),
-    "continuous_turbine_pump": c("name").is_in(["Aegina continuous turbine", "Aegina pump"]),
+    "DT": c("name").is_in(["Aegina discrete turbine"]),
+    "DTP": c("name").is_in(["Aegina discrete turbine", "Aegina pump"]),
+    "DTC": c("name").is_in(["Aegina continuous turbine", "Aegina pump"]),
 }
 BATTERY_SIZE = {
     "no_battery": {"rated_power": 0, "capacity": 0},

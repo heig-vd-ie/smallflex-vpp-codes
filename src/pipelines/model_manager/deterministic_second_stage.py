@@ -33,7 +33,6 @@ class DeterministicSecondStage(HydroDataManager):
         self,
         data_config: DataConfig,
         smallflex_input_schema: SmallflexInputSchema,
-        basin_volume_expectation: pl.DataFrame,
         hydro_power_mask: Optional[pl.Expr] = None,
         
     ):
@@ -61,11 +60,8 @@ class DeterministicSecondStage(HydroDataManager):
         self.hydro_flex_power: dict[str, float] = {}
         self.sim_basin_state: pl.DataFrame
         self.sim_hydro_power_state: pl.DataFrame
-
-        self.basin_volume_expectation: pl.DataFrame = basin_volume_expectation.with_columns(
-            (c("T")//data_config.first_stage_nb_timestamp).alias("sim_idx")
-        ).sort("sim_idx", "B").unique(subset=["sim_idx", "B"], keep="last")
-                
+        self.basin_volume_expectation: pl.DataFrame
+        
         self.start_basin_volume: pl.DataFrame = self.water_basin["B", "start_volume"]
         self.sim_start_battery_soc: float = self.data_config.start_battery_soc
         self.non_optimal_solution_idx: list[int] = []
@@ -74,7 +70,7 @@ class DeterministicSecondStage(HydroDataManager):
             .select("B", pl.lit(0).alias("volume_deviation"))
 
 
-    def set_timeseries(self, timeseries: pl.DataFrame):
+    def set_timeseries(self, timeseries: pl.DataFrame, basin_volume_expectation: pl.DataFrame):
         self.timeseries = (
             split_timestamps_per_sim(
                 data=timeseries.sort("timestamp").with_row_index(name="T"),
@@ -104,6 +100,10 @@ class DeterministicSecondStage(HydroDataManager):
             c("market_price_lower_quantile").mean().alias("market_price_lower_quantile"),
             c("market_price_upper_quantile").mean().alias("market_price_upper_quantile"),
         ).sort("sim_idx")
+
+        self.basin_volume_expectation: pl.DataFrame = basin_volume_expectation.with_columns(
+            (c("T")//self.data_config.first_stage_nb_timestamp).alias("sim_idx")
+        ).sort("sim_idx", "B").unique(subset=["sim_idx", "B"], keep="last")
 
     def generate_constant_parameters(self):
         

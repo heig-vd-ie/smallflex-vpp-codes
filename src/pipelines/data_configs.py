@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
+from typing import Literal
 import pyomo.environ as pyo
 from numpy.random import default_rng, Generator
 
@@ -36,7 +37,7 @@ class MarketConfig:
     market_country: str = "CH"
     market: str = "DA"
     ancillary_market: str = "FCR-cap"
-    fcr_factor: float = 1
+    fcr_value: Literal["avg", "max"] = "avg"
     market_source: str= "swissgrid"
     market_price_lower_quantile: float = 0.35
     market_price_upper_quantile: float = 0.65

@@ -124,7 +124,10 @@ def extract_second_stage_optimization_results(
     end_basin_volume = extract_result_table(list(model_instances.values())[-1], "end_basin_volume")
     start_basin_volume = extract_result_table(list(model_instances.values())[0], "start_basin_volume")
     basin_volume_range = extract_result_table(list(model_instances.values())[0], "basin_volume_range")
-    end_volume_penalty = start_basin_volume\
+    
+
+    
+    end_volume_penalty_df = start_basin_volume\
         .join(end_basin_volume, on="B", how="inner")\
         .join(rated_alpha, left_on="B", right_on="UP_B", how="inner")\
         .join(basin_volume_range, on="B", how="inner")\
@@ -137,8 +140,10 @@ def extract_second_stage_optimization_results(
                 .then(market_price_lower_quantile)
                 .otherwise(market_price_upper_quantile)
             ).alias("end_volume_penalty")
-        )["end_volume_penalty"].to_numpy().sum()
-    # print(f"End volume penalty: {end_volume_penalty:.2f} EUR")
+        )
+
+    end_volume_penalty = end_volume_penalty_df["end_volume_penalty"].sum()
+
     adjusted_income = income + end_volume_penalty
 
     return optimization_results, adjusted_income
