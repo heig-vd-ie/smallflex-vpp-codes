@@ -7,8 +7,10 @@ from numpy.random import default_rng, Generator
 
 @dataclass
 class BatteryConfig:
-    battery_capacity: float = 4 # MWh
-    battery_rated_power: float = 1 # MW
+    battery_capacity: float = 0 # MWh
+    battery_rated_power: float = 0 # MW
+    imbalance_battery_capacity: float = 0 # MWh
+    imbalance_battery_rated_power: float = 0 # MW
     battery_efficiency: float = 0.95
     start_battery_soc: float = 0.5 # %
     
@@ -37,7 +39,7 @@ class MarketConfig:
     market_country: str = "CH"
     market: str = "DA"
     ancillary_market: str = "FCR-cap"
-    fcr_value: Literal["avg", "max"] = "avg"
+    fcr_value: Literal["avg", "max"] = "max"
     market_source: str= "swissgrid"
     market_price_lower_quantile: float = 0.35
     market_price_upper_quantile: float = 0.65

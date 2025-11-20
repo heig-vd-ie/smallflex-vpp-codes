@@ -349,7 +349,7 @@ def battery_soc_evolution_constraint(model, t):
                 model.battery_charging_power[t - 1] * model.battery_efficiency
                 - model.battery_discharging_power[t - 1] / model.battery_efficiency
             )
-            * model.nb_hours / model.battery_capacity
+            * model.nb_hours / model.imbalance_battery_capacity
         )
 
 def end_battery_soc_constraint(model):
@@ -361,22 +361,15 @@ def end_battery_soc_constraint(model):
                 - model.battery_discharging_power[t_max] / model.battery_efficiency
             )
             * model.nb_hours
-            / model.battery_capacity
+            / model.imbalance_battery_capacity
         )
 
 def battery_max_charging_power_constraint(model, t):
-    return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
+    return model.battery_charging_power[t] <= model.imbalance_battery_rated_power * model.battery_in_charge[t]
 
 def battery_max_discharging_power_constraint(model, t):
-    return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
+    return model.battery_discharging_power[t] <= model.imbalance_battery_rated_power * (1 - model.battery_in_charge[t])
 
-
-
-# def battery_in_charge_constraint(model, t):
-#     return model.battery_charging_power[t] <= model.battery_rated_power * model.battery_in_charge[t]
-
-# def battery_in_discharge_constraint(model, t):
-    #     return model.battery_discharging_power[t] <= model.battery_rated_power * (1 - model.battery_in_charge[t])
 
 
 

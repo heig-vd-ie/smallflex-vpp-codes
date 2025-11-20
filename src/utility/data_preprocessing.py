@@ -450,3 +450,15 @@ def compute_battery_power(
     battery_power = battery_charging_power + battery_discharging_power
     
     return battery_power, battery_soc
+
+def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
+    with pl.Config(
+        set_tbl_rows=1000,
+        set_tbl_cols=500,
+        set_tbl_width_chars=50000,
+        set_thousands_separator="'",
+        set_float_precision=float_precision,
+        set_tbl_hide_column_data_types=True,
+        set_tbl_hide_dataframe_shape=True
+    ):
+        print(data)

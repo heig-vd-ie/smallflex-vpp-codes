@@ -36,8 +36,8 @@ def third_stage_parameters(model):
     
     model.vpp_long = pyo.Param(model.T, default=0) #MW/(Mm^3/s)
     
-    model.battery_capacity = pyo.Param() # MWh
-    model.battery_rated_power = pyo.Param() # MW
+    model.imbalance_battery_capacity = pyo.Param() # MWh
+    model.imbalance_battery_rated_power = pyo.Param() # MW
     model.battery_efficiency = pyo.Param() # -
     model.start_battery_soc = pyo.Param() # %
     

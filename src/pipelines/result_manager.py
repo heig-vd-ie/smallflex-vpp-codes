@@ -152,7 +152,6 @@ def extract_third_stage_optimization_results(
     second_stage_model_instances: dict[int, pyo.ConcreteModel],
     third_stage_model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
-    data_config: DataConfig
 
 ) ->  tuple[pl.DataFrame, float, float]:
 
@@ -178,13 +177,28 @@ def extract_third_stage_optimization_results(
             extract_result_table(second_stage_model_instances[key], "pv_power")
             .rename({"pv_power": "pv_power_forecast"})
         )
-
+        if hasattr(second_stage_model_instances[key], "battery_charging_power"):
+            battery_charging = (
+                extract_result_table(second_stage_model_instances[key], "battery_charging_power")
+                .with_columns(
+                    c("battery_charging_power") * -1
+                )
+            )
+        else:
+            battery_charging = pl.DataFrame(schema=[("T", pl.Int64)])
+        if hasattr(second_stage_model_instances[key], "battery_discharging_power"):
+            battery_discharging = extract_result_table(second_stage_model_instances[key], "battery_discharging_power")
+        else:
+            battery_discharging = pl.DataFrame(schema=[("T", pl.Int64)])
+        
         new_optimization_results = (
             extract_optimization_results(
                 model_instance=model_instance,
                 optimization_results=timeseries.filter(c("sim_idx") == key),
             ).join(wind_power, on=["T"], how="left")
             .join(pv_power, on=["T"], how="left")
+            .join(battery_charging, on=["T"], how="left")
+            .join(battery_discharging, on=["T"], how="left")
         )
         optimization_results = pl.concat(
             [optimization_results, new_optimization_results], how="diagonal_relaxed",

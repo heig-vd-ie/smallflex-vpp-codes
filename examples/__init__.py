@@ -49,11 +49,10 @@ from utility.data_preprocessing import (
     generate_clean_timeseries,
     generate_datetime_index,
     generate_clean_timeseries_scenarios,
-)
-from utility.data_preprocessing import (
     split_timestamps_per_sim,
     extract_result_table,
     pivot_result_table,
+    print_pl
 )
 from data_display.baseline_plots import *
 from config import settings
@@ -81,19 +80,9 @@ IMBALANCE_PARTICIPATION = {
     "without_hydro": False,
 }
 
-MARKET = ["DA", "FRC"]
+MARKET = ["DA", "FRC", "Imbalance"]
 
-def print_pl(data: pl.DataFrame, float_precision: Optional[int]= None) -> None:
-    with pl.Config(
-        set_tbl_rows=10000,
-        set_tbl_cols=500,
-        set_tbl_width_chars=50000,
-        set_thousands_separator="'",
-        set_float_precision=float_precision,
-        set_tbl_hide_column_data_types=True,
-        set_tbl_hide_dataframe_shape=True
-    ):
-        print(data)
+
 
 
 os.chdir(os.getcwd().replace("/src", ""))

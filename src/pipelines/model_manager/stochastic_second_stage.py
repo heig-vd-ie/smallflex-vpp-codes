@@ -36,7 +36,7 @@ class StochasticSecondStage(HydroDataManager):
         smallflex_input_schema: SmallflexInputSchema,
         basin_volume_expectation: pl.DataFrame,
         hydro_power_mask: Optional[pl.Expr] = None,
-        
+        with_ancillary: bool = False,
     ):
     
         super().__init__(
@@ -46,9 +46,12 @@ class StochasticSecondStage(HydroDataManager):
         )
         self.data_config = data_config
 
-        self.second_stage_model: pyo.AbstractModel = deterministic_second_stage_model(with_battery=False, with_ancillary=False)
+        self.second_stage_model: pyo.AbstractModel = deterministic_second_stage_model(
+            with_battery=data_config.battery_capacity > 0, 
+            with_ancillary=data_config.with_ancillary)
         
-        self.third_stage_model: pyo.AbstractModel = third_stage_model(with_battery=data_config.battery_capacity > 0)
+        self.third_stage_model: pyo.AbstractModel = third_stage_model(
+            with_battery=data_config.imbalance_battery_capacity > 0)
 
 
         self.second_stage_model_instances: dict[int, pyo.ConcreteModel] = {}
@@ -118,7 +121,7 @@ class StochasticSecondStage(HydroDataManager):
             renewable_power_measured, on="timestamp", how="left"
         ).with_columns(
             (c("renewable_power_measured") > c("renewable_power_forecast")).cast(pl.Int32).alias("vpp_long")
-        )
+        ).unique("T")
 
         
         self.nb_sims = self.timeseries_forecast["sim_idx"].max() + 1 # type: ignore
@@ -165,6 +168,9 @@ class StochasticSecondStage(HydroDataManager):
             self.upstream_water_basin.select("B", pl.lit(self.data_config.spilled_factor).alias("spilled_factor")))
         self.data["battery_capacity"] = {None: self.data_config.battery_capacity}
         self.data["battery_rated_power"] = {None: self.data_config.battery_rated_power}
+        self.data["imbalance_battery_capacity"] = {None: self.data_config.imbalance_battery_capacity}
+        self.data["imbalance_battery_rated_power"] = {None: self.data_config.imbalance_battery_rated_power}
+        
         self.data["battery_efficiency"] = {None: self.data_config.battery_efficiency}
 
         self.data["basin_volume_range"] = pl_to_dict(
@@ -278,6 +284,9 @@ class StochasticSecondStage(HydroDataManager):
         
         self.data["pv_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]])
         self.data["wind_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]])
+        
+        # if self.sim_idx >= 364:
+        #     print(self.vpp_long.filter(c("sim_idx") == self.sim_idx).filter(c("T").is_duplicated()))
         
         self.data["vpp_long"] = pl_to_dict(
             self.vpp_long.filter(c("sim_idx") == self.sim_idx)[["T", "vpp_long"]]
