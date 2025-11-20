@@ -36,7 +36,6 @@ class StochasticSecondStage(HydroDataManager):
         smallflex_input_schema: SmallflexInputSchema,
         basin_volume_expectation: pl.DataFrame,
         hydro_power_mask: Optional[pl.Expr] = None,
-        with_ancillary: bool = False,
     ):
     
         super().__init__(
@@ -77,6 +76,8 @@ class StochasticSecondStage(HydroDataManager):
         
         self.start_basin_volume: pl.DataFrame = self.water_basin["B", "start_volume"]
         self.sim_start_battery_soc: float = self.data_config.start_battery_soc
+        self.sim_start_imbalance_battery_soc: float = self.data_config.start_battery_soc
+        
         self.non_optimal_solution_idx: list[int] = []
         self.unfeasible_solution: list[int] = []
         self.volume_deviation: pl.DataFrame = self.upstream_water_basin\
@@ -210,7 +211,7 @@ class StochasticSecondStage(HydroDataManager):
             ))}
         
         self.data["start_basin_volume"] = pl_to_dict(self.start_basin_volume)
-        
+        self.data["start_battery_soc"] = {None: self.sim_start_battery_soc}
         
         self.data["total_positive_flex_power"] = {None: self.hydro_flex_power["total_positive_flex_power"]}
         self.data["total_negative_flex_power"] = {None: self.hydro_flex_power["total_negative_flex_power"]}
@@ -274,7 +275,7 @@ class StochasticSecondStage(HydroDataManager):
 
     def generate_third_stage_model_instance(self):
         
-        self.data["start_battery_soc"] = {None: self.sim_start_battery_soc}
+        self.data["start_battery_soc"] = {None: self.sim_start_imbalance_battery_soc}
         
         self.data["discharge_volume_measured"] = pl_to_dict_with_tuple(
             self.discharge_volume.filter(c("sim_idx") == self.sim_idx)[["TB", "discharge_volume_measured"]]
@@ -379,5 +380,7 @@ class StochasticSecondStage(HydroDataManager):
                 self.non_optimal_solution_idx.append(self.sim_idx)
             if self.data_config.battery_capacity > 0:
                 self.sim_start_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
+            if self.data_config.imbalance_battery_capacity > 0:
+                self.sim_start_imbalance_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
             self.start_basin_volume = extract_result_table(self.third_stage_model_instances[self.sim_idx], "end_basin_volume").rename({"end_basin_volume": "start_volume"})
 
