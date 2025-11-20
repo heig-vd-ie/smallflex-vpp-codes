@@ -379,7 +379,7 @@ class StochasticSecondStage(HydroDataManager):
             if solution["Solver"][0]["Status"] == "aborted":
                 self.non_optimal_solution_idx.append(self.sim_idx)
             if self.data_config.battery_capacity > 0:
-                self.sim_start_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
+                self.sim_start_battery_soc = self.second_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
             if self.data_config.imbalance_battery_capacity > 0:
                 self.sim_start_imbalance_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
             self.start_basin_volume = extract_result_table(self.third_stage_model_instances[self.sim_idx], "end_basin_volume").rename({"end_basin_volume": "start_volume"})
