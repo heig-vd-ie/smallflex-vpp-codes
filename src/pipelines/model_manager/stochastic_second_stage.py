@@ -122,7 +122,8 @@ class StochasticSecondStage(HydroDataManager):
             renewable_power_measured, on="timestamp", how="left"
         ).with_columns(
             (c("renewable_power_measured") > c("renewable_power_forecast")).cast(pl.Int32).alias("vpp_long")
-        ).unique("T")
+        )
+ 
 
         
         self.nb_sims = self.timeseries_forecast["sim_idx"].max() + 1 # type: ignore
@@ -235,6 +236,11 @@ class StochasticSecondStage(HydroDataManager):
         self.data["market_price"] = pl_to_dict(
             self.timeseries_forecast.filter(c("sim_idx") == self.sim_idx)[["T", "market_price"]]
         )
+        self.data["ancillary_market_price"] = pl_to_dict(
+            self.timeseries_forecast.filter(c("sim_idx") == self.sim_idx).filter(c("F").is_first_distinct())
+            [["F", "ancillary_market_price"]]
+        )
+        
         self.data["pv_power"] = pl_to_dict(
             self.timeseries_forecast.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]]
         )
@@ -285,9 +291,6 @@ class StochasticSecondStage(HydroDataManager):
         
         self.data["pv_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "pv_power"]])
         self.data["wind_power_measured"] = pl_to_dict(self.timeseries_measurement.filter(c("sim_idx") == self.sim_idx)[["T", "wind_power"]])
-        
-        # if self.sim_idx >= 364:
-        #     print(self.vpp_long.filter(c("sim_idx") == self.sim_idx).filter(c("T").is_duplicated()))
         
         self.data["vpp_long"] = pl_to_dict(
             self.vpp_long.filter(c("sim_idx") == self.sim_idx)[["T", "vpp_long"]]
@@ -379,7 +382,11 @@ class StochasticSecondStage(HydroDataManager):
             if solution["Solver"][0]["Status"] == "aborted":
                 self.non_optimal_solution_idx.append(self.sim_idx)
             if self.data_config.battery_capacity > 0:
-                self.sim_start_battery_soc = self.second_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
+                self.sim_start_battery_soc += (
+                    self.second_stage_model_instances[self.sim_idx].end_battery_soc_overage.extract_values()[None] - # type: ignore
+                    self.second_stage_model_instances[self.sim_idx].end_battery_soc_shortage.extract_values()[None] # type: ignore
+                )
+            
             if self.data_config.imbalance_battery_capacity > 0:
                 self.sim_start_imbalance_battery_soc = self.third_stage_model_instances[self.sim_idx].end_battery_soc.extract_values()[None] # type: ignore
             self.start_basin_volume = extract_result_table(self.third_stage_model_instances[self.sim_idx], "end_basin_volume").rename({"end_basin_volume": "start_volume"})

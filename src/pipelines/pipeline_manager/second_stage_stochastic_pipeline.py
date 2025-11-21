@@ -37,7 +37,7 @@ def second_stage_stochastic_pipeline(
         smallflex_input_schema=smallflex_input_schema,
         data_config=data_config)
     
-    print_pl(timeseries_forecast)
+    # print_pl(timeseries_forecast)
 
     stochastic_second_stage.set_timeseries(timeseries_forecast=timeseries_forecast, timeseries_measurement=timeseries_measurement)
 
@@ -47,6 +47,7 @@ def second_stage_stochastic_pipeline(
         second_stage_model_instances=stochastic_second_stage.second_stage_model_instances,
         third_stage_model_instances=stochastic_second_stage.third_stage_model_instances,
         timeseries=stochastic_second_stage.timeseries_measurement,
+        data_config=data_config
     )
     if plot_result:
         fig = plot_second_stage_result(

@@ -167,12 +167,12 @@ def process_second_stage_timeseries_stochastic_data(
         .pivot(on="direction", values="avg", index="timestamp")
         .sort("timestamp")
         .with_columns(
-            (c("timestamp") + pl.duration(days=2 * 365)).alias("timestamp"),
+            (c("timestamp") + pl.duration(days=1 * 365)).alias("timestamp"),
         )
     )
 
     market_price = market_price.select(
-        c("timestamp") + pl.duration(days=2 * 365), 
+        c("timestamp") + pl.duration(days=1 * 365), 
         "market_price", "market_price_lower_quantile", "market_price_upper_quantile"
     )
     ancillary_market_price: pl.DataFrame = (
@@ -183,7 +183,7 @@ def process_second_stage_timeseries_stochastic_data(
             .filter(c("source") == data_config.market_source)
             .sort("timestamp")
         ).select(
-            c("timestamp") + pl.duration(days=2 * 365),         
+            c("timestamp") + pl.duration(days=1 * 365),
             (c(data_config.fcr_value)).alias("ancillary_market_price")
         )
 

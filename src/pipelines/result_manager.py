@@ -3,6 +3,7 @@ from polars import col as c
 from polars import selectors as cs
 from datetime import timedelta
 import pyomo.environ as pyo
+from typing import Optional
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
 from pipelines.data_configs import DataConfig
@@ -19,13 +20,15 @@ from utility.data_preprocessing import (
 def extract_optimization_results(
     model_instance: pyo.ConcreteModel,
     optimization_results: pl.DataFrame,
+    attribute_list: Optional[list[str]] = None,
 ) -> pl.DataFrame:
-    attribute_list = [
-        "total_power_forecast", "basin_volume", "discharge_volume", 
-        "spilled_volume", "flow", "hydro_power_forecast", "hydro_power", "hydro_ancillary_reserve",
-        "battery_charging_power", "battery_discharging_power", "battery_soc", 
-        "battery_ancillary_reserve", "pv_power","pv_power_measured", "wind_power", "wind_power_measured"
-    ]
+    if attribute_list is None:
+        attribute_list = [
+            "total_power_forecast", "basin_volume", "discharge_volume", 
+            "spilled_volume", "flow", "hydro_power_forecast", "hydro_power", "hydro_ancillary_reserve",
+            "battery_charging_power", "battery_discharging_power", "battery_soc", 
+            "battery_ancillary_reserve", "pv_power","pv_power_measured", "wind_power", "wind_power_measured"
+        ]
     for attribute in attribute_list:
         if hasattr(model_instance, attribute):
             data = extract_result_table(
@@ -152,6 +155,7 @@ def extract_third_stage_optimization_results(
     second_stage_model_instances: dict[int, pyo.ConcreteModel],
     third_stage_model_instances: dict[int, pyo.ConcreteModel],
     timeseries: pl.DataFrame,
+    data_config: DataConfig
 
 ) ->  tuple[pl.DataFrame, float, float]:
 
@@ -166,40 +170,30 @@ def extract_third_stage_optimization_results(
     )
     optimization_results: pl.DataFrame = pl.DataFrame()
     
-    for key, model_instance in tqdm(third_stage_model_instances.items(), desc="Extracting third stage results", leave=False):
+    for key in tqdm(third_stage_model_instances.keys(), desc="Extracting third stage results", leave=False):
         
-        wind_power = (
-            extract_result_table(second_stage_model_instances[key], "wind_power")
-            .rename({"wind_power": "wind_power_forecast"})
+        attribute_list= [ 
+            "wind_power", "pv_power", "battery_charging_power", 
+            "battery_discharging_power", "hydro_ancillary_reserve",
+            "battery_ancillary_reserve"]
+        
+        second_stage_optimization_result = extract_optimization_results(
+            model_instance=second_stage_model_instances[key],
+            optimization_results=timeseries.filter(c("sim_idx") == key),
+            attribute_list = attribute_list
+        ).rename({
+            "wind_power": "wind_power_forecast",
+            "pv_power": "pv_power_forecast",
+        })
+        third_stage_optimization_result = extract_optimization_results(
+            model_instance=third_stage_model_instances[key],
+            optimization_results=timeseries.filter(c("sim_idx") == key)[["T"]],
         )
-
-        pv_power = (
-            extract_result_table(second_stage_model_instances[key], "pv_power")
-            .rename({"pv_power": "pv_power_forecast"})
-        )
-        if hasattr(second_stage_model_instances[key], "battery_charging_power"):
-            battery_charging = (
-                extract_result_table(second_stage_model_instances[key], "battery_charging_power")
-                .with_columns(
-                    c("battery_charging_power") * -1
-                )
-            )
-        else:
-            battery_charging = pl.DataFrame(schema=[("T", pl.Int64)])
-        if hasattr(second_stage_model_instances[key], "battery_discharging_power"):
-            battery_discharging = extract_result_table(second_stage_model_instances[key], "battery_discharging_power")
-        else:
-            battery_discharging = pl.DataFrame(schema=[("T", pl.Int64)])
         
         new_optimization_results = (
-            extract_optimization_results(
-                model_instance=model_instance,
-                optimization_results=timeseries.filter(c("sim_idx") == key),
-            ).join(wind_power, on=["T"], how="left")
-            .join(pv_power, on=["T"], how="left")
-            .join(battery_charging, on=["T"], how="left")
-            .join(battery_discharging, on=["T"], how="left")
-        )
+            second_stage_optimization_result
+            ).join(third_stage_optimization_result, on="T", how="left")
+    
         optimization_results = pl.concat(
             [optimization_results, new_optimization_results], how="diagonal_relaxed",
         )
@@ -217,6 +211,10 @@ def extract_third_stage_optimization_results(
             .otherwise(c("total_power_diff") * c("short_imbalance")).alias("imbalance_penalty")
         )
     )
+    if optimization_results.select(cs.contains("ancillary_reserve")).shape[1] > 0:
+        optimization_results = optimization_results.with_columns(
+            (pl.sum_horizontal(cs.contains("ancillary_reserve")) * c("ancillary_market_price") / data_config.nb_timestamp_per_ancillary).alias("ancillary_income")
+        )
 
     income = optimization_results.select(cs.contains("income")).to_numpy().sum()
     imbalance_penalty = optimization_results["imbalance_penalty"].sum()

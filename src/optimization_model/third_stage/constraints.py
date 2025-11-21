@@ -365,10 +365,9 @@ def end_battery_soc_constraint(model):
         )
 
 def battery_max_charging_power_constraint(model, t):
-    return model.battery_charging_power[t] <= model.imbalance_battery_rated_power * model.battery_in_charge[t]
-
+    return model.battery_charging_power[t] <= model.imbalance_battery_rated_power
 def battery_max_discharging_power_constraint(model, t):
-    return model.battery_discharging_power[t] <= model.imbalance_battery_rated_power * (1 - model.battery_in_charge[t])
+    return model.battery_discharging_power[t] <= model.imbalance_battery_rated_power
 
 
 

@@ -30,7 +30,7 @@ data_config: DataConfig = DataConfig(
 for market in MARKET[-1:]:
     output_folder = f"{file_names["output"]}/second_stage_deterministic_{market}"
     build_non_existing_dirs(output_folder)
-    data_config.with_ancillary = market == "primary_ancillary"
+    data_config.with_ancillary = market == "FRC"
     for year in YEAR_LIST:
         data_config.year = year
         plot_folder = f"{file_names["results_plot"]}/{market}/{year}"

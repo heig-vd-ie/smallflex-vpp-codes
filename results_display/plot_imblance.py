@@ -9,7 +9,7 @@ from results_display import *
 
 file_name = ".cache/output/imbalance/results.duckdb"
 
-results: pl.DataFrame = duckdb_to_dict(file_name)["with_hydro_2MW_4MWh"]
+results: pl.DataFrame = duckdb_to_dict(file_name)["CTP_Imbalance_2MW_8MWh"]
 date = pl.datetime(2025, 10, 10, time_zone="UTC")
 
 results = results.filter(c("timestamp").is_between(date, date + timedelta(days=14)))

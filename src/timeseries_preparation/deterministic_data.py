@@ -64,7 +64,7 @@ def process_timeseries_data(
         .filter(c("market") == data_config.ancillary_market)
         .filter(c("source") == data_config.market_source)
         .sort("timestamp")
-    ).select("timestamp", (c(data_config.fcr_value)).alias("ancillary_market_price"))
+    ).select("timestamp", (c("max")).alias("ancillary_market_price"))
 
     pv_production: pl.DataFrame = smallflex_input_schema.weather_historical.filter(
         pv_power_mask

@@ -15,9 +15,10 @@ file_names: dict[str, str] = json.load(open(settings.FILE_NAMES)) # type: ignore
 smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=file_names["duckdb_input"])
 
 data_config: DataConfig = DataConfig(
-    nb_scenarios=20,
+    nb_scenarios=200,
     first_stage_max_powered_flow_ratio=0.75,
     market_price_window_size=56,
+    total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max(), # type: ignore
 )
 
 output_folder = f"{file_names["output"]}/imbalance"
@@ -32,7 +33,7 @@ results_data = {}
 income_list: list = []
 scenario_list = list(map(
     lambda x: list(x[0]) + [x[1]], 
-    list(product(*[zip(HYDROPOWER_MASK_LIST, MARKET_LIST), list(BATTERY_SIZE.keys())]))
+    list(product(*[list(zip(HYDROPOWER_MASK_LIST, MARKET_LIST)), list(BATTERY_SIZE.keys())]))
     ))
 
 pbar = tqdm(scenario_list, desc=f"Optimization", position=0)
@@ -48,7 +49,7 @@ for hydro, market, battery_size in pbar:
         data_config.imbalance_battery_rated_power = 0
         data_config.imbalance_battery_capacity = 0
     elif market == "Imbalance":
-        data_config.with_ancillary = True
+        data_config.with_ancillary = False
         data_config.hydro_participation_to_imbalance = True
         data_config.battery_rated_power = 0
         data_config.battery_capacity = 0
@@ -69,8 +70,6 @@ for hydro, market, battery_size in pbar:
             smallflex_input_schema=smallflex_input_schema,
             hydro_power_mask=HYDROPOWER_MASK[hydro],
         )
-
-    
 
     second_stage_optimization_results, adjusted_income, fig_2 = second_stage_stochastic_pipeline(
             data_config=data_config,
