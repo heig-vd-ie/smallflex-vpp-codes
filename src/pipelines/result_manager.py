@@ -174,8 +174,9 @@ def extract_third_stage_optimization_results(
         
         attribute_list= [ 
             "wind_power", "pv_power", "battery_charging_power", 
-            "battery_discharging_power", "hydro_ancillary_reserve",
-            "battery_ancillary_reserve"]
+            "battery_discharging_power", "battery_soc", 
+            "hydro_ancillary_reserve", "battery_ancillary_reserve"
+        ]
         
         second_stage_optimization_result = extract_optimization_results(
             model_instance=second_stage_model_instances[key],

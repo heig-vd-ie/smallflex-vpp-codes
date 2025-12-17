@@ -58,9 +58,10 @@ def plot_second_stage_market_price(
     fig: go.Figure,
     row: int,
     showlegend: bool,
+    with_quantiles: bool = True,
     col: int = 1,
 ) -> go.Figure:
-    if not results.select(cs.contains("quantile")).is_empty():
+    if with_quantiles and (not results.select(cs.contains("quantile")).is_empty()):
         fig.add_trace(
             go.Scatter(
                 x=results["timestamp"].to_list(),
@@ -110,9 +111,9 @@ def plot_second_stage_market_price(
                 x=(results["timestamp"]).to_list(),
                 y=results["ancillary_market_price"].to_list(),
                 legendgroup="market_price",
-                name="FCR weighted average bides",
+                name="FCR clear price",
                 mode="lines",
-                line=dict(color="darkgreen"),
+                line=dict(color=COLORS[1]),
                 showlegend=showlegend,
             ),
             row=row,
@@ -416,7 +417,7 @@ def plot_battery_power(
         go.Bar(
             x=results["timestamp"].to_list(),
             y=results["battery_discharging_power"].to_list(),
-            marker=dict(color=COLORS[2], line=dict(width=0)),
+            marker=dict(color=COLORS[0], line=dict(width=0)),
             showlegend=showlegend,
             width=timestep.total_seconds() * 1000,
             name="Discharge",

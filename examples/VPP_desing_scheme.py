@@ -33,7 +33,7 @@ results_data = {}
 income_list: list = []
 scenario_list = list(map(
     lambda x: list(x[0]) + [x[1]], 
-    list(product(*[list(zip(HYDROPOWER_MASK_LIST, MARKET_LIST)), list(BATTERY_SIZE.keys())]))
+    list(product(*[list(zip(HYDROPOWER_MASK_LIST, MARKET_LIST))[3:4], list(BATTERY_SIZE.keys())[4:5]]))
     ))
 
 pbar = tqdm(scenario_list, desc=f"Optimization", position=0)

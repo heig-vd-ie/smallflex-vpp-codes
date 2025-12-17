@@ -78,7 +78,7 @@ venv-activate-and-poetry-use-install: SHELL:=/bin/bash
 venv-activate-and-poetry-use-install: ## Activate venv and install packages
 	@echo "Activating virtual environment and installing packages..."
 	@test -d .venv || make _venv
-	@bash --rcfile <(echo '. ~/.bashrc; . .venv/bin/activate; echo "You are now in a subshell with venv activated."; make poetry-use; make poetry-install; . scripts/enable-direnv.sh') -i
+	@bash --rcfile <(echo '. ~/.bashrc; . .venv/bin/activate; echo "You are now in a subshell with venv activated."; make poetry-use; make poetry-install; make nbstripout-install; . scripts/enable-direnv.sh') -i
 
 install-vscode-extensions: ## Install Visual Studio Code extensions
 	@echo "Installing Visual Studio Code extensions..."
@@ -126,3 +126,7 @@ build-wheel: ## Build the Python wheel for this project based on pyproject.toml 
 fetch-wheel: ## Fetch the Python wheel from a remote URL [<organization> <repo> <name-of-wheel> <version> <dest_dir>]
 	@echo "Fetching Python wheel..."
 	@bash scripts/fetch-wheel.sh $(ORG) $(REPO) $(BRANCH) $(VERSION) $(DEST_DIR)
+
+nbstripout-install:
+	@echo "Installing nbstripout git filter..."
+	nbstripout --install
