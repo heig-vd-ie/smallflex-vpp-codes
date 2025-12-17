@@ -137,9 +137,9 @@ def objective(model):
         sum(
             model.market_price[t, ω]
             * model.nb_hours[t]
-            * sum(model.hydro_power[t, h] for h in model.H)
+            * sum(model.hydro_power[t, ω, h] for h in model.H)
             for t in model.T
-        )
+        )  
         for ω in model.Ω
     )
 
@@ -160,7 +160,7 @@ def basin_volume_evolution(model, t, ω, b):
                 model.discharge_volume[t - 1, ω, b]
                 - model.spilled_volume[t - 1, ω, b]
                 + model.nb_sec * model.nb_hours[t - 1]
-                * sum(model.water_factor[b, h] * model.flow[t - 1, h] for h in model.H)
+                * sum(model.water_factor[b, h] * model.flow[t - 1, ω, h] for h in model.H)
             ) / model.basin_volume_range[b]
         )
 
@@ -172,15 +172,15 @@ def basin_end_volume_constraint(model, ω, b):
             model.discharge_volume[t_max, ω, b]
             - model.spilled_volume[t_max, ω, b]
             + model.nb_sec * model.nb_hours[t_max]
-            * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
+            * sum(model.water_factor[b, h] * model.flow[t_max, ω, h] for h in model.H)
         ) / model.basin_volume_range[b]
     )
 
-def max_diff_basin_end_volume_constraint(model, b):
-    return sum(model.end_basin_volume[b, ω] - model.start_basin_volume[b] for ω in model.Ω) <= model.max_basin_volume[b]/100
+def max_diff_basin_end_volume_constraint(model, ω, b):
+    return model.end_basin_volume[b, ω] - model.start_basin_volume[b] <= model.max_basin_volume[b]/100
 
-def min_diff_basin_end_volume_constraint(model, b):
-    return sum(model.end_basin_volume[b, ω] - model.start_basin_volume[b] for ω in model.Ω) >= -model.max_basin_volume[b]/100
+def min_diff_basin_end_volume_constraint(model, ω, b):
+    return model.end_basin_volume[b, ω] - model.start_basin_volume[b] >= -model.max_basin_volume[b]/100
 
 ########################################################################################################################
 # 1.5.3. Water basin state #############################################################################################
@@ -201,13 +201,12 @@ def basin_volume_min_constraint(model, t, ω, b):
 ########################################################################################################################
 
 
-def max_flow_constraint(model, t, h):
+def max_flow_constraint(model, t, ω, h):
     return (
-        model.flow[t, h] <= model.max_powered_flow_ratio * model.max_flow[h]
+        model.flow[t, ω, h] <= model.max_powered_flow_ratio * model.max_flow[h]
     )
 
 
 
-def hydro_power_constraint(model, t, h):
-    return model.hydro_power[t, h] == model.flow[t, h] * model.alpha[h]
-
+def hydro_power_constraint(model, t, ω, h):
+    return model.hydro_power[t, ω, h] == model.flow[t, ω, h] * model.alpha[h]

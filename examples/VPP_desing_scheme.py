@@ -1,18 +1,12 @@
 #%%
-import os
-os.chdir(os.getcwd().replace("/src", ""))
-
 from examples import *
 
 
 # %%
-
-
 HYDROPOWER_MASK_LIST =["DT", "DTP", "CTP", "CTP", "CTP"]
 MARKET_LIST = ['DA', 'DA', 'DA', 'FCR', 'Imbalance']
 
-file_names: dict[str, str] = json.load(open(settings.FILE_NAMES)) # type: ignore
-smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=file_names["duckdb_input"])
+smallflex_input_schema: SmallflexInputSchema = SmallflexInputSchema().duckdb_to_schema(file_path=settings.input_files.duckdb_input)
 
 data_config: DataConfig = DataConfig(
     nb_scenarios=200,
@@ -21,8 +15,8 @@ data_config: DataConfig = DataConfig(
     total_scenarios_synthesized=smallflex_input_schema.discharge_volume_synthesized["scenario"].max(), # type: ignore
 )
 
-output_folder = f"{file_names["output"]}/imbalance"
-plot_folder = f"{file_names["results_plot"]}/imbalance"
+output_folder = f"{settings.output_files.output}/imbalance"
+plot_folder = f"{settings.output_files.results_plot}/imbalance"
 build_non_existing_dirs(output_folder)
 build_non_existing_dirs(plot_folder)
 

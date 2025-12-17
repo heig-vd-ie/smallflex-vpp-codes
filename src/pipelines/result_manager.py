@@ -3,7 +3,7 @@ from polars import col as c
 from polars import selectors as cs
 from datetime import timedelta
 import pyomo.environ as pyo
-from typing import Optional
+from typing import Optional, Literal
 from numpy_function import clipped_cumsum
 from general_function import pl_to_dict
 from pipelines.data_configs import DataConfig
@@ -25,7 +25,11 @@ def extract_optimization_results(
     if attribute_list is None:
         attribute_list = [
             "total_power_forecast", "basin_volume", "discharge_volume", 
-            "spilled_volume", "flow", "hydro_power_forecast", "hydro_power", "hydro_ancillary_reserve",
+            "spilled_volume", 
+            "flow", 
+            "hydro_power_forecast", 
+            "hydro_power", 
+            "hydro_ancillary_reserve",
             "battery_charging_power", "battery_discharging_power", "battery_soc", 
             "battery_ancillary_reserve", "pv_power","pv_power_measured", "wind_power", "wind_power_measured"
         ]
@@ -40,16 +44,20 @@ def extract_optimization_results(
             if "Ω" in data.columns:
                 col_list.append("Ω")
 
-            if attribute in ["basin_volume", "discharge_volume", "spilled_volume"]:
+            if attribute in [
+                "basin_volume", "discharge_volume", "spilled_volume",
+                "flow", "hydro_power", "hydro_power_forecast"
+                ]:
+                pivot_col: Literal["B", "H"] = "B" if "B" in data.columns else "H"
                 data = pivot_result_table(
-                        df=data, on="B", index=col_list, values=attribute
-                    )
-            elif attribute in ["flow", "hydro_power", "hydro_power_forecast"]:
-                data = pivot_result_table(
-                    df=data, on="H", index=["T"], values=attribute
-                )
+                        df=data, on=pivot_col, index=col_list, values=attribute
+                    )   
+            # elif attribute in ["flow", "hydro_power", "hydro_power_forecast"]:
+            #     data = pivot_result_table(
+            #         df=data, on="H", index=["T"], values=attribute
+            #     )
             elif attribute == "battery_charging_power":
-                data = data.with_columns(
+                data: pl.DataFrame = data.with_columns(
                     c("battery_charging_power") * -1
                 )
             

@@ -12,12 +12,11 @@ def stochastic_first_stage_constraints(model):
     model.basin_volume_max_constraint = pyo.Constraint(model.T, model.Ω, model.B, rule=basin_volume_max_constraint)
     model.basin_volume_min_constraint = pyo.Constraint(model.T, model.Ω, model.B, rule=basin_volume_min_constraint)
 
-    model.max_flow_constraint = pyo.Constraint(model.T, model.H, rule=max_flow_constraint)
-    model.hydro_power_constraint = pyo.Constraint(model.T, model.H, rule=hydro_power_constraint)
-    model.min_diff_basin_end_volume_constraint = pyo.Constraint(model.B, rule=min_diff_basin_end_volume_constraint)
-    model.max_diff_basin_end_volume_constraint = pyo.Constraint(model.B, rule=max_diff_basin_end_volume_constraint)
-    # model.positive_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=positive_hydro_hydro_ancillary_reserve_constraint)
-    # model.negative_hydro_hydro_ancillary_reserve_constraint = pyo.Constraint(model.T, rule=negative_hydro_hydro_ancillary_reserve_constraint)
+    model.max_flow_constraint = pyo.Constraint(model.T, model.Ω, model.H, rule=max_flow_constraint)
+
+    model.min_diff_basin_end_volume_constraint = pyo.Constraint(model.Ω, model.B, rule=min_diff_basin_end_volume_constraint)
+    model.max_diff_basin_end_volume_constraint = pyo.Constraint(model.Ω, model.B, rule=max_diff_basin_end_volume_constraint)
+
 
     return model
 

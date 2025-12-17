@@ -4402,6 +4402,28 @@ docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,<8.2)", "pytest-mock", "pytest-mypy-testing"]
 
 [[package]]
+name = "typed-settings"
+version = "25.3.0"
+description = "Typed settings based on attrs classes"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "typed_settings-25.3.0-py3-none-any.whl", hash = "sha256:8fe578c84ae2e44f6e8bdde256d2449fbff45f47dca3c4092aeee03900efc12c"},
+    {file = "typed_settings-25.3.0.tar.gz", hash = "sha256:865eb52c3184f467705645a1e58db9d719e08b9d7957448a2ad8cbbc22ed21a6"},
+]
+
+[package.extras]
+all = ["attrs (>=23.1)", "cattrs (>=24.1)", "click (>=7)", "click-option-group", "jinja2", "pydantic (>=2) ; python_version < \"3.14\"", "pydantic (>=2.12.0a1) ; python_version >= \"3.14\""]
+attrs = ["attrs (>=23.1)"]
+cattrs = ["cattrs (>=24.1)"]
+click = ["click (>=7)"]
+dotenv = ["python-dotenv"]
+jinja = ["jinja2"]
+option-groups = ["click (>=7)", "click-option-group"]
+pydantic = ["pydantic (>=2) ; python_version < \"3.14\"", "pydantic (>=2.12.0a1) ; python_version >= \"3.14\""]
+
+[[package]]
 name = "typing-extensions"
 version = "4.15.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -4543,4 +4565,4 @@ internal = ["smallflex-data-schema", "utility-functions"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12,<3.14"
-content-hash = "d2529376c979dc3a0a7f03969474c7177f04c4a7c1c4e980082e967d9f40792e"
+content-hash = "94497df5ff6d67cd0d3341b804e4a68c398893802b862775e3377377b917ccaf"

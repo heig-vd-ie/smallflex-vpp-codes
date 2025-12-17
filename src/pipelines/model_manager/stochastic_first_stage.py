@@ -37,8 +37,7 @@ class StochasticFirstStage(HydroDataManager):
         
         self.discharge_volume: pl.DataFrame
         self.timeseries: pl.DataFrame
-        self.unpowered_factor_price : pl.DataFrame
-                
+        self.price_quantile : pl.DataFrame        
 
     def set_timeseries(self, timeseries: pl.DataFrame):
         min_timestamp = timeseries["timestamp"].min()
@@ -71,6 +70,10 @@ class StochasticFirstStage(HydroDataManager):
             ).with_columns(
                 pl.concat_list(["T", "Ω", "B"]).alias("TΩB")
             )
+        )
+        self.price_quantile = self.timeseries.group_by("Ω").agg(
+            c("market_price").quantile(0.85).alias("upper_quantile"), 
+            c("market_price").quantile(0.15).alias("lower_quantile")
         )
 
     def create_model_instance(self):
@@ -113,6 +116,14 @@ class StochasticFirstStage(HydroDataManager):
         data["alpha"] = pl_to_dict(
             self.first_stage_hydro_power_state.select("H", "alpha")
         )
+        print(data["alpha"])
+        data["price_lower_quantile"] = pl_to_dict(
+            self.price_quantile.select("Ω", "lower_quantile")
+        )
+        data["price_upper_quantile"] = pl_to_dict(
+            self.price_quantile.select("Ω", "upper_quantile")
+        )
+
 
         # Timeseries
         

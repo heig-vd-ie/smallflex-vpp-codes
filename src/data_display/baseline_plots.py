@@ -460,7 +460,6 @@ def plot_scenario_results(
         "<b>Price [Euro]<b>",
         "<b>Discharge volume [m³/day]<b>",
         "<b>Basin level [%]<b>",
-        "<b>Hydro power [MW]<b>",
     ]
     if fig is None:
         fig = make_subplots(
@@ -596,32 +595,6 @@ def plot_scenario_results(
 
     hydro_name = optimization_results.select(cs.starts_with("hydro_power")).columns
 
-    
-    for i, hydro in enumerate(hydro_name):
-
-        fig.add_trace(
-            go.Bar(
-                x=optimization_results.filter(c("Ω") == optimization_results["Ω"][0])[
-                    "T"
-                ].to_list(),
-                y=optimization_results.filter(c("Ω") == optimization_results["Ω"][0])[
-                    hydro
-                ].to_list(),
-                name="Turbine" if i == 0 else "Pump",
-                marker=dict(color=COLORS[i]),
-                showlegend=showlegend,
-                legendgroup="hydro_power",
-                width=1,
-            ),
-            row=4,
-            col=col,
-        )
-
-    fig.update_traces(
-            selector=dict(legendgroup="hydro_power"),
-            legendgrouptitle_text="<b>Hydro power [MW]<b>",
-            legendgrouptitle=dict(font=dict(size=20)),
-        ) 
     
     ticks_df = optimization_results.filter(
         (c("timestamp").dt.month().is_in([2, 4, 6, 8, 10, 12]))

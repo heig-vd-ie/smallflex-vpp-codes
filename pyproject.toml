@@ -23,6 +23,7 @@ ipywidgets = "^8.1.7"
 rich = "10.13.0"
 kaleido = "^1.1.0"
 nbstripout = "^0.8.2"
+typed-settings = "^25.3.0"
 
 
 [build-system]

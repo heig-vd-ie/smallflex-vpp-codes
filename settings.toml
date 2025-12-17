@@ -1,2 +1,7 @@
-FILE_NAMES = "data/file_names.json"
-LOG_LEVEL = "INFO"
+[smallflex.input_files]
+duckdb_input= ".cache/input/small_flex_input_data.db"
+
+[smallflex.output_files]
+baseline=  ".cache/output/baseline"
+output=  ".cache/output"
+results_plot=  ".cache/plot"

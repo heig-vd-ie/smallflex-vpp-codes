@@ -1,5 +1,5 @@
 import os
-os.chdir(os.getcwd() + "/src")
+
 import json
 import numpy as np
 import polars as pl
@@ -81,9 +81,3 @@ IMBALANCE_PARTICIPATION = {
 }
 
 MARKET = ["DA", "FRC", "Imbalance"]
-
-
-
-
-os.chdir(os.getcwd().replace("/src", ""))
-os.environ["GRB_LICENSE_FILE"] = os.environ["HOME"] + "/gurobi_license/gurobi.lic"

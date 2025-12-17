@@ -25,6 +25,8 @@ def first_stage_parameters(model):
     # model.total_positive_flex_power = pyo.Param(default=0)
     # model.total_negative_flex_power = pyo.Param(default=0)
     model.alpha = pyo.Param(model.H, default=0)  #MW/(m^3/s)
+    model.price_lower_quantile= pyo.Param(model.Ω) # CHF/MWh
+    model.price_upper_quantile= pyo.Param(model.Ω) # CHF/MWh
 
     model.unpowered_factor_price_pos= pyo.Param(model.Ω, model.B) # CHF/m3
     model.unpowered_factor_price_neg = pyo.Param(model.Ω, model.B) # CHF/m3
