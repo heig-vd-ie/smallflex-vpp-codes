@@ -43,7 +43,7 @@ class MarketConfig:
     market_source: str= "swissgrid"
     market_price_lower_quantile: float = 0.35
     market_price_upper_quantile: float = 0.65
-    market_price_window_size: int = 182 # 28 days
+    market_price_window_size: int = 56 # in days
     with_ancillary: bool = True
 
 @dataclass

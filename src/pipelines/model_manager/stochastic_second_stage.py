@@ -328,7 +328,9 @@ class StochasticSecondStage(HydroDataManager):
 
         second_stage_basin_state = pl.concat([
                 second_stage_basin_state, 
-                self.water_basin.filter(~c("B").is_in(self.basin_volume_table["B"]))["B", "volume_max", "volume_min"]
+                self.water_basin.filter(~c("B").is_in(self.basin_volume_table["B"])).select(
+                    "B", pl.lit(1.0).alias("volume_max"), pl.lit(0.0).alias("volume_min") 
+                )    
             ], how="diagonal_relaxed")
 
         self.sim_basin_state = second_stage_basin_state.with_row_index(name="S").with_columns(

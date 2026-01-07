@@ -49,7 +49,7 @@ def process_second_stage_timeseries_stochastic_data(
             c("da").alias("market_price"),
             pl.lit(lower_quantile).alias("market_price_lower_quantile"),
             pl.lit(upper_quantile).alias("market_price_upper_quantile"),
-            c("fcr").alias("ancillary_market_price"),
+            c("fcr").forward_fill().alias("ancillary_market_price"),
         ).slice(0, 365*24)
         if "short_imbalance" not in custom_market_prices.columns:
             market_prices = market_prices.with_columns(   
@@ -211,9 +211,6 @@ def process_market_prices_data(
             window_size=data_config.market_price_window_size  * 24).alias("market_price_upper_quantile"),
     )
     
-    # da_market_price = da_market_price.select(
-    #     "market_price", "market_price_lower_quantile", "market_price_upper_quantile"
-    # )
 
     imbalance_price: pl.DataFrame = (
         smallflex_input_schema.market_price_measurement.filter(
