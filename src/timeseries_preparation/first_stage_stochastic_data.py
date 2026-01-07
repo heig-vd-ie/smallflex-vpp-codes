@@ -12,16 +12,10 @@ def process_first_stage_timeseries_data(
     smallflex_input_schema: SmallflexInputSchema,
     data_config: DataConfig,
     water_basin_mapping: dict[str, int],
+    custom_market_prices: Optional[pl.DataFrame] = None,
 ) -> pl.DataFrame:
 
-    market_price_synthesized = (
-        smallflex_input_schema.market_price_synthesized.filter(
-            c("market") == data_config.market
-        )
-        .filter(c("scenario").is_in(data_config.scenario_list))
-        .filter(pl.struct(["timestamp", "scenario"]).is_first_distinct())
-        .select("timestamp", c("scenario").alias("Ω"), "market_price")
-    )
+    
 
     discharge_volume_synthesized = (
         smallflex_input_schema.discharge_volume_synthesized.filter(
@@ -44,9 +38,31 @@ def process_first_stage_timeseries_data(
         "Ω",
         pl.all().exclude(["timestamp", "Ω"]).name.prefix("discharge_volume_"),
     )
+    if custom_market_prices is  None:
+        market_price_synthesized = (
+            smallflex_input_schema.market_price_synthesized.filter(
+                c("market") == data_config.market
+            )
+            .filter(c("scenario").is_in(data_config.scenario_list))
+            .filter(pl.struct(["timestamp", "scenario"]).is_first_distinct())
+            .select("timestamp", c("scenario").alias("Ω"), "market_price")
+        )
 
-    timeseries_synthesized = market_price_synthesized.join(
-        pl.DataFrame(discharge_volume_synthesized), on=["timestamp", "Ω"], how="left"
-    )
+        timeseries_synthesized = market_price_synthesized.join(
+            pl.DataFrame(discharge_volume_synthesized), on=["timestamp", "Ω"], how="left"
+        )
+    else:
+        daily_market_price = custom_market_prices.group_by_dynamic("timestamp", every=timedelta(days=1)).agg(
+            pl.col("da").mean().alias("market_price"),
+        ).with_columns(
+            c("timestamp").dt.ordinal_day().alias("day_of_year")
+        )
+        discharge_volume_synthesized = discharge_volume_synthesized.with_columns(
+            c("timestamp").dt.ordinal_day().alias("day_of_year")
+        )
+
+        timeseries_synthesized = daily_market_price.join(
+            discharge_volume_synthesized.drop("timestamp"), on="day_of_year", how="right"
+        ).drop("day_of_year")
 
     return timeseries_synthesized

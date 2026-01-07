@@ -15,6 +15,8 @@ def third_stage_common_constraints(model: pyo.AbstractModel) -> pyo.AbstractMode
     #################################################################################################################### 
     model.basin_volume_evolution = pyo.Constraint(model.T, model.B, rule=basin_volume_evolution)
     model.basin_end_volume_constraint = pyo.Constraint(model.B, rule=basin_end_volume_constraint)
+    model.basin_max_end_volume_constraint = pyo.Constraint(model.B, rule=basin_max_end_volume_constraint)
+    model.basin_min_end_volume_constraint = pyo.Constraint(model.B, rule=basin_min_end_volume_constraint)
     ####################################################################################################################
     ### Basin volume boundary constraints used to determine the state of each basin ####################################
     ####################################################################################################################

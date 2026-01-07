@@ -275,6 +275,13 @@ def basin_end_volume_constraint(model, b):
             * sum(model.water_factor[b, h] * model.flow[t_max, h] for h in model.H)
         )/ model.basin_volume_range[b]
     )
+    
+def basin_max_end_volume_constraint(model, b):
+    return model.end_basin_volume[b] <= model.max_basin_volume[b, model.S_B[b].last()]
+
+
+def basin_min_end_volume_constraint(model, b):
+    return model.end_basin_volume[b] >= model.min_basin_volume[b, model.S_B[b].first()]
 
 ########################################################################################################################
 # 2.5.3. Water basin state #############################################################################################

@@ -69,7 +69,8 @@ for hydro, market, battery_size in pbar:
             data_config=data_config,
             smallflex_input_schema=smallflex_input_schema,
             basin_volume_expectation=basin_volume_expectation,
-            hydro_power_mask=HYDROPOWER_MASK[hydro])
+            hydro_power_mask=HYDROPOWER_MASK[hydro],
+            plot_result=True)
 
     income_list.append((hydro + " " + market, battery_size, adjusted_income/1e3))
     

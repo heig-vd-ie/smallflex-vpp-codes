@@ -23,11 +23,16 @@ build_non_existing_dirs(plot_folder)
 # %%
 
 # %%
-        
+file_name = ".cache/input/market_prices.csv"
+custom_market_prices: pl.DataFrame = read_and_validate_custom_file(file_name=file_name)
+
+
 first_stage_optimization_results, basin_volume_expectation, fig_1 = first_stage_stochastic_pipeline(
         data_config=data_config,
         smallflex_input_schema=smallflex_input_schema,
         hydro_power_mask=HYDROPOWER_MASK["DT"],
-        plot_result=True
+        plot_result=True,
+        custom_market_prices=custom_market_prices
     )
 
+fig_1.write_html(f"{plot_folder}/first_stage_results.html")

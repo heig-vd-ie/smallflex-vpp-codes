@@ -16,6 +16,7 @@ def stochastic_first_stage_constraints(model):
 
     model.min_diff_basin_end_volume_constraint = pyo.Constraint(model.Ω, model.B, rule=min_diff_basin_end_volume_constraint)
     model.max_diff_basin_end_volume_constraint = pyo.Constraint(model.Ω, model.B, rule=max_diff_basin_end_volume_constraint)
+    model.hydro_power_constraint = pyo.Constraint(model.T, model.Ω, model.H, rule=hydro_power_constraint)
 
 
     return model

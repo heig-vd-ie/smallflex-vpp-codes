@@ -22,6 +22,7 @@ def second_stage_stochastic_pipeline(
     smallflex_input_schema: SmallflexInputSchema,
     basin_volume_expectation: pl.DataFrame,
     hydro_power_mask: pl.Expr,
+    custom_market_prices: Optional[pl.DataFrame] = None,
     plot_result: bool = False,
 ) -> tuple[pl.DataFrame, float, Optional[go.Figure]]:
 
@@ -31,11 +32,13 @@ def second_stage_stochastic_pipeline(
         smallflex_input_schema=smallflex_input_schema,
         basin_volume_expectation=basin_volume_expectation,
         hydro_power_mask=hydro_power_mask,
-)
+    )
 
     timeseries_forecast, timeseries_measurement = process_second_stage_timeseries_stochastic_data(
         smallflex_input_schema=smallflex_input_schema,
-        data_config=data_config)
+        data_config=data_config,
+        custom_market_prices=custom_market_prices
+        )
     
     # print_pl(timeseries_forecast)
 

@@ -21,6 +21,7 @@ def first_stage_stochastic_pipeline(
     smallflex_input_schema: SmallflexInputSchema,
     hydro_power_mask: pl.Expr,
     plot_result: bool = False,
+    custom_market_prices: Optional[pl.DataFrame] = None,
 ) -> tuple[pl.DataFrame, pl.DataFrame, Optional[go.Figure]]:
 
     stochastic_first_stage: StochasticFirstStage = StochasticFirstStage(
@@ -33,6 +34,7 @@ def first_stage_stochastic_pipeline(
         smallflex_input_schema=smallflex_input_schema,
         data_config=data_config,
         water_basin_mapping=pl_to_dict(stochastic_first_stage.water_basin["uuid", "B"]),
+        custom_market_prices=custom_market_prices
     )
     stochastic_first_stage.set_timeseries(timeseries=timeseries)
 

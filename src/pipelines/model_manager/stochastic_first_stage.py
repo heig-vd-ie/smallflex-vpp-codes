@@ -116,14 +116,12 @@ class StochasticFirstStage(HydroDataManager):
         data["alpha"] = pl_to_dict(
             self.first_stage_hydro_power_state.select("H", "alpha")
         )
-        print(data["alpha"])
         data["price_lower_quantile"] = pl_to_dict(
             self.price_quantile.select("Ω", "lower_quantile")
         )
         data["price_upper_quantile"] = pl_to_dict(
             self.price_quantile.select("Ω", "upper_quantile")
         )
-
 
         # Timeseries
         

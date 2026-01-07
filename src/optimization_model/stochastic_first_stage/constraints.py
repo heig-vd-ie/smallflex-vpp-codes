@@ -180,7 +180,7 @@ def max_diff_basin_end_volume_constraint(model, ω, b):
     return model.end_basin_volume[b, ω] - model.start_basin_volume[b] <= model.max_basin_volume[b]/100
 
 def min_diff_basin_end_volume_constraint(model, ω, b):
-    return model.end_basin_volume[b, ω] - model.start_basin_volume[b] >= -model.max_basin_volume[b]/100
+    return model.end_basin_volume[b, ω] - model.start_basin_volume[b] >= - model.max_basin_volume[b]/100
 
 ########################################################################################################################
 # 1.5.3. Water basin state #############################################################################################
@@ -205,7 +205,6 @@ def max_flow_constraint(model, t, ω, h):
     return (
         model.flow[t, ω, h] <= model.max_powered_flow_ratio * model.max_flow[h]
     )
-
 
 
 def hydro_power_constraint(model, t, ω, h):
