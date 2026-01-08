@@ -36,6 +36,7 @@ def process_second_stage_timeseries_stochastic_data(
             smallflex_input_schema=smallflex_input_schema,
             data_config=data_config
         )
+        
     else:
         diff_short = 1.23
         diff_long = 1.37
@@ -43,6 +44,15 @@ def process_second_stage_timeseries_stochastic_data(
         lower_quantile = custom_market_prices["da"].quantile(quantile=data_config.market_price_lower_quantile)
         upper_quantile = custom_market_prices["da"].quantile(quantile=data_config.market_price_upper_quantile)
 
+        if "short_imbalance" not in custom_market_prices.columns:
+            custom_market_prices = custom_market_prices.with_columns(   
+                (c("da") + c("da").abs()*diff_short).alias("short_imbalance"),
+            )
+        if "long_imbalance" not in custom_market_prices.columns:
+            custom_market_prices = custom_market_prices.with_columns( 
+                (c("da") - c("da").abs()*diff_long).alias("long_imbalance")
+            )
+    
         market_prices: pl.DataFrame = custom_market_prices.select(
             "timestamp",
             (c("timestamp") - c("timestamp").dt.truncate("1y")).dt.total_hours().alias("hour_of_year"),
@@ -50,15 +60,10 @@ def process_second_stage_timeseries_stochastic_data(
             pl.lit(lower_quantile).alias("market_price_lower_quantile"),
             pl.lit(upper_quantile).alias("market_price_upper_quantile"),
             c("fcr").forward_fill().alias("ancillary_market_price"),
+            "short_imbalance",
+            "long_imbalance"
         ).slice(0, 365*24)
-        if "short_imbalance" not in custom_market_prices.columns:
-            market_prices = market_prices.with_columns(   
-                (c("market_price") + c("market_price").abs()*diff_short).alias("short_imbalance"),
-            )
-        if "long_imbalance" not in custom_market_prices.columns:
-            market_prices = market_prices.with_columns( 
-                (c("market_price") - c("market_price").abs()*diff_long).alias("long_imbalance")
-            )
+        
         
     input_timeseries = market_prices.join(weather_forecast.drop("timestamp"), on="hour_of_year", how="left")
 
