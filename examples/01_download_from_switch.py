@@ -4,4 +4,4 @@ from config import settings
 if __name__ == "__main__":
     download_from_switch(
         local_folder_path=".cache/input", switch_folder_path= "", 
-        switch_link=settings.SWITCH_LINK, switch_pass=settings.SWITCH_PASS) # type: ignore
+        switch_link=settings.switch_link, switch_pass=settings.switch_pass) # type: ignore
