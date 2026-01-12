@@ -1,96 +1,37 @@
-grid-synthesizer
-=============
+# Smallflex-vpp-code
 
-(Description to come...)
+Smallflex-vpp-code is a framework designed for the optimal design and operation of Virtual Power Plants (VPPs) that 
+integrate small-scale hydropower units with distributed renewable resources such as wind, solar photovoltaic (PV) 
+systems, and Battery Energy Storage Systems (BESS). Its primary objective is to maximize VPP revenue by participating 
+in electricity markets through energy production and flexibility services for ancillary support.
 
-## Grid-synthesizer
+The VPP targets three key electricity markets: day-ahead, intraday balancing, and flexibility (ancillary services). 
+Since the number of possible VPP design configurations is limited, the profit and risk of each configuration can be 
+evaluated individually.
 
-### 1. Install pipx on wsl
+To address computational tractability, a hierarchical optimization approach is applied across three stages:
 
-```bash
-sudo apt update
-sudo apt install pipx
-pipx ensurepath --force
+1. Long-term planning
+2. Short-term/day-ahead scheduling
+3. Real-time balancing
+
+This structure ensures efficient estimation of optimal operation while considering the limited set of design schemes.
+
+## Initial Setup
+
+To install all dependencies on a new machine, run:
+```sh
+make install-all
 ```
 
-### 2. Install python 3.12 on wsl (if not installed)
+You will need a Gurobi license to run this project. Visit [https://license.gurobi.com/](https://license.gurobi.com/), 
+request a new WSL license for your machine, and save it to `~/gurobi_license/gurobi.lic`.
 
-```bash
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt update
-sudo apt install python3.12
-sudo apt install python3.12-venv
+
+### Activating the Virtual Environment and Setting Environment Variables
+
+Each time you start working on the project, activate the virtual environment by running:
+```sh
+make venv-activate
 ```
 
-Reference: [Tutorial is the following link](https://www.linuxtuto.com/how-to-install-python-3-12-on-ubuntu-22-04/)
-
-### 3. Install Poetry
-
-```bash
-pipx install poetry
-```
-
-### 4. Create virtual environment
-
-```bash
-python3.12 -m venv .venv
-poetry env use .venv/bin/python3.12
-```
-
-### 5. Update .venv library
-
-```bash
-poetry update
-```
-
-> [!IMPORTANT]
-> If psycopg-c installation raise the [error](https://stackoverflow.com/questions/77727508/problem-installing-psycopg2-for-python-venv-through-poetry): _psycopg-c (3.1.18) not supporting PEP 517 builds_
-
-```bash
-    sudo apt install libpq-dev gcc
-```
-
-### 6. [Download docker](https://www.docker.com/)
-
-### 7. Create docker container
-
-```bash
-docker compose up
-```
-
-## Other command
-
-### Check which python is installed
-
-```bash
-which python3.12
-```
-
-### Check python version
-
-```bash
-/usr/bin/python3 --version
-```
-
-or
-
-```bash
-python3.12 --version
-```
-### Check the poetry linked environment
-
-```bash
-poetry3.12 env info
-```
-
-### Check the Ubuntu
-
-```bash
-lsb_release -a
-```
-
-### Initialize pyproject.toml
-
-```bash
-poetry init
-```
