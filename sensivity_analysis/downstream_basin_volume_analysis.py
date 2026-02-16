@@ -109,6 +109,8 @@ def downstream_basin_volume_analysis(
         (100*c("adjusted_income")/min_income).alias("relative_income")
     )
     print_pl(results_data["adjusted_income"], float_precision=2)
+    
+    results_data["adjusted_income"].write_csv(f"{output_folder}/income_results.csv")
 
     dict_to_duckdb(results_data, f"{output_folder}/results.duckdb")
 
