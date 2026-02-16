@@ -35,7 +35,6 @@ from pipelines.pipeline_manager.second_stage_stochastic_pipeline import (
     second_stage_stochastic_pipeline,
 )
 
-
 from utility.data_preprocessing import print_pl
 
 from config import settings
@@ -105,7 +104,11 @@ def downstream_basin_volume_analysis(
     results_data["adjusted_income"] = pl.DataFrame(
     income_list, schema=["basin_volume_size", "adjusted_income"], orient="row"
     )
-    print_pl(results_data["adjusted_income"], float_precision=0)
+    min_income = results_data["adjusted_income"]["adjusted_income"].min()
+    results_data["adjusted_income"] = results_data["adjusted_income"].with_columns(
+        (100*c("adjusted_income")/min_income).alias("relative_income")
+    )
+    print_pl(results_data["adjusted_income"], float_precision=2)
 
     dict_to_duckdb(results_data, f"{output_folder}/results.duckdb")
 
