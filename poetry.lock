@@ -1161,10 +1161,9 @@ testing = ["Django", "attrs", "colorama", "docopt", "pytest (<9.0.0)"]
 name = "jinja2"
 version = "3.1.6"
 description = "A very fast and expressive template engine."
-optional = true
+optional = false
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "extra == \"internal\""
 files = [
     {file = "jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"},
     {file = "jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d"},
@@ -1487,10 +1486,9 @@ testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions"]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"internal\""
 files = [
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7e94c425039cde14257288fd61dcfb01963e658efbc0ff54f5306b06054700f8"},
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:9e2d922824181480953426608b81967de705c3cef4d1af983af849d7bd619158"},
@@ -3887,25 +3885,25 @@ files = [
 name = "smallflex-data-schema"
 version = "0.1.6"
 description = ""
-optional = true
-python-versions = ">=3.12,<3.14"
+optional = false
+python-versions = "^3.12,<3.14"
 groups = ["main"]
-markers = "extra == \"internal\""
-files = [
-    {file = "smallflex_data_schema-0.1.6-py3-none-any.whl", hash = "sha256:55adb4a7d4bcea8e8f0401b437453514a2f7d19d47697c208628f94cb1df3abb"},
-]
+files = []
+develop = false
 
 [package.dependencies]
-jinja2 = ">=3.1.6,<4.0.0"
-patito = ">=0.8.4,<0.9.0"
-polars = ">=1.32.3,<2.0.0"
+jinja2 = "^3.1.6"
+patito = "^0.8.4"
+polars = "^1.32.3"
 
 [package.extras]
-internal = ["utility_functions @ file:///home/tomasilu/git/smallflex-data-schema/external-dist/utility_functions-0.1.1-py3-none-any.whl"]
+internal = ["utility-functions @ file:///home/ltomasini/git/smallflex/smallflex-vpp-codes/.venv/src/smallflex-data-schema/external-dist/utility_functions-0.1.1-py3-none-any.whl"]
 
 [package.source]
-type = "file"
-url = "external-dist/smallflex_data_schema-0.1.6-py3-none-any.whl"
+type = "git"
+url = "ssh://git@github.com/heig-vd-ie/smallflex-data-schema.git"
+reference = "v0.1.1"
+resolved_reference = "4f871510a023e4a9c0854d0ec288e762741a6d10"
 
 [[package]]
 name = "snowballstemmer"
@@ -4560,9 +4558,9 @@ files = [
 ]
 
 [extras]
-internal = ["smallflex-data-schema", "utility-functions"]
+internal = ["utility-functions"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12,<3.14"
-content-hash = "f37ea7830674560f7db058ce59ca4e2cde4de7b38cc0b58be475eccdc089986f"
+content-hash = "ce81ed293f50070c2edadf6d6d8449ec6264f8637d2439ecc4c89c8371e0258f"

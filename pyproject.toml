@@ -15,7 +15,6 @@ matplotlib = "^3.10.5"
 pandas = "^2.3.2"
 pyomo = "^6.9.3"
 utility-functions = {path = "external-dist/utility_functions-0.1.1-py3-none-any.whl", optional = true}
-smallflex-data-schema = {path = "external-dist/smallflex_data_schema-0.1.6-py3-none-any.whl", optional = true}
 plotly = "^6.1.1"
 gurobipy = "^12.0.2"
 patito = "^0.8.3"
@@ -24,6 +23,7 @@ rich = "10.13.0"
 kaleido = "^1.1.0"
 nbstripout = "^0.8.2"
 typed-settings = "^25.3.0"
+smallflex-data-schema = {git = "git@github.com:heig-vd-ie/smallflex-data-schema.git", rev = "v0.1.1"}
 
 
 [build-system]

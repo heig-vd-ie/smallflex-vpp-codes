@@ -38,7 +38,7 @@ def process_first_stage_timeseries_data(
         "Ω",
         pl.all().exclude(["timestamp", "Ω"]).name.prefix("discharge_volume_"),
     )
-    if custom_market_prices is  None:
+    if custom_market_prices is None:
         market_price_synthesized = (
             smallflex_input_schema.market_price_synthesized.filter(
                 c("market") == data_config.market
